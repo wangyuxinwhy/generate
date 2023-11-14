@@ -1,0 +1,80 @@
+[tool.poetry]
+name = "generate-client"
+version = "0.1.0"
+description = "文本生成，图像生成，语音生成"
+authors = ["wangyuxin <wangyuxin@mokahr.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "generate"}]
+repository = "https://github.com/wangyuxinwhy/generate"
+keywords = ["openai", "text generation", "image generation", "text to speech"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+asyncer = "0.0.2"
+typing-extensions = "^4.6.2"
+httpx = "^0.24.1"
+tenacity = "^8.2.2"
+websocket-client = "^1.6.1"
+pyjwt = "^2.8.0"
+cachetools = "^5.3.1"
+tqdm = "^4.66.1"
+pydantic = "^2.0"
+docstring-parser = "^0.15"
+anyio = "<4.0.0"
+httpx-sse = "0.3.1"
+rich = "^13.0.0"
+
+[tool.ruff]
+line-length = 128
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "N",
+    "SIM",
+    "ANN",
+    "A",
+    "T",
+    "PT",
+    "RET",
+    "PL",
+    "TRY",
+    "PERF",
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "B905",  # zip strict
+    "C901",  # too complex
+    "A003",  # shadow builtin 
+    "ANN1",  # self and cls
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed in
+    "PLR0913", # Too many arguments in function definition
+    "PLR0911", # Too many return
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "PLC0414", # reimport
+]
+exclude = ["playground", "api_docs"]
+target-version = "py38"
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.pyright]
+reportMissingTypeStubs=false
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+pyright = "^1.1.310"
+ruff = "^0.1.4"
+
+[tool.poetry.group.bailian.dependencies]
+broadscope-bailian = "^1.1.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
