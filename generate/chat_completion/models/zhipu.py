@@ -138,7 +138,7 @@ class BaseZhipuChat(HttpChatModel[P]):
             text = response['data']['choices'][0]['content']
             messages = [AssistantMessage(content=text)]
             return ChatCompletionModelOutput(
-                chat_model_id=self.model_id,
+                model_info=self.model_info,
                 messages=messages,
                 usage=response['data']['usage'],
                 cost=self.calculate_cost(response['data']['usage']),

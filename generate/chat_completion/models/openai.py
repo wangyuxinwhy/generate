@@ -32,6 +32,7 @@ from generate.chat_completion.message import (
     UserMultiPartMessage,
 )
 from generate.chat_completion.model_output import ChatCompletionModelOutput, FinishStream, Stream
+from generate.model import ModelInfo
 from generate.parameters import ModelParameters
 from generate.types import Probability, Temperature
 
@@ -239,7 +240,7 @@ def parse_openai_model_reponse(response: HttpResponse) -> ChatCompletionModelOut
             finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
         return ChatCompletionModelOutput(
-            chat_model_id='openai/' + response['model'],
+            model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
             messages=messages,
             finish_reason=finish_reason or '',
             usage=response['usage'],

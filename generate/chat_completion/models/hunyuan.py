@@ -127,7 +127,7 @@ class HunyuanChat(HttpChatModel[HunyuanChatParameters]):
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['choices'][0]['messages']['content'])]
         return ChatCompletionModelOutput(
-            chat_model_id=self.model_id,
+            model_info=self.model_info,
             messages=messages,
             finish_reason=response['choices'][0]['finish_reason'],
             usage=response['usage'],

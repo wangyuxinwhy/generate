@@ -30,18 +30,18 @@ class FakeChat(ChatCompletionModel[FakeChatParameters]):
 
     def _completion(self, messages: Messages, parameters: FakeChatParameters) -> ChatCompletionModelOutput:
         content = f'Completed: {messages[-1].content}'
-        return ChatCompletionModelOutput(chat_model_id='test', messages=[AssistantMessage(content=content)])
+        return ChatCompletionModelOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
     async def _async_completion(self, messages: Messages, parameters: FakeChatParameters) -> ChatCompletionModelOutput:
         content = f'Completed: {messages[-1].content}'
-        return ChatCompletionModelOutput(chat_model_id='test', messages=[AssistantMessage(content=content)])
+        return ChatCompletionModelOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
     def _stream_completion(
         self, messages: Messages, parameters: FakeChatParameters
     ) -> Iterator[ChatCompletionModelStreamOutput[FakeChatParameters]]:
         content = f'Completed: {messages[-1].content}'
         yield ChatCompletionModelStreamOutput(
-            chat_model_id='test',
+            model_info=self.model_info,
             messages=[AssistantMessage(content=content)],
             stream=Stream(delta=content, control='finish'),
         )
@@ -51,7 +51,7 @@ class FakeChat(ChatCompletionModel[FakeChatParameters]):
     ) -> AsyncIterator[ChatCompletionModelStreamOutput[FakeChatParameters]]:
         content = f'Completed: {messages[-1].content}'
         yield ChatCompletionModelStreamOutput(
-            chat_model_id='test',
+            model_info=self.model_info,
             messages=[AssistantMessage(content=content)],
             stream=Stream(delta=content, control='finish'),
         )

@@ -82,7 +82,7 @@ class MinimaxSpeech(HttpSpeechModel[MinimaxSpeechParameters]):
         self, text: str, parameters: MinimaxSpeechParameters, response: Response
     ) -> TextToSpeechModelOutput:
         return TextToSpeechModelOutput(
-            speech_model_id=self.model_id,
+            model_info=self.model_info,
             audio=response.content,
             audio_format='mp3',
             cost=self.calculate_cost(text),
@@ -152,7 +152,7 @@ class MinimaxProSpeech(HttpSpeechModel[MinimaxProSpeechParameters]):
             raise UnexpectedResponseError(response_data)
 
         model_output = TextToSpeechModelOutput(
-            speech_model_id=self.model_id,
+            model_info=self.model_info,
             audio=httpx.get(response_data['audio_file']).content,
             audio_format='mp3',
             cost=response_data['extra_info']['word_count'] / 1000,

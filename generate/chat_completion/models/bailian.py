@@ -149,7 +149,7 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['Data']['Text'])]
         return ChatCompletionModelOutput(
-            chat_model_id=self.model_id,
+            model_info=self.model_info,
             messages=messages,
             extra={
                 'thoughts': response['Data']['Thoughts'],

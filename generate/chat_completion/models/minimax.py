@@ -120,7 +120,7 @@ class MinimaxChat(HttpChatModel[MinimaxChatParameters]):
         try:
             messages = [AssistantMessage(content=response['choices'][0]['text'])]
             return ChatCompletionModelOutput(
-                chat_model_id=self.model_id,
+                model_info=self.model_info,
                 messages=messages,
                 finish_reason=response['choices'][0]['finish_reason'],
                 usage=response['usage'],

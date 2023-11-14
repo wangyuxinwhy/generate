@@ -210,7 +210,7 @@ class MinimaxProChat(HttpChatModel[MinimaxProChatParameters]):
             num_web_search = sum([i for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
 
             return ChatCompletionModelOutput(
-                chat_model_id=self.model_id,
+                model_info=self.model_info,
                 messages=messages,
                 finish_reason=finish_reason,
                 usage=response['usage'],

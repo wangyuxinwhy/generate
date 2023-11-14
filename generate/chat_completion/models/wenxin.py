@@ -220,7 +220,7 @@ class WenxinChat(HttpChatModel[WenxinChatParameters]):
         else:
             messages = [AssistantMessage(content=response['result'])]
         return ChatCompletionModelOutput(
-            chat_model_id=self.model_id,
+            model_info=self.model_info,
             messages=messages,
             usage=response['usage'],
             cost=self.calculate_cost(response['usage']),

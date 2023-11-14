@@ -144,7 +144,7 @@ class BaichuanChat(HttpChatModel[BaichuanChatParameters]):
             text = response['data']['messages'][-1]['content']
             finish_reason = response['data']['messages'][-1]['finish_reason']
             return ChatCompletionModelOutput(
-                chat_model_id=self.model_id,
+                model_info=self.model_info,
                 messages=[AssistantMessage(content=text)],
                 finish_reason=finish_reason,
                 usage=response['usage'],

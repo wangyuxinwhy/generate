@@ -60,7 +60,7 @@ class OpenAISpeech(HttpSpeechModel[OpenAISpeechParameters]):
         self, text: str, parameters: OpenAISpeechParameters, response: Response
     ) -> TextToSpeechModelOutput:
         return TextToSpeechModelOutput(
-            speech_model_id=self.model_id,
+            model_info=self.model_info,
             audio=response.content,
             audio_format=parameters.response_format or 'mp3',
             cost=self.calculate_cost(text),

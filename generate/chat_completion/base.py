@@ -7,6 +7,7 @@ from typing_extensions import Self, TypeGuard
 
 from generate.chat_completion.message import Messages, Prompt, ensure_messages
 from generate.chat_completion.model_output import ChatCompletionModelOutput, ChatCompletionModelStreamOutput
+from generate.model import ModelInfo
 from generate.parameters import ModelParameters
 
 P = TypeVar('P', bound=ModelParameters)
@@ -45,8 +46,8 @@ class ChatCompletionModel(Generic[P], ABC):
         ...
 
     @property
-    def model_id(self) -> str:
-        return f'{self.model_type}/{self.name}'
+    def model_info(self) -> ModelInfo:
+        return ModelInfo(task='chat_completion', type=self.model_type, name=self.name)
 
     def generate(self, prompt: Prompt, **override_parameters: Any) -> ChatCompletionModelOutput:
         parameters = self._merge_parameters(**override_parameters)

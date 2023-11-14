@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional
 
-from pydantic import BaseModel, model_serializer
+from pydantic import BaseModel
 
 from generate.chat_completion.message import AssistantMessage, Message, Messages
+from generate.model import ModelOutput
 
 
-class ChatCompletionModelOutput(BaseModel):
-    chat_model_id: str
+class ChatCompletionModelOutput(ModelOutput):
     messages: Messages = []
     finish_reason: str = ''
     usage: Optional[Dict[str, int]] = None
     cost: Optional[float] = None
-    debug: Dict[str, Any] = {}
-    extra: Dict[str, Any] = {}
 
     @property
     def last_message(self) -> Message | None:
@@ -27,12 +25,6 @@ class ChatCompletionModelOutput(BaseModel):
         if self.last_message and isinstance(self.last_message, AssistantMessage):
             return self.last_message.content
         return ''
-
-    @model_serializer(mode='wrap')
-    def ser_model(self, handler) -> Any:  # noqa: ANN001
-        output = handler(self)
-        output.pop('debug')
-        return output
 
 
 class Stream(BaseModel):

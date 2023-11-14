@@ -91,7 +91,7 @@ class CompletionEngine(Generic[P]):
             if self.error_mode == 'raise':
                 raise
             if self.error_mode == 'ignore':
-                return ChatCompletionModelOutput(chat_model_id=self.chat_model.model_id, debug={'error': str(e)})
+                return ChatCompletionModelOutput(model_info=self.chat_model.model_info, debug={'error': str(e)})
             raise ValueError(f'Unknown error mode: {self.error_mode}') from e
         else:
             progress_bar.update(1)
@@ -143,7 +143,7 @@ class CompletionEngine(Generic[P]):
                 if self.error_mode == 'raise':
                     raise
                 if self.error_mode == 'ignore':
-                    return ChatCompletionModelOutput(chat_model_id=self.chat_model.model_id, debug={'error': str(e)})
+                    return ChatCompletionModelOutput(model_info=self.chat_model.model_info, debug={'error': str(e)})
 
                 raise ValueError(f'Unknown error mode: {self.error_mode}') from e
             else:

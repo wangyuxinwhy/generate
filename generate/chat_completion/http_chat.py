@@ -128,7 +128,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
             if not start:
                 start_stream = Stream(delta='', control='start')
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     stream=start_stream,
                 )
@@ -143,7 +143,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
                 http_parameters['headers'].pop('Authorization', None)
 
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     debug={'http_response': stream_response, 'http_request': http_parameters},
                     stream=stream,
@@ -154,7 +154,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
                 break
             else:
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     stream=stream,
                 )
@@ -208,7 +208,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
             if not start:
                 start_stream = Stream(delta='', control='start')
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     stream=start_stream,
                 )
@@ -223,7 +223,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
                 http_parameters['headers'].pop('Authorization', None)
 
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     debug={'http_response': stream_response, 'http_request': http_parameters},
                     stream=stream,
@@ -234,7 +234,7 @@ class HttpChatModel(ChatCompletionModel[P], ABC):
                 break
             else:
                 yield ChatCompletionModelStreamOutput(
-                    chat_model_id=self.model_id,
+                    model_info=self.model_info,
                     messages=[AssistantMessage(content=reply)],
                     stream=stream,
                 )
