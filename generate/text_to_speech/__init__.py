@@ -39,9 +39,15 @@ def list_speech_model_types() -> list[str]:
     return list(SpeechModelRegistry.keys())
 
 
+def generate_speech(text: str, model_id: str = 'openai/tts-1', **kwargs: Any) -> TextToSpeechModelOutput:
+    model = load_speech_model(model_id, **kwargs)
+    return model.generate(text, **kwargs)
+
+
 __all__ = [
     'load_speech_model',
     'list_speech_model_types',
+    'generate_speech',
     'TextToSpeechModel',
     'HttpSpeechModel',
     'HttpModelInitKwargs',

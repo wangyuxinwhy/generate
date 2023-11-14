@@ -16,5 +16,5 @@ def test_image_cimpletion() -> None:
         ],
     }
     chat = OpenAIChat(model='gpt-4-vision-preview')
-    output = chat.completion(user_input, max_tokens=10)
+    output = chat.generate(user_input, max_tokens=10)
     assert output.reply != ''

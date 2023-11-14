@@ -5,7 +5,7 @@ from typing import Any, Callable, Generic, List, Literal, TypedDict, TypeVar, Un
 
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionModelOutput, ModelParameters, load_chat_model
+from generate.chat_completion import ChatCompletionModel, ChatCompletionModelOutput, ModelParameters, function, load_chat_model
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -18,8 +18,7 @@ from generate.chat_completion.message import (
     ToolMessage,
     UserMessage,
 )
-from generate.function import function
-from generate.printer import Printer, SimplePrinter
+from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
 
 P = TypeVar('P', bound=ModelParameters)
 
@@ -46,7 +45,7 @@ class ChatEngine(Generic[P]):
         printer (Printer | Literal['auto'] | None, optional): The printer to use for displaying the generated responses. Defaults to 'auto'.
     """
 
-    printer: Printer | None
+    printer: MessagePrinter | None
 
     def __init__(
         self,
@@ -55,7 +54,7 @@ class ChatEngine(Generic[P]):
         call_raise_error: bool = False,
         max_calls_per_turn: int = 5,
         stream: bool | Literal['auto'] = 'auto',
-        printer: Printer | Literal['auto'] | None = 'auto',
+        printer: MessagePrinter | Literal['auto'] | None = 'auto',
     ) -> None:
         self._chat_model = chat_model
 
@@ -81,7 +80,7 @@ class ChatEngine(Generic[P]):
             self.stream = stream
 
         if printer == 'auto':
-            self.printer = SimplePrinter() if stream else None
+            self.printer = SimpleMessagePrinter() if stream else None
         else:
             self.printer = printer
 
@@ -114,7 +113,7 @@ class ChatEngine(Generic[P]):
             if self.stream:
                 model_output = self._stream_chat_helper(**override_parameters)
             else:
-                model_output = self._chat_model.completion(self.history, **override_parameters)
+                model_output = self._chat_model.generate(self.history, **override_parameters)
             self.handle_model_output(model_output)
             if isinstance(model_output.last_message, AssistantMessage):
                 return model_output.reply
@@ -168,7 +167,7 @@ class ChatEngine(Generic[P]):
                 self.printer.print_message(message)
 
     def _stream_chat_helper(self, **override_parameters: Any) -> ChatCompletionModelOutput[P]:
-        for stream_output in self._chat_model.stream_completion(self.history, **override_parameters):
+        for stream_output in self._chat_model.stream_generate(self.history, **override_parameters):
             if self.printer:
                 self.printer.print_stream(stream_output.stream)
             if stream_output.is_finish:
@@ -187,13 +186,13 @@ class ChatEngine(Generic[P]):
             if self.stream:
                 model_output = await self._async_stream_chat_helper(**override_parameters)
             else:
-                model_output = await self._chat_model.async_completion(self.history, **override_parameters)
+                model_output = await self._chat_model.async_generate(self.history, **override_parameters)
             self.handle_model_output(model_output)
             if isinstance(model_output.last_message, AssistantMessage):
                 return model_output.reply
 
     async def _async_stream_chat_helper(self, **kwargs: Any) -> ChatCompletionModelOutput[P]:
-        async for stream_output in self._chat_model.async_stream_completion(self.history, **kwargs):
+        async for stream_output in self._chat_model.async_stream_generate(self.history, **kwargs):
             if self.printer:
                 self.printer.print_stream(stream_output.stream)
             if stream_output.is_finish:
@@ -226,7 +225,7 @@ class ChatEngine(Generic[P]):
         if self.printer:
             self.printer.print_message(function_message)
 
-        model_output = await self._chat_model.async_completion(self.history, **override_parameters)
+        model_output = await self._chat_model.async_generate(self.history, **override_parameters)
         self.handle_model_output(model_output)
 
         if not model_output.last_message:

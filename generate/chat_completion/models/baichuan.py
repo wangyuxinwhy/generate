@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import time
+import uuid
 from datetime import datetime
 from typing import Any, ClassVar, Literal, Optional, TypedDict
 
@@ -102,7 +103,7 @@ class BaichuanChat(HttpChatModel[BaichuanChatParameters]):
             'X-BC-Timestamp': str(time_stamp),
             'X-BC-Signature': signature,
             'X-BC-Sign-Algo': 'MD5',
-            'X-BC-Request-Id': 'your requestId',
+            'X-BC-Request-Id': str(uuid.uuid4()),
         }
         return {
             'url': self.api_base,

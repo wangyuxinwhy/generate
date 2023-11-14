@@ -66,7 +66,7 @@ class HttpSpeechModel(TextToSpeechModel[P], ABC):
         return model_output
 
     @override
-    def _generate(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    def _text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
         if self.retry_strategy is None:
             return self._completion_without_retry(text, parameters)
 
@@ -75,7 +75,7 @@ class HttpSpeechModel(TextToSpeechModel[P], ABC):
         return retry(wait=wait, stop=stop)(self._completion_without_retry)(text, parameters)
 
     @override
-    async def _async_generate(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    async def _async_text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
         if self.retry_strategy is None:
             return await self._async_completion_without_retry(text, parameters)
 

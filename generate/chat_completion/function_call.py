@@ -5,13 +5,19 @@ from typing import Callable, Generic, TypeVar
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
-from typing_extensions import ParamSpec
+from typing_extensions import NotRequired, ParamSpec, TypedDict
 
 from generate.chat_completion.message import FunctionCallMessage, Message
-from generate.types import FunctionJsonSchema
+from generate.types import JsonSchema
 
 P = ParamSpec('P')
 T = TypeVar('T')
+
+
+class FunctionJsonSchema(TypedDict):
+    name: str
+    parameters: JsonSchema
+    description: NotRequired[str]
 
 
 def get_json_schema(function: Callable) -> FunctionJsonSchema:

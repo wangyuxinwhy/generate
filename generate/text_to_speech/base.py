@@ -26,11 +26,11 @@ class TextToSpeechModel(Generic[P], ABC):
         ...
 
     @abstractmethod
-    def _generate(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    def _text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
         ...
 
     @abstractmethod
-    async def _async_generate(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    async def _async_text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
         ...
 
     @property
@@ -39,14 +39,14 @@ class TextToSpeechModel(Generic[P], ABC):
 
     def generate(self, text: str, **override_parameters: Any) -> TextToSpeechModelOutput:
         parameters = self._merge_parameters(**override_parameters)
-        model_output = self._generate(text, parameters)
+        model_output = self._text_to_speech(text, parameters)
         model_output.debug['input_text'] = text
         model_output.debug['parameters'] = parameters
         return model_output
 
     async def async_generate(self, text: str, **override_parameters: Any) -> TextToSpeechModelOutput:
         parameters = self._merge_parameters(**override_parameters)
-        model_output = await self._async_generate(text, parameters)
+        model_output = await self._async_text_to_speech(text, parameters)
         model_output.debug['input_text'] = text
         model_output.debug['parameters'] = parameters
         return model_output

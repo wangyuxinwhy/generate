@@ -86,7 +86,7 @@ class CompletionEngine(Generic[P]):
         self._task_created_time_list.append(int(time.time()))
 
         try:
-            output = self.chat_model.completion(prompt=messages, **kwargs)
+            output = self.chat_model.generate(prompt=messages, **kwargs)
         except Exception as e:
             if self.error_mode == 'raise':
                 raise
@@ -138,7 +138,7 @@ class CompletionEngine(Generic[P]):
                     if sleep_time > 0:
                         await anyio.sleep(sleep_time)
                     self._task_created_time_list.append(int(time.time()))
-                output = await self.chat_model.async_completion(messages, **kwargs)
+                output = await self.chat_model.async_generate(messages, **kwargs)
             except Exception as e:
                 if self.error_mode == 'raise':
                     raise

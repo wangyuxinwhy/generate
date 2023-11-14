@@ -48,7 +48,7 @@ class ChatCompletionModel(Generic[P], ABC):
     def model_id(self) -> str:
         return f'{self.model_type}/{self.name}'
 
-    def completion(self, prompt: Prompt, **override_parameters: Any) -> ChatCompletionModelOutput:
+    def generate(self, prompt: Prompt, **override_parameters: Any) -> ChatCompletionModelOutput:
         parameters = self._merge_parameters(**override_parameters)
         messages = ensure_messages(prompt)
         model_output = self._completion(messages, parameters)
@@ -56,7 +56,7 @@ class ChatCompletionModel(Generic[P], ABC):
         model_output.debug['parameters'] = parameters
         return model_output
 
-    async def async_completion(self, prompt: Prompt, **override_parameters: Any) -> ChatCompletionModelOutput:
+    async def async_generate(self, prompt: Prompt, **override_parameters: Any) -> ChatCompletionModelOutput:
         parameters = self._merge_parameters(**override_parameters)
         messages = ensure_messages(prompt)
         model_output = await self._async_completion(messages, parameters)
@@ -64,7 +64,7 @@ class ChatCompletionModel(Generic[P], ABC):
         model_output.debug['parameters'] = parameters
         return model_output
 
-    def stream_completion(self, prompt: Prompt, **override_parameters: Any) -> Iterator[ChatCompletionModelStreamOutput]:
+    def stream_generate(self, prompt: Prompt, **override_parameters: Any) -> Iterator[ChatCompletionModelStreamOutput]:
         parameters = self._merge_parameters(**override_parameters)
         messages = ensure_messages(prompt)
         for stream_output in self._stream_completion(messages, parameters):
@@ -73,7 +73,7 @@ class ChatCompletionModel(Generic[P], ABC):
                 stream_output.debug['parameters'] = parameters
             yield stream_output
 
-    async def async_stream_completion(
+    async def async_stream_generate(
         self, prompt: Prompt, **override_parameters: Any
     ) -> AsyncIterator[ChatCompletionModelStreamOutput]:
         parameters = self._merge_parameters(**override_parameters)

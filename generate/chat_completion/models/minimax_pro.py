@@ -6,6 +6,7 @@ from typing import Any, ClassVar, Dict, List, Literal, Optional
 from pydantic import Field, PositiveInt, field_validator, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
+from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.http_chat import (
     HttpChatModel,
     HttpModelInitKwargs,
@@ -26,7 +27,7 @@ from generate.chat_completion.message import (
 )
 from generate.chat_completion.model_output import ChatCompletionModelOutput, FinishStream, Stream
 from generate.parameters import ModelParameters
-from generate.types import FunctionJsonSchema, Probability, Temperature
+from generate.types import Probability, Temperature
 
 
 class BotSettingDict(TypedDict):

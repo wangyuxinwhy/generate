@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from generate import ChatEngine, OpenAIChat, OpenAIChatParameters, function
-from generate.function import get_json_schema
+from generate.chat_completion.function_call import get_json_schema
 
 
 def get_weather_without_wrap(city: str, country: Literal['US', 'CN'] = 'US') -> str:

@@ -41,8 +41,8 @@ def test_load_from_model_id() -> None:
 def test_http_chat_model(chat_model: HttpChatModel, parameters: dict) -> None:
     chat_model.timeout = 20
     prompt = '这是测试，只回复你好'
-    sync_output = chat_model.completion(prompt, **parameters)
-    async_output = asyncio.run(chat_model.async_completion(prompt))
+    sync_output = chat_model.generate(prompt, **parameters)
+    async_output = asyncio.run(chat_model.async_generate(prompt))
 
     assert sync_output.reply != ''
     assert async_output.reply != ''
@@ -54,7 +54,7 @@ def test_http_chat_model(chat_model: HttpChatModel, parameters: dict) -> None:
 def test_http_stream_chat_model(chat_model: HttpChatModel) -> None:
     chat_model.timeout = 10
     prompt = '这是测试，只回复你好'
-    sync_output = list(chat_model.stream_completion(prompt))[-1]
+    sync_output = list(chat_model.stream_generate(prompt))[-1]
     async_output = asyncio.run(async_stream_helper(chat_model, prompt))
 
     assert sync_output.stream.control in ('finish', 'done')
@@ -63,7 +63,7 @@ def test_http_stream_chat_model(chat_model: HttpChatModel) -> None:
 
 
 async def async_stream_helper(model: ChatCompletionModel, prompt: Prompt) -> ChatCompletionModelStreamOutput:
-    async for output in model.async_stream_completion(prompt):
+    async for output in model.async_stream_generate(prompt):
         if output.stream.control == 'finish':
             return output
     raise RuntimeError('Stream did not finish')

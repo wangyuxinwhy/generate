@@ -16,7 +16,7 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import Stream
 
 
-class Printer(Protocol):
+class MessagePrinter(Protocol):
     def print_message(self, message: Message) -> None:
         ...
 
@@ -24,7 +24,7 @@ class Printer(Protocol):
         ...
 
 
-class SimplePrinter(Printer):
+class SimpleMessagePrinter(MessagePrinter):
     """
     A simple printer that prints messages and streams to the console.
 
@@ -63,7 +63,7 @@ class SimplePrinter(Printer):
             print()
 
 
-class RichPrinter(Printer):
+class RichMessagePrinter(MessagePrinter):
     """
     A rich printer that prints messages and streams to the console.
 
