@@ -2,19 +2,13 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, ClassVar, Literal, Optional, TypeVar
+from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, TypeVar
 
 import cachetools.func  # type: ignore
 import jwt
 from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.http_chat import (
-    HttpChatModel,
-    HttpModelInitKwargs,
-    HttpResponse,
-    HttpxPostKwargs,
-    UnexpectedResponseError,
-)
+from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Message,
@@ -22,7 +16,15 @@ from generate.chat_completion.message import (
     MessageTypeError,
     UserMessage,
 )
-from generate.chat_completion.model_output import ChatCompletionModelOutput, FinishStream, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.http import (
+    HttpClient,
+    HttpClientInitKwargs,
+    HttpMixin,
+    HttpStreamClient,
+    HttpxPostKwargs,
+    UnexpectedResponseError,
+)
 from generate.parameters import ModelParameters
 from generate.types import Probability, Temperature
 
@@ -102,7 +104,7 @@ def generate_token(api_key: str) -> str:
     )
 
 
-class BaseZhipuChat(HttpChatModel[P]):
+class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
     default_api_base: ClassVar[str] = 'https://open.bigmodel.cn/api/paas/v3/model-api'
 
     def __init__(
@@ -111,14 +113,15 @@ class BaseZhipuChat(HttpChatModel[P]):
         parameters: P,
         api_key: str | None = None,
         api_base: str | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
-        super().__init__(parameters=parameters, **kwargs)
+        super().__init__(parameters=parameters)
         self.model = model
         self.api_key = api_key or os.environ['ZHIPU_API_KEY']
         self.api_base = (api_base or self.default_api_base).rstrip('/')
+        self.http_client = HttpClient(**kwargs)
+        self.http_stream_client = HttpStreamClient(stream_strategy='basic', **kwargs)
 
-    @override
     def _get_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
         headers = {
@@ -133,34 +136,74 @@ class BaseZhipuChat(HttpChatModel[P]):
         }
 
     @override
-    def _parse_reponse(self, response: HttpResponse) -> ChatCompletionModelOutput:
+    def _completion(self, messages: Messages, parameters: P) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    @override
+    async def _async_completion(self, messages: Messages, parameters: P) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         if response['success']:
             text = response['data']['choices'][0]['content']
             messages = [AssistantMessage(content=text)]
-            return ChatCompletionModelOutput(
-                chat_model_id=self.model_id,
+            return ChatCompletionOutput(
+                model_info=self.model_info,
                 messages=messages,
-                usage=response['data']['usage'],
                 cost=self.calculate_cost(response['data']['usage']),
+                extra={'usage': response['data']['usage']},
             )
 
         raise UnexpectedResponseError(response)
 
-    @override
     def _get_stream_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
         http_parameters['url'] = f'{self.api_base}/{self.model}/sse-invoke'
         return http_parameters
 
     @override
-    def _parse_stream_response(self, response: HttpResponse) -> Stream:
-        if response['data']:
-            return Stream(delta=response['data'], control='continue')
-        return FinishStream()
+    def _stream_completion(self, messages: Messages, parameters: P) -> Iterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        message = ''
+        for line in self.http_stream_client.post(request_parameters=request_parameters):
+            message += line
+            yield ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                stream=Stream(delta=line, control='continue'),
+            )
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            messages=[AssistantMessage(content=message)],
+            stream=Stream(delta='', control='finish'),
+        )
 
     @override
-    def _preprocess_stream_data(self, stream_data: str) -> HttpResponse:
-        return {'data': stream_data}
+    async def _async_stream_completion(self, messages: Messages, parameters: P) -> AsyncIterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        message = ''
+        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+            message += line
+            yield ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                stream=Stream(delta=line, control='continue'),
+            )
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            messages=[AssistantMessage(content=message)],
+            stream=Stream(delta='', control='finish'),
+        )
 
     def calculate_cost(self, usage: dict[str, Any]) -> float | None:
         if self.name == 'chatglm_turbo':
@@ -189,7 +232,7 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: ZhipuChatParameters | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
         super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, **kwargs)
@@ -204,7 +247,7 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: ZhipuCharacterChatParameters | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
         parameters = parameters or ZhipuCharacterChatParameters()
         super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, **kwargs)

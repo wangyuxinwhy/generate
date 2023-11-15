@@ -5,7 +5,7 @@ from typing import Any, Callable, Generic, List, Literal, TypedDict, TypeVar, Un
 
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionModelOutput, ModelParameters, function, load_chat_model
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters, function
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -19,6 +19,7 @@ from generate.chat_completion.message import (
     UserMessage,
 )
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
+from generate.utils import load_chat_model
 
 P = TypeVar('P', bound=ModelParameters)
 
@@ -85,7 +86,7 @@ class ChatEngine(Generic[P]):
             self.printer = printer
 
         self.history: list[Message] = []
-        self.model_ouptuts: list[ChatCompletionModelOutput[P]] = []
+        self.model_ouptuts: list[ChatCompletionOutput] = []
         self._call_count = 0
 
     @classmethod
@@ -118,7 +119,7 @@ class ChatEngine(Generic[P]):
             if isinstance(model_output.last_message, AssistantMessage):
                 return model_output.reply
 
-    def handle_model_output(self, model_output: ChatCompletionModelOutput, **override_parameters: Any) -> None:
+    def handle_model_output(self, model_output: ChatCompletionOutput, **override_parameters: Any) -> None:
         if not model_output.last_message:
             raise RuntimeError('messages in model output is empty.', model_output.model_dump())
 
@@ -166,7 +167,7 @@ class ChatEngine(Generic[P]):
             for message in tool_messages:
                 self.printer.print_message(message)
 
-    def _stream_chat_helper(self, **override_parameters: Any) -> ChatCompletionModelOutput[P]:
+    def _stream_chat_helper(self, **override_parameters: Any) -> ChatCompletionOutput:
         for stream_output in self._chat_model.stream_generate(self.history, **override_parameters):
             if self.printer:
                 self.printer.print_stream(stream_output.stream)
@@ -191,7 +192,7 @@ class ChatEngine(Generic[P]):
             if isinstance(model_output.last_message, AssistantMessage):
                 return model_output.reply
 
-    async def _async_stream_chat_helper(self, **kwargs: Any) -> ChatCompletionModelOutput[P]:
+    async def _async_stream_chat_helper(self, **kwargs: Any) -> ChatCompletionOutput:
         async for stream_output in self._chat_model.async_stream_generate(self.history, **kwargs):
             if self.printer:
                 self.printer.print_stream(stream_output.stream)

@@ -1,19 +1,14 @@
 from __future__ import annotations
 
+import json
 import os
-from typing import Any, ClassVar, Dict, List, Literal, Optional, Union, cast
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union, cast
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
+from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
-from generate.chat_completion.http_chat import (
-    HttpChatModel,
-    HttpModelInitKwargs,
-    HttpResponse,
-    HttpxPostKwargs,
-    UnexpectedResponseError,
-)
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -31,7 +26,16 @@ from generate.chat_completion.message import (
     UserMessage,
     UserMultiPartMessage,
 )
-from generate.chat_completion.model_output import ChatCompletionModelOutput, FinishStream, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.http import (
+    HttpClient,
+    HttpClientInitKwargs,
+    HttpMixin,
+    HttpStreamClient,
+    HttpxPostKwargs,
+    UnexpectedResponseError,
+)
+from generate.model import ModelInfo
 from generate.parameters import ModelParameters
 from generate.types import Probability, Temperature
 
@@ -196,7 +200,7 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     return None
 
 
-def parse_openai_model_reponse(response: HttpResponse) -> ChatCompletionModelOutput:
+def parse_openai_model_reponse(response: dict[str, Any]) -> ChatCompletionOutput:
     message = response['choices'][0]['message']
     try:
         if function_call := message.get('function_call'):
@@ -230,7 +234,7 @@ def parse_openai_model_reponse(response: HttpResponse) -> ChatCompletionModelOut
     except (KeyError, IndexError) as e:
         raise UnexpectedResponseError(response) from e
     else:
-        extra = {}
+        extra = {'usage': response['usage']}
         if system_fingerprint := response.get('system_fingerprint'):
             extra['system_fingerprint'] = system_fingerprint
 
@@ -238,17 +242,16 @@ def parse_openai_model_reponse(response: HttpResponse) -> ChatCompletionModelOut
         if (finish_reason := choice.get('finish_reason')) is None:
             finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
-        return ChatCompletionModelOutput(
-            chat_model_id='openai/' + response['model'],
+        return ChatCompletionOutput(
+            model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
             messages=messages,
             finish_reason=finish_reason or '',
-            usage=response['usage'],
             cost=calculate_cost(response['model'], response['usage']['prompt_tokens'], response['usage']['completion_tokens']),
             extra=extra,
         )
 
 
-class OpenAIChat(HttpChatModel[OpenAIChatParameters]):
+class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'openai'
     default_api_base: ClassVar[str] = 'https://api.openai.com/v1'
 
@@ -259,16 +262,17 @@ class OpenAIChat(HttpChatModel[OpenAIChatParameters]):
         api_base: str | None = None,
         system_prompt: str | None = None,
         parameters: OpenAIChatParameters | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
         parameters = parameters or OpenAIChatParameters()
-        super().__init__(parameters=parameters, **kwargs)
+        super().__init__(parameters=parameters)
         self.model = model
         self.system_prompt = system_prompt
         self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
         self.api_key = api_key or os.environ['OPENAI_API_KEY']
+        self.http_client = HttpClient(**kwargs)
+        self.http_stream_client = HttpStreamClient(**kwargs)
 
-    @override
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]
         if self.system_prompt:
@@ -288,25 +292,68 @@ class OpenAIChat(HttpChatModel[OpenAIChatParameters]):
             'json': params,
         }
 
-    @override
-    def _parse_reponse(self, response: HttpResponse) -> ChatCompletionModelOutput:
-        return parse_openai_model_reponse(response)
+    def _completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return parse_openai_model_reponse(response.json())
 
-    @override
+    async def _async_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return parse_openai_model_reponse(response.json())
+
     def _get_stream_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
         http_parameters['json']['stream'] = True
         return http_parameters
 
-    @override
-    def _parse_stream_response(self, response: HttpResponse) -> Stream:
-        delta = response['choices'][0]['delta']
-        if 'role' in delta:
-            return Stream(delta='', control='start')
-        if 'content' in delta:
-            return Stream(delta=delta['content'], control='continue')
+    def _stream_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        reply = ''
+        for line in self.http_stream_client.post(request_parameters=request_parameters):
+            output = self._parse_stream_line(line)
+            reply += output.stream.delta
+            if output.is_finish:
+                output.messages = [AssistantMessage(content=reply)]
+            yield output
+            if output.is_finish:
+                break
 
-        return FinishStream(finish_reason=response['choices'][0]['finish_reason'])
+    async def _async_stream_completion(
+        self, messages: Messages, parameters: OpenAIChatParameters
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        reply = ''
+        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+            output = self._parse_stream_line(line)
+            reply += output.stream.delta
+            if output.is_finish:
+                output.messages = [AssistantMessage(content=reply)]
+            yield output
+            if output.is_finish:
+                break
+
+    def _parse_stream_line(self, line: str) -> ChatCompletionStreamOutput:
+        parsed_line = json.loads(line)
+        delta = parsed_line['choices'][0]['delta']
+        if 'content' in delta:
+            return ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                stream=Stream(delta=delta['content'], control='continue'),
+            )
+        return ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='finish'),
+            finish_reason=parsed_line['choices'][0]['finish_reason'],
+        )
 
     @property
     @override

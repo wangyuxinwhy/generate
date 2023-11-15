@@ -1,27 +1,29 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
-from contextvars import ContextVar
-from typing import Any, ClassVar, List, Literal, Optional
+from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
 from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.http_chat import (
-    HttpChatModel,
-    HttpModelInitKwargs,
-    HttpResponse,
-    HttpxPostKwargs,
-    UnexpectedResponseError,
-)
+from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Messages,
     MessageTypeError,
     UserMessage,
 )
-from generate.chat_completion.model_output import ChatCompletionModelOutput, FinishStream, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.http import (
+    HttpClient,
+    HttpClientInitKwargs,
+    HttpMixin,
+    HttpStreamClient,
+    HttpxPostKwargs,
+    UnexpectedResponseError,
+)
 from generate.parameters import ModelParameters
 from generate.types import Probability
 
@@ -63,7 +65,7 @@ class BailianChatParameters(ModelParameters):
     doc_tag_ids: Optional[List[int]] = Field(default=None, alias='DocTagIds')
 
 
-class BailianChat(HttpChatModel[BailianChatParameters]):
+class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'bailian'
     default_api: ClassVar[str] = 'https://bailian.aliyuncs.com/v2/app/completions'
 
@@ -75,7 +77,7 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
         agent_key: str | None = None,
         api: str | None = None,
         parameters: BailianChatParameters | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
         try:
             import broadscope_bailian
@@ -83,7 +85,7 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
             raise ImportError('Please install broadscope_bailian first: pip install broadscope_bailian') from e
 
         parameters = parameters or BailianChatParameters()
-        super().__init__(parameters=parameters, **kwargs)
+        super().__init__(parameters=parameters)
         self.app_id = app_id or os.environ['BAILIAN_APP_ID']
         self.access_key_id = access_key_id or os.environ['BAILIAN_ACCESS_KEY_ID']
         self.access_key_secret = access_key_secret or os.environ['BAILIAN_ACCESS_KEY_SECRET']
@@ -95,9 +97,9 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
             agent_key=self.agent_key,
         )
         self.token = client.get_token()
-        self._stream_length = ContextVar('stream_length', default=0)
+        self.http_client = HttpClient(**kwargs)
+        self.http_stream_client = HttpStreamClient(**kwargs)
 
-    @override
     def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
         if not isinstance(messages[-1], UserMessage):
             raise MessageTypeError(messages[-1], allowed_message_type=(UserMessage,))
@@ -120,36 +122,23 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
         }
 
     @override
-    def _get_stream_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
-        http_post_kwargs = self._get_request_parameters(messages, parameters)
-        http_post_kwargs['headers']['Accept'] = 'text/event-stream'  # type: ignore
-        http_post_kwargs['json']['Stream'] = True  # type: ignore
-        return http_post_kwargs
+    def _completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
 
     @override
-    def _parse_stream_response(self, response: HttpResponse) -> Stream:
-        message: str = response['Data']['Text']
-        if len(message) == self._stream_length.get():
-            return FinishStream(
-                extra={
-                    'thoughts': response['Data']['Thoughts'],
-                    'doc_references': response['Data']['DocReferences'],
-                    'request_id': response['RequestId'],
-                    'response_id': response['Data']['ResponseId'],
-                }
-            )
+    async def _async_completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
 
-        delta = message[self._stream_length.get() :]
-        self._stream_length.set(len(message))
-        return Stream(delta=delta, control='continue')
-
-    @override
-    def _parse_reponse(self, response: HttpResponse) -> ChatCompletionModelOutput:
+    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         if not response['Success']:
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['Data']['Text'])]
-        return ChatCompletionModelOutput(
-            chat_model_id=self.model_id,
+        return ChatCompletionOutput(
+            model_info=self.model_info,
             messages=messages,
             extra={
                 'thoughts': response['Data']['Thoughts'],
@@ -159,6 +148,73 @@ class BailianChat(HttpChatModel[BailianChatParameters]):
                 'sesstion_id': response['Data']['SessionId'],
             },
         )
+
+    def _get_stream_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
+        http_post_kwargs = self._get_request_parameters(messages, parameters)
+        http_post_kwargs['headers']['Accept'] = 'text/event-stream'  # type: ignore
+        http_post_kwargs['json']['Stream'] = True  # type: ignore
+        return http_post_kwargs
+
+    @override
+    def _stream_completion(self, messages: Messages, parameters: BailianChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        current_length = 0
+        reply = ''
+        for line in self.http_stream_client.post(request_parameters=request_parameters):
+            output, current_length = self._parse_stream_line(line, current_length)
+            reply += output.stream.delta
+            if output.is_finish:
+                output.messages = [AssistantMessage(content=reply)]
+            yield output
+            if output.is_finish:
+                break
+
+    @override
+    async def _async_stream_completion(
+        self, messages: Messages, parameters: BailianChatParameters
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        current_length = 0
+        reply = ''
+        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+            output, current_length = self._parse_stream_line(line, current_length)
+            reply += output.stream.delta
+            if output.is_finish:
+                output.messages = [AssistantMessage(content=reply)]
+            yield output
+            if output.is_finish:
+                break
+
+    def _parse_stream_line(self, line: str, current_length: int) -> tuple[ChatCompletionStreamOutput, int]:
+        parsed_line = json.loads(line)
+        message: str = parsed_line['Data']['Text']
+        if len(message) == current_length:
+            output = ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                extra={
+                    'thoughts': parsed_line['Data']['Thoughts'],
+                    'doc_references': parsed_line['Data']['DocReferences'],
+                    'request_id': parsed_line['RequestId'],
+                    'response_id': parsed_line['Data']['ResponseId'],
+                },
+                stream=Stream(delta='', control='finish'),
+            )
+            return output, len(message)
+
+        delta = message[current_length:]
+        output = ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta=delta, control='continue'),
+        )
+        return output, len(message)
 
     @property
     @override

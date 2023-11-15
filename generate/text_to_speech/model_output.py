@@ -1,24 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from pydantic import BaseModel, model_serializer
+from generate.model import ModelOutput
 
 
-class TextToSpeechModelOutput(BaseModel):
-    speech_model_id: str
+class TextToSpeechOutput(ModelOutput):
     audio: bytes
     audio_format: str
     cost: Optional[float] = None
-    extra: Dict[str, Any] = {}
-    debug: Dict[str, Any] = {}
-
-    @model_serializer(mode='wrap')
-    def ser_model(self, handler) -> Any:  # noqa: ANN001
-        output = handler(self)
-        output.pop('debug')
-        return output
 
     def save_audio(self, path: str | Path) -> None:
         path = Path(path)

@@ -3,14 +3,13 @@ from __future__ import annotations
 import os
 from typing import Any, ClassVar, Literal, Optional
 
-from httpx import Response
 from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack, override
 
-from generate.http import HttpModelInitKwargs, HttpxPostKwargs
+from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs
 from generate.parameters import ModelParameters
-from generate.text_to_speech.http_speech import HttpSpeechModel
-from generate.text_to_speech.model_output import TextToSpeechModelOutput
+from generate.text_to_speech.base import TextToSpeechModel
+from generate.text_to_speech.model_output import TextToSpeechOutput
 
 
 class OpenAISpeechParameters(ModelParameters):
@@ -19,7 +18,7 @@ class OpenAISpeechParameters(ModelParameters):
     speed: Annotated[Optional[float], Field(ge=0.25, le=4.0)] = None
 
 
-class OpenAISpeech(HttpSpeechModel[OpenAISpeechParameters]):
+class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
     model_type = 'openai'
     default_api_base: ClassVar[str] = 'https://api.openai.com/v1/audio/speech'
 
@@ -29,15 +28,15 @@ class OpenAISpeech(HttpSpeechModel[OpenAISpeechParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: OpenAISpeechParameters | None = None,
-        **kwargs: Unpack[HttpModelInitKwargs],
+        **kwargs: Unpack[HttpClientInitKwargs],
     ) -> None:
         parameters = parameters or OpenAISpeechParameters()
-        super().__init__(parameters, **kwargs)
+        super().__init__(parameters)
         self.model = model
         self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
         self.api_key = api_key or os.environ['OPENAI_API_KEY']
+        self.http_client = HttpClient(**kwargs)
 
-    @override
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:
         parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
         json_data = {
@@ -55,12 +54,21 @@ class OpenAISpeech(HttpSpeechModel[OpenAISpeechParameters]):
             'headers': headers,
         }
 
-    @override
-    def _construct_model_output(
-        self, text: str, parameters: OpenAISpeechParameters, response: Response
-    ) -> TextToSpeechModelOutput:
-        return TextToSpeechModelOutput(
-            speech_model_id=self.model_id,
+    def _text_to_speech(self, text: str, parameters: OpenAISpeechParameters) -> TextToSpeechOutput:
+        request_parameters = self._get_request_parameters(text, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return TextToSpeechOutput(
+            model_info=self.model_info,
+            audio=response.content,
+            audio_format=parameters.response_format or 'mp3',
+            cost=self.calculate_cost(text),
+        )
+
+    async def _async_text_to_speech(self, text: str, parameters: OpenAISpeechParameters) -> TextToSpeechOutput:
+        request_parameters = self._get_request_parameters(text, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return TextToSpeechOutput(
+            model_info=self.model_info,
             audio=response.content,
             audio_format=parameters.response_format or 'mp3',
             cost=self.calculate_cost(text),

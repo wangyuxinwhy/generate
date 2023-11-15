@@ -18,8 +18,9 @@ import asyncer
 import tqdm
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionModelOutput, ModelParameters, load_chat_model
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters
 from generate.chat_completion.message import Prompt, Prompts, ensure_messages
+from generate.utils import load_chat_model
 
 P = TypeVar('P', bound=ModelParameters)
 ErrorMode = Literal['raise', 'ignore']
@@ -66,7 +67,7 @@ class CompletionEngine(Generic[P]):
         chat_model = load_chat_model(model_id)
         return cls(chat_model, **kwargs)
 
-    def run(self, prompts: Prompts, **kwargs: Any) -> Generator[ChatCompletionModelOutput, None, None]:
+    def run(self, prompts: Prompts, **kwargs: Any) -> Generator[ChatCompletionOutput, None, None]:
         progress_bar = self._get_progress_bar(num_tasks=len(prompts))
         for prompt in prompts:
             task_result = self._run_single_task(prompt=prompt, progress_bar=progress_bar, **kwargs)
@@ -78,7 +79,7 @@ class CompletionEngine(Generic[P]):
         prompt: Prompt,
         progress_bar: tqdm.tqdm[NoReturn],
         **kwargs: Any,
-    ) -> ChatCompletionModelOutput:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         sleep_time = self._calculate_sleep_time()
         if sleep_time > 0:
@@ -91,19 +92,19 @@ class CompletionEngine(Generic[P]):
             if self.error_mode == 'raise':
                 raise
             if self.error_mode == 'ignore':
-                return ChatCompletionModelOutput(chat_model_id=self.chat_model.model_id, debug={'error': str(e)})
+                return ChatCompletionOutput(model_info=self.chat_model.model_info, extra={'error': str(e)})
             raise ValueError(f'Unknown error mode: {self.error_mode}') from e
         else:
             progress_bar.update(1)
             return output
 
-    async def async_run(self, prompts: Prompts, **kwargs: Any) -> AsyncGenerator[ChatCompletionModelOutput, None]:
+    async def async_run(self, prompts: Prompts, **kwargs: Any) -> AsyncGenerator[ChatCompletionOutput, None]:
         limiter = anyio.CapacityLimiter(self.async_capacity)
         task_created_lock = anyio.Lock()
         progress_bar = self._get_progress_bar(num_tasks=len(prompts))
 
         async with asyncer.create_task_group() as task_group:
-            soon_values: list[asyncer.SoonValue[ChatCompletionModelOutput]] = []
+            soon_values: list[asyncer.SoonValue[ChatCompletionOutput]] = []
             soon_func = task_group.soonify(self._async_run_single_task)
             for prompt in prompts:
                 soon_value = soon_func(
@@ -128,7 +129,7 @@ class CompletionEngine(Generic[P]):
         task_created_lock: anyio.Lock,
         progress_bar: tqdm.tqdm[NoReturn],
         **kwargs: Any,
-    ) -> ChatCompletionModelOutput:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
 
         async with limiter:
@@ -143,7 +144,7 @@ class CompletionEngine(Generic[P]):
                 if self.error_mode == 'raise':
                     raise
                 if self.error_mode == 'ignore':
-                    return ChatCompletionModelOutput(chat_model_id=self.chat_model.model_id, debug={'error': str(e)})
+                    return ChatCompletionOutput(model_info=self.chat_model.model_info, extra={'error': str(e)})
 
                 raise ValueError(f'Unknown error mode: {self.error_mode}') from e
             else:

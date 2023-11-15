@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "generate-client"
-version = "0.1.1"
+version = "0.2.0"
 description = "文本生成，图像生成，语音生成"
 authors = ["wangyuxin <wangyuxin@mokahr.com>"]
 license = "MIT"
@@ -15,7 +15,6 @@ asyncer = "0.0.2"
 typing-extensions = "^4.6.2"
 httpx = "^0.24.1"
 tenacity = "^8.2.2"
-websocket-client = "^1.6.1"
 pyjwt = "^2.8.0"
 cachetools = "^5.3.1"
 tqdm = "^4.66.1"
@@ -23,7 +22,6 @@ pydantic = "^2.0"
 docstring-parser = "^0.15"
 anyio = "<4.0.0"
 httpx-sse = "0.3.1"
-rich = "^13.0.0"
 
 [tool.ruff]
 line-length = 128
