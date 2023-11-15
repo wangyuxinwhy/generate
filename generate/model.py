@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, model_serializer
 
@@ -10,14 +10,14 @@ class ModelInfo(BaseModel):
 
     @property
     def model_id(self) -> str:
-        return f'{self.task}/{self.type}/{self.name}'
+        return f'{self.type}/{self.name}'
 
 
 class ModelOutput(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     model_info: ModelInfo
-    debug: Dict[str, Any] = {}
+    cost: Optional[float] = None
     extra: Dict[str, Any] = {}
 
     @model_serializer(mode='wrap')

@@ -22,7 +22,7 @@ class FunctionJsonSchema(TypedDict):
 
 def get_json_schema(function: Callable) -> FunctionJsonSchema:
     function_name = function.__name__
-    docstring = parse(function.__doc__ or '')
+    docstring = parse(text=function.__doc__ or '')
     parameters = TypeAdapter(function).json_schema()
     for param in docstring.params:
         if (arg_name := param.arg_name) in parameters['properties'] and (description := param.description):

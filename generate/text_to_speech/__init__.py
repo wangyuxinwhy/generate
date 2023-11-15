@@ -4,8 +4,7 @@ from typing import Any, Type
 
 from generate.parameters import ModelParameters
 from generate.text_to_speech.base import TextToSpeechModel
-from generate.text_to_speech.http_speech import HttpModelInitKwargs, HttpSpeechModel
-from generate.text_to_speech.model_output import TextToSpeechModelOutput
+from generate.text_to_speech.model_output import TextToSpeechOutput
 from generate.text_to_speech.models import (
     MinimaxProSpeech,
     MinimaxProSpeechParameters,
@@ -39,7 +38,7 @@ def list_speech_model_types() -> list[str]:
     return list(SpeechModelRegistry.keys())
 
 
-def generate_speech(text: str, model_id: str = 'openai/tts-1', **kwargs: Any) -> TextToSpeechModelOutput:
+def generate_speech(text: str, model_id: str = 'openai/tts-1', **kwargs: Any) -> TextToSpeechOutput:
     model = load_speech_model(model_id, **kwargs)
     return model.generate(text, **kwargs)
 
@@ -49,9 +48,7 @@ __all__ = [
     'list_speech_model_types',
     'generate_speech',
     'TextToSpeechModel',
-    'HttpSpeechModel',
-    'HttpModelInitKwargs',
-    'TextToSpeechModelOutput',
+    'TextToSpeechOutput',
     'MinimaxSpeech',
     'MinimaxProSpeech',
     'MinimaxSpeechParameters',

@@ -1,7 +1,7 @@
 from generate import OpenAIChat
 
 
-def test_image_cimpletion() -> None:
+def test_image_completion() -> None:
     user_input = {
         'role': 'user',
         'content': [

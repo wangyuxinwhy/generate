@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -5,9 +6,10 @@ from typing_extensions import Self
 
 from generate.model import ModelInfo
 from generate.parameters import ModelParameters
-from generate.text_to_speech.model_output import TextToSpeechModelOutput
+from generate.text_to_speech.model_output import TextToSpeechOutput
 
 P = TypeVar('P', bound=ModelParameters)
+logger = logging.getLogger(__name__)
 
 
 class TextToSpeechModel(Generic[P], ABC):
@@ -27,30 +29,26 @@ class TextToSpeechModel(Generic[P], ABC):
         ...
 
     @abstractmethod
-    def _text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    def _text_to_speech(self, text: str, parameters: P) -> TextToSpeechOutput:
         ...
 
     @abstractmethod
-    async def _async_text_to_speech(self, text: str, parameters: P) -> TextToSpeechModelOutput:
+    async def _async_text_to_speech(self, text: str, parameters: P) -> TextToSpeechOutput:
         ...
 
     @property
     def model_info(self) -> ModelInfo:
         return ModelInfo(task='text_to_speech', type=self.model_type, name=self.name)
 
-    def generate(self, text: str, **override_parameters: Any) -> TextToSpeechModelOutput:
+    def generate(self, text: str, **override_parameters: Any) -> TextToSpeechOutput:
         parameters = self._merge_parameters(**override_parameters)
-        model_output = self._text_to_speech(text, parameters)
-        model_output.debug['input_text'] = text
-        model_output.debug['parameters'] = parameters
-        return model_output
+        logger.debug(f'{text=}, {parameters=}')
+        return self._text_to_speech(text, parameters)
 
-    async def async_generate(self, text: str, **override_parameters: Any) -> TextToSpeechModelOutput:
+    async def async_generate(self, text: str, **override_parameters: Any) -> TextToSpeechOutput:
         parameters = self._merge_parameters(**override_parameters)
-        model_output = await self._async_text_to_speech(text, parameters)
-        model_output.debug['input_text'] = text
-        model_output.debug['parameters'] = parameters
-        return model_output
+        logger.debug(f'{text=}, {parameters=}')
+        return await self._async_text_to_speech(text, parameters)
 
     def _merge_parameters(self, **override_parameters: Any) -> P:
         return self.parameters.__class__.model_validate(

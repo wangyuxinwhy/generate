@@ -6,7 +6,7 @@ from typing import Optional
 from generate.model import ModelOutput
 
 
-class TextToSpeechModelOutput(ModelOutput):
+class TextToSpeechOutput(ModelOutput):
     audio: bytes
     audio_format: str
     cost: Optional[float] = None
