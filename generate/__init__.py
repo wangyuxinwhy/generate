@@ -30,6 +30,14 @@ from generate.text_to_speech import (
     OpenAISpeech,
     OpenAISpeechParameters,
 )
+from generate.utils import (
+    generate_image,
+    generate_speech,
+    generate_text,
+    load_chat_model,
+    load_image_generation_model,
+    load_speech_model,
+)
 from generate.version import __version__
 
 __all__ = [
@@ -61,5 +69,11 @@ __all__ = [
     'MinimaxProSpeech',
     'MinimaxProSpeechParameters',
     'function',
+    'load_chat_model',
+    'load_speech_model',
+    'load_image_generation_model',
+    'generate_text',
+    'generate_speech',
+    'generate_image',
     '__version__',
 ]
