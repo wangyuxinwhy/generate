@@ -18,8 +18,6 @@ from generate.chat_completion import (
     ZhipuCharacterChatParameters,
     ZhipuChat,
     ZhipuChatParameters,
-    generate_text,
-    load_chat_model,
 )
 from generate.chat_completion.function_call import function
 from generate.chat_engine import ChatEngine
@@ -31,8 +29,6 @@ from generate.text_to_speech import (
     MinimaxSpeechParameters,
     OpenAISpeech,
     OpenAISpeechParameters,
-    generate_speech,
-    load_speech_model,
 )
 from generate.version import __version__
 
@@ -65,9 +61,5 @@ __all__ = [
     'MinimaxProSpeech',
     'MinimaxProSpeechParameters',
     'function',
-    'load_chat_model',
-    'generate_text',
-    'load_speech_model',
-    'generate_speech',
     '__version__',
 ]

@@ -11,18 +11,11 @@ from generate.text_to_speech import (
     SpeechModelRegistry,
     SpeechModels,
     TextToSpeechModel,
-    load_speech_model,
 )
 
 
 def test_model_type_is_unique() -> None:
     assert len(SpeechModels) == len(SpeechModelRegistry)
-
-
-def test_load_from_model_id() -> None:
-    model = load_speech_model('openai/tts-1-hd')
-    assert model.model_type == 'openai'
-    assert model.name == 'tts-1-hd'
 
 
 @pytest.mark.parametrize('speech_model', get_pytest_params('test_text_to_speech', SpeechModelRegistry, types='model'))

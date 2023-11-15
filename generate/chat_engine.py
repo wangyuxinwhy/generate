@@ -5,7 +5,7 @@ from typing import Any, Callable, Generic, List, Literal, TypedDict, TypeVar, Un
 
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters, function, load_chat_model
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters, function
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -19,6 +19,7 @@ from generate.chat_completion.message import (
     UserMessage,
 )
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
+from generate.utils import load_chat_model
 
 P = TypeVar('P', bound=ModelParameters)
 

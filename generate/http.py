@@ -31,6 +31,13 @@ class HttpClientInitKwargs(TypedDict, total=False):
     proxies: Union[ProxiesTypes, None]
 
 
+class HttpGetKwargs(TypedDict, total=False):
+    url: Required[str]
+    params: QueryParams
+    headers: Headers
+    timeout: Optional[int]
+
+
 class HttpxPostKwargs(TypedDict, total=False):
     url: Required[str]
     json: Required[Any]
@@ -65,6 +72,22 @@ class HttpClient:
             self.retry_strategy = RetryStrategy() if retry else None
         self.proxies = proxies
 
+    def get(self, request_parameters: HttpGetKwargs) -> Response:
+        if self.retry_strategy is None:
+            return self._get(request_parameters)
+
+        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
+        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        return retry(wait=wait, stop=stop)(self._get)(request_parameters)
+
+    async def async_get(self, request_parameters: HttpGetKwargs) -> Response:
+        if self.retry_strategy is None:
+            return await self._async_get(request_parameters)
+
+        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
+        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        return await retry(wait=wait, stop=stop)(self._async_get)(request_parameters)
+
     def post(self, request_parameters: HttpxPostKwargs) -> Response:
         if self.retry_strategy is None:
             return self._post(request_parameters)
@@ -97,6 +120,22 @@ class HttpClient:
             http_response = await client.post(**request_parameters)  # type: ignore
         http_response.raise_for_status()
         logger.debug(f'Response {http_response}')
+        return http_response
+
+    def _get(self, request_parameters: HttpGetKwargs) -> Response:
+        with httpx.Client(proxies=self.proxies) as client:
+            request_parameters.update({'timeout': self.timeout})
+            logger.debug(f'GET {request_parameters}')
+            http_response = client.get(**request_parameters)
+        http_response.raise_for_status()
+        return http_response
+
+    async def _async_get(self, request_parameters: HttpGetKwargs) -> Response:
+        async with httpx.AsyncClient(proxies=self.proxies) as client:
+            request_parameters.update({'timeout': self.timeout})
+            logger.debug(f'GET {request_parameters}')
+            http_response = await client.get(**request_parameters)
+        http_response.raise_for_status()
         return http_response
 
 

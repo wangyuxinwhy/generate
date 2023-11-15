@@ -18,8 +18,9 @@ import asyncer
 import tqdm
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters, load_chat_model
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters
 from generate.chat_completion.message import Prompt, Prompts, ensure_messages
+from generate.utils import load_chat_model
 
 P = TypeVar('P', bound=ModelParameters)
 ErrorMode = Literal['raise', 'ignore']

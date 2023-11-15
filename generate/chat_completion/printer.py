@@ -2,8 +2,6 @@
 import time
 from typing import Protocol
 
-import rich
-
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCallMessage,

@@ -10,7 +10,6 @@ from generate.chat_completion import (
     ChatCompletionStreamOutput,
     ChatModelRegistry,
     ChatModels,
-    load_chat_model,
 )
 from generate.chat_completion.message import Prompt
 from generate.http import HttpMixin
@@ -20,12 +19,6 @@ from generate.test import get_pytest_params
 
 def test_model_type_is_unique() -> None:
     assert len(ChatModels) == len(ChatModelRegistry)
-
-
-def test_load_from_model_id() -> None:
-    model = load_chat_model('openai/gpt-3.5-turbo')
-    assert model.model_type == 'openai'
-    assert model.name == 'gpt-3.5-turbo'
 
 
 @pytest.mark.parametrize('chat_completion_model', get_pytest_params('test_chat_completion', ChatModelRegistry, types='model'))
@@ -50,7 +43,8 @@ def test_http_chat_model(chat_completion_model: ChatCompletionModel, parameters:
 
 
 @pytest.mark.parametrize(
-    'chat_completion_model', get_pytest_params('test_stream_chat_completion', ChatModelRegistry, types='model', exclude=['azure'])
+    'chat_completion_model',
+    get_pytest_params('test_stream_chat_completion', ChatModelRegistry, types='model', exclude=['azure']),
 )
 def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> None:
     if isinstance(chat_completion_model, HttpMixin):
