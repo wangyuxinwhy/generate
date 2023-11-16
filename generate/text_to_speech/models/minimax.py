@@ -37,7 +37,6 @@ class MinimaxProSpeechParameters(MinimaxSpeechParameters):
 
 class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
     model_type = 'minimax'
-    default_api_base: ClassVar[str] = 'https://api.minimax.chat/v1/text_to_speech'
 
     def __init__(
         self,
