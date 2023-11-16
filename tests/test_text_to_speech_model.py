@@ -5,7 +5,7 @@ from typing import Type
 
 import pytest
 
-from generate.parameters import ModelParameters
+from generate.model import ModelParameters
 from generate.test import get_pytest_params
 from generate.text_to_speech import (
     SpeechModelRegistry,

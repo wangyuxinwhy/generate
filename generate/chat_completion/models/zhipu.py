@@ -25,7 +25,7 @@ from generate.http import (
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
-from generate.parameters import ModelParameters
+from generate.model import ModelParameters
 from generate.types import Probability, Temperature
 
 P = TypeVar('P', bound=ModelParameters)

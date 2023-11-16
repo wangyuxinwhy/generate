@@ -7,9 +7,8 @@ from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs
-from generate.parameters import ModelParameters
-from generate.text_to_speech.base import TextToSpeechModel
-from generate.text_to_speech.model_output import TextToSpeechOutput
+from generate.model import ModelParameters
+from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
 class OpenAISpeechParameters(ModelParameters):

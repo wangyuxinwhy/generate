@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union, cast
+from functools import partial
+from typing import Any, AsyncIterator, Callable, ClassVar, Dict, Iterator, List, Literal, Optional, Type, Union, cast
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
@@ -19,6 +20,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     MessageValueError,
+    SystemMessage,
     TextPart,
     ToolCall,
     ToolCallsMessage,
@@ -35,8 +37,7 @@ from generate.http import (
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
-from generate.model import ModelInfo
-from generate.parameters import ModelParameters
+from generate.model import ModelInfo, ModelParameters
 from generate.types import Probability, Temperature
 
 
@@ -95,94 +96,97 @@ class OpenAIChatParameters(ModelParameters):
     tool_choice: Union[Literal['auto'], OpenAIToolChoice, None] = None
 
 
+def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
+    return {
+        'role': role,
+        'content': message.content,
+    }
+
+
+def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMessage:
+    content = []
+    for part in message.content:
+        if isinstance(part, TextPart):
+            content.append({'type': 'text', 'text': part.text})
+        elif isinstance(part, ImageUrlPart):
+            image_url_part_dict = {
+                'type': 'image_url',
+                'image_url': {
+                    'url': part.image_url.url,
+                },
+            }
+            if part.image_url.detail:
+                image_url_part_dict['image_url']['detail'] = part.image_url.detail
+            content.append(image_url_part_dict)
+        else:
+            raise MessageValueError(message, f'OpenAI does not support {type(part)} ')
+
+    return {
+        'role': 'user',
+        'content': content,
+    }
+
+
+def _to_tool_message_dict(message: ToolMessage) -> OpenAIMessage:
+    return {
+        'role': 'tool',
+        'tool_call_id': message.tool_call_id,
+        'content': message.content,
+    }
+
+
+def _to_tool_calls_message_dict(message: ToolCallsMessage) -> OpenAIMessage:
+    return {
+        'role': 'assistant',
+        'content': None,
+        'tool_calls': [
+            {
+                'id': tool_call.id,
+                'type': 'function',
+                'function': {
+                    'name': tool_call.function.name,
+                    'arguments': tool_call.function.arguments,
+                },
+            }
+            for tool_call in message.content
+        ],
+    }
+
+
+def _to_function_message_dict(message: FunctionMessage) -> OpenAIMessage:
+    return {
+        'role': 'function',
+        'name': message.name,
+        'content': message.content,
+    }
+
+
+def _to_function_call_message_dict(message: FunctionCallMessage) -> OpenAIMessage:
+    return {
+        'role': 'assistant',
+        'function_call': {
+            'name': message.content.name,
+            'arguments': message.content.arguments,
+        },
+        'content': None,
+    }
+
+
 def convert_to_openai_message(message: Message) -> OpenAIMessage:
-    if isinstance(message, UserMessage):
-        return {
-            'role': 'user',
-            'content': message.content,
-        }
+    to_function_map: dict[Type[Message], Callable[[Any], OpenAIMessage]] = {
+        SystemMessage: partial(_to_text_message_dict, 'system'),
+        UserMessage: partial(_to_text_message_dict, 'user'),
+        AssistantMessage: partial(_to_text_message_dict, 'assistant'),
+        UserMultiPartMessage: _to_user_multipart_message_dict,
+        ToolMessage: _to_tool_message_dict,
+        ToolCallsMessage: _to_tool_calls_message_dict,
+        FunctionMessage: _to_function_message_dict,
+        FunctionCallMessage: _to_function_call_message_dict,
+    }
+    if to_function := to_function_map.get(type(message)):
+        return to_function(message)
 
-    if isinstance(message, UserMultiPartMessage):
-        content = []
-        for part in message.content:
-            if isinstance(part, TextPart):
-                content.append({'type': 'text', 'text': part.text})
-            elif isinstance(part, ImageUrlPart):
-                image_url_part_dict = {
-                    'type': 'image_url',
-                    'image_url': {
-                        'url': part.image_url.url,
-                    },
-                }
-                if part.image_url.detail:
-                    image_url_part_dict['image_url']['detail'] = part.image_url.detail
-                content.append(image_url_part_dict)
-            else:
-                raise MessageValueError(message, f'OpenAI does not support {type(part)} ')
-
-        return {
-            'role': 'user',
-            'content': content,
-        }
-
-    if isinstance(message, AssistantMessage):
-        return {
-            'role': 'assistant',
-            'content': message.content,
-        }
-
-    if isinstance(message, ToolCallsMessage):
-        return {
-            'role': 'assistant',
-            'content': None,
-            'tool_calls': [
-                {
-                    'id': tool_call.id,
-                    'type': 'function',
-                    'function': {
-                        'name': tool_call.function.name,
-                        'arguments': tool_call.function.arguments,
-                    },
-                }
-                for tool_call in message.content
-            ],
-        }
-
-    if isinstance(message, ToolMessage):
-        return {
-            'role': 'tool',
-            'tool_call_id': message.tool_call_id,
-            'content': message.content,
-        }
-
-    if isinstance(message, FunctionCallMessage):
-        return {
-            'role': 'assistant',
-            'function_call': {
-                'name': message.content.name,
-                'arguments': message.content.arguments,
-            },
-            'content': None,
-        }
-
-    if isinstance(message, FunctionMessage):
-        return {
-            'role': 'function',
-            'name': message.name,
-            'content': message.content,
-        }
-
-    raise MessageTypeError(
-        message,
-        allowed_message_type=(
-            UserMessage,
-            AssistantMessage,
-            FunctionMessage,
-            FunctionCallMessage,
-            ToolCallsMessage,
-            ToolMessage,
-        ),
-    )
+    raise MessageTypeError(message, allowed_message_type=tuple(to_function_map.keys()))
 
 
 def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> float | None:

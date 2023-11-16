@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Type
 
-from generate.parameters import ModelParameters
-from generate.text_to_speech.base import TextToSpeechModel
-from generate.text_to_speech.model_output import TextToSpeechOutput
+from generate.model import ModelParameters
+from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 from generate.text_to_speech.models import (
     MinimaxProSpeech,
     MinimaxProSpeechParameters,

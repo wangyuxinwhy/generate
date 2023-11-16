@@ -4,7 +4,7 @@ from typing import Any, Literal, Mapping, Sequence, Type
 
 import pytest
 
-from generate.parameters import ModelParameters
+from generate.model import ModelParameters
 
 param_type = Literal['model', 'model_cls', 'parameter', 'parameter_cls']
 

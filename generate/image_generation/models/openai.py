@@ -9,9 +9,8 @@ from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack
 
 from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs
-from generate.image_generation.base import ImageGenerationModel
-from generate.image_generation.model_output import GeneratedImage, ImageGenerationOutput
-from generate.parameters import ModelParameters
+from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
+from generate.model import ModelParameters
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
 MAX_PROMPT_LENGTH_DALLE_2 = 1000
