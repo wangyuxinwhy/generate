@@ -5,7 +5,7 @@ import os
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt, field_validator, model_validator
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
@@ -23,7 +23,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
@@ -168,7 +167,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
         system_prompt: str | None = None,
         default_user_name: str = '用户',
         parameters: MinimaxProChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxProChatParameters()
         self.default_user_name = default_user_name
@@ -182,7 +181,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
         self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
         self.api_key = api_key or os.environ['MINIMAX_API_KEY']
         self.api_base = api_base or self.default_api_base
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
         minimax_pro_messages = [

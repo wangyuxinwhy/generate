@@ -6,9 +6,9 @@ from typing import Any, Literal, Optional
 
 from httpx import Response
 from pydantic import Field
-from typing_extensions import Annotated, Self, Unpack
+from typing_extensions import Annotated, Self
 
-from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs
+from generate.http import HttpClient, HttpxPostKwargs
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters
 
@@ -35,14 +35,14 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: OpenAIImageGenerationParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAIImageGenerationParameters()
         super().__init__(parameters)
         self.model = model
         self.api_base = api_base or self.default_api_base
         self.api_key = api_key or os.environ['OPENAI_API_KEY']
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
         self.check_parameters()
 
     def check_parameters(self) -> None:

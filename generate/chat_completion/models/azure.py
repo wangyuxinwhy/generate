@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Any, AsyncIterator, ClassVar, Iterator
 
-from typing_extensions import Self, Unpack, override
+from typing_extensions import Self, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import Messages
@@ -13,7 +13,7 @@ from generate.chat_completion.models.openai import (
     convert_to_openai_message,
     parse_openai_model_reponse,
 )
-from generate.http import HttpClient, HttpClientInitKwargs, HttpMixin, HttpResponse, HttpxPostKwargs
+from generate.http import HttpClient, HttpMixin, HttpResponse, HttpxPostKwargs
 
 
 class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
@@ -27,7 +27,7 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
         api_base: str | None = None,
         api_version: str | None = None,
         parameters: OpenAIChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAIChatParameters()
         super().__init__(parameters=parameters)
@@ -36,7 +36,7 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
         self.api_key = api_key or os.environ['AZURE_API_KEY']
         self.api_base = api_base or os.environ['AZURE_API_BASE']
         self.api_version = api_version or os.getenv('AZURE_API_VERSION')
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]

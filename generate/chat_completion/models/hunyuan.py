@@ -9,7 +9,7 @@ import time
 import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
-from typing_extensions import Self, TypedDict, Unpack, override
+from typing_extensions import Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -22,7 +22,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
@@ -70,7 +69,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
         api: str | None = None,
         sign_api: str | None = None,
         parameters: HunyuanChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or HunyuanChatParameters()
         super().__init__(parameters=parameters)
@@ -79,7 +78,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
         self.secret_key = secret_key or os.environ['HUNYUAN_SECRET_KEY']
         self.api = api or self.default_api
         self.sign_api = sign_api or self.default_sign_api
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
         hunyuan_messages = [convert_to_hunyuan_message(message) for message in messages]

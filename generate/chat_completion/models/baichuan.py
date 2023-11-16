@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, TypedDict
 
 from pydantic import Field
-from typing_extensions import Annotated, Self, Unpack
+from typing_extensions import Annotated, Self
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -22,7 +22,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
@@ -72,7 +71,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
         api_base: str | None = None,
         stream_api_base: str | None = None,
         parameters: BaichuanChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or BaichuanChatParameters()
         super().__init__(parameters=parameters)
@@ -81,7 +80,8 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
         self.secret_key = secret_key or os.environ['BAICHUAN_SECRET_KEY']
         self.api_base = (api_base or self.default_api_base).rstrip('/')
         self.stream_api_base = (stream_api_base or self.default_stream_api_base).rstrip('/')
-        self.http_client = HttpClient(stream_strategy='basic', **kwargs)
+        self.http_client = http_client or HttpClient()
+        self.http_client.stream_strategy = 'basic'
 
     def _get_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
         baichuan_messages: list[BaichuanMessage] = [convert_to_baichuan_message(message) for message in messages]

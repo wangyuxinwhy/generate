@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Option
 
 import httpx
 from pydantic import Field, field_validator, model_validator
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -23,7 +23,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
@@ -126,7 +125,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         api_base: str | None = None,
         secret_key: str | None = None,
         parameters: WenxinChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or WenxinChatParameters()
         super().__init__(parameters=parameters)
@@ -136,7 +135,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         self._secret_key = secret_key or os.environ['WENXIN_SECRET_KEY']
         self._access_token = self.get_access_token()
         self._access_token_expires_at = datetime.now() + timedelta(days=self.access_token_refresh_days)
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     @property
     @override

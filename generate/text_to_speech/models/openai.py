@@ -4,9 +4,9 @@ import os
 from typing import Any, ClassVar, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import Annotated, Self, Unpack, override
+from typing_extensions import Annotated, Self, override
 
-from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs
+from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
@@ -27,14 +27,14 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: OpenAISpeechParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAISpeechParameters()
         super().__init__(parameters)
         self.model = model
         self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
         self.api_key = api_key or os.environ['OPENAI_API_KEY']
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:
         parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)

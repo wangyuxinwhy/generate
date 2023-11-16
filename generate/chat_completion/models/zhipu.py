@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, Ty
 
 import cachetools.func  # type: ignore
 import jwt
-from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -19,7 +19,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
@@ -112,13 +111,14 @@ class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
         parameters: P,
         api_key: str | None = None,
         api_base: str | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         super().__init__(parameters=parameters)
         self.model = model
         self.api_key = api_key or os.environ['ZHIPU_API_KEY']
         self.api_base = (api_base or self.default_api_base).rstrip('/')
-        self.http_client = HttpClient(stream_strategy='basic', **kwargs)
+        self.http_client = http_client or HttpClient()
+        self.http_client.stream_strategy = 'basic'
 
     def _get_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
@@ -230,10 +230,10 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: ZhipuChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
-        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, **kwargs)
+        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, http_client=http_client)
 
 
 class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
@@ -245,7 +245,7 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: ZhipuCharacterChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuCharacterChatParameters()
-        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, **kwargs)
+        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, http_client=http_client)
