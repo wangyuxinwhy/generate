@@ -1,32 +1,32 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, List, Optional, TypeVar
 
-from typing_extensions import Self
+from pydantic import BaseModel
 
-from generate.image_generation.model_output import ImageGenerationOutput
-from generate.model import ModelInfo
-from generate.parameters import ModelParameters
+from generate.model import GenerateModel, ModelOutput, ModelParameters
 
 P = TypeVar('P', bound=ModelParameters)
 logger = logging.getLogger(__name__)
 
 
-class ImageGenerationModel(Generic[P], ABC):
+class GeneratedImage(BaseModel):
+    url: Optional[str] = None
+    prompt: str
+    image_format: str
+    content: bytes
+
+
+class ImageGenerationOutput(ModelOutput):
+    images: List[GeneratedImage] = []
+
+
+class ImageGenerationModel(GenerateModel[P, str, ImageGenerationOutput], ABC):
+    model_task: ClassVar[str] = 'image_generation'
     model_type: ClassVar[str]
 
     def __init__(self, parameters: P) -> None:
         self.parameters = parameters
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        ...
-
-    @classmethod
-    @abstractmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        ...
 
     @abstractmethod
     def _image_generation(self, prompt: str, parameters: P) -> ImageGenerationOutput:
@@ -35,14 +35,6 @@ class ImageGenerationModel(Generic[P], ABC):
     @abstractmethod
     async def _async_image_generation(self, prompt: str, parameters: P) -> ImageGenerationOutput:
         ...
-
-    @property
-    def model_info(self) -> ModelInfo:
-        return ModelInfo(
-            task='image_generation',
-            type=self.model_type,
-            name=self.name,
-        )
 
     def generate(self, prompt: str, **override_parameters: Any) -> ImageGenerationOutput:
         parameters = self._merge_parameters(**override_parameters)
@@ -53,8 +45,3 @@ class ImageGenerationModel(Generic[P], ABC):
         parameters = self._merge_parameters(**override_parameters)
         logger.debug(f'{prompt=}, {parameters=}')
         return await self._async_image_generation(prompt, parameters)
-
-    def _merge_parameters(self, **override_parameters: Any) -> P:
-        return self.parameters.__class__.model_validate(
-            {**self.parameters.model_dump(exclude_unset=True), **override_parameters}
-        )

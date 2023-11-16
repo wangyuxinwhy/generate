@@ -8,9 +8,8 @@ from pydantic import Field, model_validator
 from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs, UnexpectedResponseError
-from generate.parameters import ModelParameters
-from generate.text_to_speech.base import TextToSpeechModel
-from generate.text_to_speech.model_output import TextToSpeechOutput
+from generate.model import ModelParameters
+from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
 class TimeberWeight(TypedDict):

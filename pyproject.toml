@@ -52,7 +52,6 @@ ignore = [
     "ANN1",  # self and cls
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed in
     "PLR0913", # Too many arguments in function definition
-    "PLR0911", # Too many return
     "TRY003", # Avoid specifying long messages outside the exception class
     "PLC0414", # reimport
 ]

@@ -27,7 +27,7 @@ from generate.chat_completion.models import (
     ZhipuChatParameters,
 )
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
-from generate.parameters import ModelParameters
+from generate.model import ModelParameters
 
 ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (AzureChat, OpenAIChatParameters),

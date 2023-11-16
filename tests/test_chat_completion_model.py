@@ -13,7 +13,7 @@ from generate.chat_completion import (
 )
 from generate.chat_completion.message import Prompt
 from generate.http import HttpMixin
-from generate.parameters import ModelParameters
+from generate.model import ModelParameters
 from generate.test import get_pytest_params
 
 
