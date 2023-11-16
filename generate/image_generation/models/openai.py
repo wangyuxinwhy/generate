@@ -14,6 +14,27 @@ from generate.settings.openai import OpenAISettings
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
 MAX_PROMPT_LENGTH_DALLE_2 = 1000
+OPENAI_IMAGE_GENERATION_PRICE_MAP = {
+    'dall-e-3': {
+        'hd': {
+            '1024x1024': 0.04,
+            '1792x1024': 0.08,
+            '1024x1792': 0.08,
+        },
+        'standard': {
+            '1024x1024': 0.08,
+            '1792x1024': 0.12,
+            '1024x1792': 0.12,
+        },
+    },
+    'dall-e-2': {
+        'standard': {
+            '256x256': 0.016,
+            '512x512': 0.018,
+            '1024x1024': 0.02,
+        }
+    },
+}
 
 
 class OpenAIImageGenerationParameters(ModelParameters):
@@ -120,6 +141,13 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
             model_info=self.model_info,
             images=generated_images,
         )
+
+    def calculate_cost(self, parameters: OpenAIImageGenerationParameters) -> float:
+        dollar_to_yuan = 7
+        quality = parameters.quality or 'standard'
+        size = parameters.size or '1024x1024'
+        model_price = OPENAI_IMAGE_GENERATION_PRICE_MAP[self.model][quality][size]
+        return model_price * dollar_to_yuan
 
     @property
     def name(self) -> str:
