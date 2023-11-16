@@ -14,6 +14,7 @@ from generate.chat_completion.models.openai import (
     parse_openai_model_reponse,
 )
 from generate.http import HttpClient, HttpMixin, HttpResponse, HttpxPostKwargs
+from generate.settings.azure import AzureSettings
 
 
 class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
@@ -22,39 +23,32 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
     def __init__(
         self,
         model: str | None = None,
-        system_prompt: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
-        api_version: str | None = None,
+        settings: AzureSettings | None = None,
         parameters: OpenAIChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAIChatParameters()
         super().__init__(parameters=parameters)
-        self.model = model or os.environ['AZURE_CHAT_API_ENGINE'] or os.environ['AZURE_CHAT_MODEL_NAME']
-        self.system_prompt = system_prompt
-        self.api_key = api_key or os.environ['AZURE_API_KEY']
-        self.api_base = api_base or os.environ['AZURE_API_BASE']
-        self.api_version = api_version or os.getenv('AZURE_API_VERSION')
+
+        self.model = model or os.environ['AZURE_CHAT_API_ENGINE']
+        self.settings = settings or AzureSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]
-        if self.system_prompt:
-            openai_messages.insert(0, {'role': 'system', 'content': self.system_prompt})
-
         json_data = {
             'model': self.model,
             'messages': openai_messages,
             **parameters.custom_model_dump(),
         }
         headers = {
-            'api-key': self.api_key,
+            'api-key': self.settings.api_key.get_secret_value(),
         }
         return {
-            'url': f'{self.api_base}/openai/deployments/{self.model}/chat/completions?api-version={self.api_version}',
+            'url': f'{self.settings.api_base}/openai/deployments/{self.model}/chat/completions',
             'headers': headers,
             'json': json_data,
+            'params': {'api-version': self.settings.api_version},
         }
 
     def _completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:

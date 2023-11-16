@@ -70,6 +70,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
     ) -> None:
         parameters = parameters or BaichuanChatParameters()
         super().__init__(parameters=parameters)
+
         self.model = model
         self.settings = settings or BaichuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()

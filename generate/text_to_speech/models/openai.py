@@ -31,7 +31,7 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
         super().__init__(parameters)
 
         self.model = model
-        self.settings = settings or OpenAISettings() # type: ignore
+        self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:

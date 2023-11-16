@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import os
 from typing import Any, Literal, Optional
 
 from httpx import Response
@@ -39,7 +38,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         parameters = parameters or OpenAIImageGenerationParameters()
         super().__init__(parameters)
         self.model = model
-        self.settings = settings or OpenAISettings() # type: ignore
+        self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.check_parameters()
 

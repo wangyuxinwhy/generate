@@ -67,6 +67,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
     ) -> None:
         parameters = parameters or HunyuanChatParameters()
         super().__init__(parameters=parameters)
+
         self.settings = settings or HunyuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 

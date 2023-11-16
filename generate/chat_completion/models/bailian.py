@@ -75,6 +75,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin, TokenMi
     ) -> None:
         parameters = parameters or BailianChatParameters()
         super().__init__(parameters=parameters)
+
         self._token = None
         self.settings = settings or BailianSettings()  # type: ignore
         self.http_client = http_client or HttpClient()

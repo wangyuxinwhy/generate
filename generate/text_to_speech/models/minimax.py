@@ -49,7 +49,7 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         parameters = parameters or MinimaxSpeechParameters()
         super().__init__(parameters)
         self.model = model
-        self.settings = settings or MinimaxSettings() # type: ignore
+        self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxSpeechParameters) -> HttpxPostKwargs:
@@ -119,7 +119,7 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         parameters = parameters or MinimaxProSpeechParameters()
         super().__init__(parameters)
         self.model = model
-        self.settings = settings or MinimaxSettings() # type: ignore
+        self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxProSpeechParameters) -> HttpxPostKwargs:
