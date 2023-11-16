@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import os
 from typing import Any, Literal, Optional
 
 from httpx import Response
@@ -11,6 +10,7 @@ from typing_extensions import Annotated, Self
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters
+from generate.settings.openai import OpenAISettings
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
 MAX_PROMPT_LENGTH_DALLE_2 = 1000
@@ -27,21 +27,18 @@ class OpenAIImageGenerationParameters(ModelParameters):
 
 class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters]):
     model_type = 'openai'
-    default_api_base: str = 'https://api.openai.com/v1/images/generations'
 
     def __init__(
         self,
         model: str = 'dall-e-3',
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: OpenAISettings | None = None,
         parameters: OpenAIImageGenerationParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAIImageGenerationParameters()
         super().__init__(parameters)
         self.model = model
-        self.api_base = api_base or self.default_api_base
-        self.api_key = api_key or os.environ['OPENAI_API_KEY']
+        self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.check_parameters()
 
@@ -71,7 +68,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
     def _get_request_parameters(self, prompt: str, parameters: OpenAIImageGenerationParameters) -> HttpxPostKwargs:
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
         }
         json_data = {
             'model': self.model,
@@ -79,7 +76,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
             **parameters.model_dump(exclude_none=True),
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 'images/generations',
             'json': json_data,
             'headers': headers,
         }

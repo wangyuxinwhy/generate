@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, TypeVar
 
@@ -24,6 +23,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.zhipu import ZhipuSettings
 from generate.types import Probability, Temperature
 
 P = TypeVar('P', bound=ModelParameters)
@@ -103,32 +103,29 @@ def generate_token(api_key: str) -> str:
 
 
 class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
-    default_api_base: ClassVar[str] = 'https://open.bigmodel.cn/api/paas/v3/model-api'
-
     def __init__(
         self,
         model: str,
         parameters: P,
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         super().__init__(parameters=parameters)
+
         self.model = model
-        self.api_key = api_key or os.environ['ZHIPU_API_KEY']
-        self.api_base = (api_base or self.default_api_base).rstrip('/')
+        self.settings = settings or ZhipuSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.http_client.stream_strategy = 'basic'
 
     def _get_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
         headers = {
-            'Authorization': generate_token(self.api_key),
+            'Authorization': generate_token(self.settings.api_key.get_secret_value()),
         }
         parameters_dict = parameters.model_dump(exclude_none=True)
         params = {'prompt': zhipu_messages, **parameters_dict}
         return {
-            'url': f'{self.api_base}/{self.model}/invoke',
+            'url': f'{self.settings.api_base}/{self.model}/invoke',
             'headers': headers,
             'json': params,
         }
@@ -160,7 +157,7 @@ class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
 
     def _get_stream_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['url'] = f'{self.api_base}/{self.model}/sse-invoke'
+        http_parameters['url'] = f'{self.settings.api_base}/{self.model}/sse-invoke'
         return http_parameters
 
     @override
@@ -227,13 +224,12 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
     def __init__(
         self,
         model: str = 'chatglm_turbo',
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: ZhipuSettings | None = None,
         parameters: ZhipuChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
-        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, http_client=http_client)
+        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
 
 
 class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
@@ -242,10 +238,9 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
     def __init__(
         self,
         model: str = 'characterglm',
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: ZhipuSettings | None = None,
         parameters: ZhipuCharacterChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuCharacterChatParameters()
-        super().__init__(model=model, api_key=api_key, api_base=api_base, parameters=parameters, http_client=http_client)
+        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)

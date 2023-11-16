@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import time
 import uuid
 from datetime import datetime
@@ -27,6 +26,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.baichuan import BaichuanSettings
 from generate.types import Probability, Temperature
 
 
@@ -60,26 +60,19 @@ def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
 
 class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'baichuan'
-    default_api_base: ClassVar[str] = 'https://api.baichuan-ai.com/v1/chat'
-    default_stream_api_base: ClassVar[str] = 'https://api.baichuan-ai.com/v1/stream/chat'
 
     def __init__(
         self,
         model: str = 'Baichuan2-53B',
-        api_key: str | None = None,
-        secret_key: str | None = None,
-        api_base: str | None = None,
-        stream_api_base: str | None = None,
+        settings: BaichuanSettings | None = None,
         parameters: BaichuanChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or BaichuanChatParameters()
         super().__init__(parameters=parameters)
+
         self.model = model
-        self.api_key = api_key or os.environ['BAICHUAN_API_KEY']
-        self.secret_key = secret_key or os.environ['BAICHUAN_SECRET_KEY']
-        self.api_base = (api_base or self.default_api_base).rstrip('/')
-        self.stream_api_base = (stream_api_base or self.default_stream_api_base).rstrip('/')
+        self.settings = settings or BaichuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.http_client.stream_strategy = 'basic'
 
@@ -93,18 +86,18 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
         if parameters_dict:
             data['parameters'] = parameters_dict
         time_stamp = int(time.time())
-        signature = self.calculate_md5(self.secret_key + json.dumps(data) + str(time_stamp))
+        signature = self.calculate_md5(self.settings.secret_key.get_secret_value() + json.dumps(data) + str(time_stamp))
 
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + self.api_key,
+            'Authorization': 'Bearer ' + self.settings.api_key.get_secret_value(),
             'X-BC-Timestamp': str(time_stamp),
             'X-BC-Signature': signature,
             'X-BC-Sign-Algo': 'MD5',
             'X-BC-Request-Id': str(uuid.uuid4()),
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base,
             'headers': headers,
             'json': data,
         }
@@ -135,7 +128,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
 
     def _get_stream_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['url'] = self.stream_api_base
+        http_parameters['url'] = self.settings.stream_api_base
         return http_parameters
 
     def _stream_completion(

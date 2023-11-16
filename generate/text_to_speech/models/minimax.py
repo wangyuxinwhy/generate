@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import os
 from typing import Any, ClassVar, List, Literal, Optional
 
-import httpx
 from pydantic import Field, model_validator
 from typing_extensions import Annotated, Self, TypedDict, override
 
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.model import ModelParameters
+from generate.settings.minimax import MinimaxSettings
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
@@ -38,23 +37,18 @@ class MinimaxProSpeechParameters(MinimaxSpeechParameters):
 
 class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
     model_type = 'minimax'
-    default_api_base: ClassVar[str] = 'https://api.minimax.chat/v1/text_to_speech'
 
     def __init__(
         self,
         model: str = 'speech-01',
-        group_id: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: MinimaxSettings | None = None,
         parameters: MinimaxSpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxSpeechParameters()
         super().__init__(parameters)
         self.model = model
-        self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
-        self.api_key = api_key or os.environ['MINIMAX_API_KEY']
-        self.api_base = api_base or self.default_api_base
+        self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxSpeechParameters) -> HttpxPostKwargs:
@@ -65,14 +59,14 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
             **parameters_dict,
         }
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 'text_to_speech',
             'json': json_data,
             'headers': headers,
-            'params': {'GroupId': self.group_id},
+            'params': {'GroupId': self.settings.group_id},
         }
 
     def _text_to_speech(self, text: str, parameters: MinimaxSpeechParameters) -> TextToSpeechOutput:
@@ -113,23 +107,18 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
 
 class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
     model_type = 'minimax_pro'
-    default_api_base: ClassVar[str] = 'https://api.minimax.chat/v1/t2a_pro'
 
     def __init__(
         self,
         model: str = 'speech-01',
-        group_id: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: MinimaxSettings | None = None,
         parameters: MinimaxProSpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxProSpeechParameters()
         super().__init__(parameters)
         self.model = model
-        self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
-        self.api_key = api_key or os.environ['MINIMAX_API_KEY']
-        self.api_base = api_base or self.default_api_base
+        self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxProSpeechParameters) -> HttpxPostKwargs:
@@ -140,14 +129,14 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
             **parameters_dict,
         }
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 't2a_pro',
             'json': json_data,
             'headers': headers,
-            'params': {'GroupId': self.group_id},
+            'params': {'GroupId': self.settings.group_id},
         }
 
     def _text_to_speech(self, text: str, parameters: MinimaxProSpeechParameters) -> TextToSpeechOutput:
@@ -159,11 +148,11 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
 
         model_output = TextToSpeechOutput(
             model_info=self.model_info,
-            audio=httpx.get(response_data['audio_file']).content,
+            audio=self.http_client.get({'url': response_data['audio_file']}).content,
             audio_format='mp3',
             cost=response_data['extra_info']['word_count'] / 1000,
         )
-        model_output.extra['subtitle'] = httpx.get(response_data['subtitle_file']).json()
+        model_output.extra['subtitle'] = self.http_client.get({'url': response_data['subtitle_file']}).json()
         model_output.extra.update(response_data['extra_info'])
         return model_output
 
@@ -174,9 +163,8 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         if response_data['base_resp']['status_code'] != 0:
             raise UnexpectedResponseError(response_data)
 
-        async with httpx.AsyncClient() as client:
-            audio = (await client.get(response_data['audio_file'])).content
-            subtitle = (await client.get(response_data['subtitle_file'])).json()
+        audio = (await self.http_client.async_get({'url': response_data['audio_file']})).content
+        subtitle = (await self.http_client.async_get({'url': response_data['subtitle_file']})).json()
 
         model_output = TextToSpeechOutput(
             model_info=self.model_info,

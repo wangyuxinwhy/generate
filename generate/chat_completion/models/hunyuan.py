@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import json
-import os
 import time
 import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
@@ -27,6 +26,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.hunyuan import HunyuanSettings
 from generate.types import Probability, Temperature
 
 
@@ -58,26 +58,17 @@ def convert_to_hunyuan_message(message: Message) -> HunyuanMessage:
 
 class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'hunyuan'
-    default_api: ClassVar[str] = 'https://hunyuan.cloud.tencent.com/hyllm/v1/chat/completions'
-    default_sign_api: ClassVar[str] = 'hunyuan.cloud.tencent.com/hyllm/v1/chat/completions'
 
     def __init__(
         self,
-        app_id: int | None = None,
-        secret_id: str | None = None,
-        secret_key: str | None = None,
-        api: str | None = None,
-        sign_api: str | None = None,
+        settings: HunyuanSettings | None = None,
         parameters: HunyuanChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or HunyuanChatParameters()
         super().__init__(parameters=parameters)
-        self.app_id = app_id or int(os.environ['HUNYUAN_APP_ID'])
-        self.secret_id = secret_id or os.environ['HUNYUAN_SECRET_ID']
-        self.secret_key = secret_key or os.environ['HUNYUAN_SECRET_KEY']
-        self.api = api or self.default_api
-        self.sign_api = sign_api or self.default_sign_api
+
+        self.settings = settings or HunyuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
@@ -89,7 +80,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
             'Authorization': signature,
         }
         return {
-            'url': self.api,
+            'url': self.settings.completion_api,
             'headers': headers,
             'json': json_dict,
         }
@@ -127,7 +118,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
             'Authorization': signature,
         }
         return {
-            'url': self.api,
+            'url': self.settings.completion_api,
             'headers': headers,
             'json': json_dict,
         }
@@ -188,8 +179,8 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
     ) -> dict[str, Any]:
         timestamp = int(time.time()) + 10000
         json_dict: dict[str, Any] = {
-            'app_id': self.app_id,
-            'secret_id': self.secret_id,
+            'app_id': self.settings.app_id,
+            'secret_id': self.settings.secret_id.get_secret_value(),
             'query_id': 'query_id_' + str(uuid.uuid4()),
             'messages': messages,
             'timestamp': timestamp,
@@ -222,11 +213,13 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
 
     def generate_signature(self, sign_parameters: dict[str, Any]) -> str:
         sort_dict = sorted(sign_parameters.keys())
-        sign_str = self.default_sign_api + '?'
+        sign_str = self.settings.sign_api + '?'
         for key in sort_dict:
             sign_str = sign_str + key + '=' + str(sign_parameters[key]) + '&'
         sign_str = sign_str[:-1]
-        hmacstr = hmac.new(self.secret_key.encode('utf-8'), sign_str.encode('utf-8'), hashlib.sha1).digest()
+        hmacstr = hmac.new(
+            self.settings.secret_key.get_secret_value().encode('utf-8'), sign_str.encode('utf-8'), hashlib.sha1
+        ).digest()
         signature = base64.b64encode(hmacstr)
         return signature.decode('utf-8')
 

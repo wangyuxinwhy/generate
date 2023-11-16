@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import os
-from typing import Any, ClassVar, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import Field
 from typing_extensions import Annotated, Self, override
 
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters
+from generate.settings.openai import OpenAISettings
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
@@ -19,21 +19,19 @@ class OpenAISpeechParameters(ModelParameters):
 
 class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
     model_type = 'openai'
-    default_api_base: ClassVar[str] = 'https://api.openai.com/v1/audio/speech'
 
     def __init__(
         self,
         model: str = 'tts-1',
-        api_key: str | None = None,
-        api_base: str | None = None,
+        settings: OpenAISettings | None = None,
         parameters: OpenAISpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAISpeechParameters()
         super().__init__(parameters)
+
         self.model = model
-        self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
-        self.api_key = api_key or os.environ['OPENAI_API_KEY']
+        self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:
@@ -44,11 +42,11 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
             **parameters_dict,
         }
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 'audio/speech',
             'json': json_data,
             'headers': headers,
         }

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
@@ -23,6 +22,8 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.bailian import BailianSettings
+from generate.token import TokenMixin
 from generate.types import Probability
 
 
@@ -63,39 +64,34 @@ class BailianChatParameters(ModelParameters):
     doc_tag_ids: Optional[List[int]] = Field(default=None, alias='DocTagIds')
 
 
-class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
+class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin, TokenMixin):
     model_type: ClassVar[str] = 'bailian'
-    default_api: ClassVar[str] = 'https://bailian.aliyuncs.com/v2/app/completions'
 
     def __init__(
         self,
-        app_id: str | None = None,
-        access_key_id: str | None = None,
-        access_key_secret: str | None = None,
-        agent_key: str | None = None,
-        api: str | None = None,
+        settings: BailianSettings | None = None,
         parameters: BailianChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or BailianChatParameters()
+        super().__init__(parameters=parameters)
+
+        self._token = None
+        self.settings = settings or BailianSettings()  # type: ignore
+        self.http_client = http_client or HttpClient()
+
+    def _get_token(self) -> str:
         try:
             import broadscope_bailian
         except ImportError as e:
             raise ImportError('Please install broadscope_bailian first: pip install broadscope_bailian') from e
 
-        parameters = parameters or BailianChatParameters()
-        super().__init__(parameters=parameters)
-        self.app_id = app_id or os.environ['BAILIAN_APP_ID']
-        self.access_key_id = access_key_id or os.environ['BAILIAN_ACCESS_KEY_ID']
-        self.access_key_secret = access_key_secret or os.environ['BAILIAN_ACCESS_KEY_SECRET']
-        self.agent_key = agent_key or os.environ['BAILIAN_AGENT_KEY']
-        self.api = api or self.default_api
         client = broadscope_bailian.AccessTokenClient(
-            access_key_id=self.access_key_id,
-            access_key_secret=self.access_key_secret,
-            agent_key=self.agent_key,
+            access_key_id=self.settings.access_key_id.get_secret_value(),
+            access_key_secret=self.settings.access_key_secret.get_secret_value(),
+            agent_key=self.settings.agent_key,
         )
-        self.token = client.get_token()
-        self.http_client = http_client or HttpClient()
+        return client.get_token()
 
     def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
         if not isinstance(messages[-1], UserMessage):
@@ -110,10 +106,10 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
             'Authorization': f'Bearer {self.token}',
         }
         json_dict['Prompt'] = prompt
-        json_dict['AppId'] = self.app_id
+        json_dict['AppId'] = self.settings.app_id
         json_dict['History'] = history
         return {
-            'url': self.api,
+            'url': self.settings.completion_api,
             'headers': headers,
             'json': json_dict,
         }
@@ -216,9 +212,11 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
     @property
     @override
     def name(self) -> str:
-        return self.app_id
+        return self.settings.app_id
 
     @classmethod
     @override
     def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(app_id=name, **kwargs)
+        if name:
+            raise ValueError(f'{cls} cannot be initialized from name')
+        return cls(**kwargs)

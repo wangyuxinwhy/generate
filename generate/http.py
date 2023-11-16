@@ -25,12 +25,6 @@ class RetryStrategy(BaseModel):
     max_attempt: int = 3
 
 
-class HttpClientInitKwargs(TypedDict, total=False):
-    timeout: Optional[int]
-    retry: Union[bool, RetryStrategy]
-    proxies: Union[ProxiesTypes, None]
-
-
 class HttpGetKwargs(TypedDict, total=False):
     url: Required[str]
     params: QueryParams
