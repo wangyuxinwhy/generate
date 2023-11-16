@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-import os
-from datetime import datetime, timedelta
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
-import httpx
 from pydantic import Field, field_validator, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
@@ -28,6 +25,8 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.wenxin import WenxinSettings
+from generate.token import TokenMixin
 from generate.types import JsonSchema, Probability, Temperature
 
 
@@ -107,58 +106,51 @@ class WenxinChatParameters(ModelParameters):
         return value
 
 
-class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
+class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin, TokenMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
     }
-    access_token_refresh_days: ClassVar[int] = 20
-    access_token_url: ClassVar[str] = 'https://aip.baidubce.com/oauth/2.0/token'
-    default_api_base: ClassVar[str] = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/'
+    token_refresh_days: ClassVar[int] = 20
 
     def __init__(
         self,
         model: str = 'ERNIE-Bot',
-        api_key: str | None = None,
-        api_base: str | None = None,
-        secret_key: str | None = None,
+        settings: WenxinSettings | None = None,
         parameters: WenxinChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or WenxinChatParameters()
         super().__init__(parameters=parameters)
+
+        self._token = None
         self.model = model
-        self.api_base = api_base or self.default_api_base
-        self._api_key = api_key or os.environ['WENXIN_API_KEY']
-        self._secret_key = secret_key or os.environ['WENXIN_SECRET_KEY']
-        self._access_token = self.get_access_token()
-        self._access_token_expires_at = datetime.now() + timedelta(days=self.access_token_refresh_days)
+        self.settings = settings or WenxinSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
-    @property
-    @override
-    def name(self) -> str:
-        return self.model
-
-    @property
-    def api_url(self) -> str:
-        return self.api_base + self.model_name_entrypoint_map[self.model]
-
-    def get_access_token(self) -> str:
+    def _get_token(self) -> str:
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        params = {'grant_type': 'client_credentials', 'client_id': self._api_key, 'client_secret': self._secret_key}
-        response = httpx.post(self.access_token_url, headers=headers, params=params)
-        response.raise_for_status()
+        params = {
+            'grant_type': 'client_credentials',
+            'client_id': self.settings.api_key.get_secret_value(),
+            'client_secret': self.settings.secret_key.get_secret_value(),
+        }
+        response = self.http_client.post(
+            {
+                'url': self.settings.access_token_api,
+                'headers': headers,
+                'params': params,
+                'json': None,
+            }
+        )
         response_dict = response.json()
         if 'error' in response_dict:
             raise UnexpectedResponseError(response_dict)
         return response_dict['access_token']
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
-        self.maybe_refresh_access_token()
-
         wenxin_messages: list[WenxinMessage] = [convert_to_wenxin_message(message) for message in messages]
         parameters_dict = parameters.model_dump(exclude_none=True)
         if 'temperature' in parameters_dict:
@@ -166,9 +158,9 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         json_data = {'messages': wenxin_messages, **parameters_dict}
 
         return {
-            'url': self.api_url,
+            'url': self.settings.comlpetion_api_base + self.model_name_entrypoint_map[self.model],
             'json': json_data,
-            'params': {'access_token': self._access_token},
+            'params': {'access_token': self.token},
             'headers': {'Content-Type': 'application/json'},
         }
 
@@ -265,11 +257,6 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
             stream=Stream(delta=parsed_line['result'], control='continue'),
         )
 
-    def maybe_refresh_access_token(self) -> None:
-        if self._access_token_expires_at < datetime.now():
-            self._access_token = self.get_access_token()
-            self._access_token_expires_at = datetime.now() + timedelta(days=self.access_token_refresh_days)
-
     def calculate_cost(self, usage: dict[str, Any]) -> float | None:
         if self.name == 'ERNIE-Bot':
             return 0.012 * (usage['total_tokens'] / 1000)
@@ -278,6 +265,11 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         if self.name == 'ERNIE-Bot-4':
             return 0.12 * (usage['total_tokens'] / 1000)
         return None
+
+    @property
+    @override
+    def name(self) -> str:
+        return self.model
 
     @classmethod
     @override

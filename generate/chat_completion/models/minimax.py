@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
 from pydantic import Field, PositiveInt, field_validator
-from typing_extensions import Annotated, Self, TypedDict, Unpack, override
+from typing_extensions import Annotated, Self, TypedDict, override
 
 from generate.chat_completion import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -18,12 +17,12 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
 
@@ -73,28 +72,20 @@ def convert_to_minimax_message(message: Message) -> MinimaxMessage:
 
 class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'minimax'
-    default_api_base: ClassVar[str] = 'https://api.minimax.chat/v1/text/chatcompletion'
 
     def __init__(
         self,
         model: str = 'abab5.5-chat',
-        group_id: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
-        system_prompt: str | None = None,
+        settings: MinimaxSettings | None = None,
         parameters: MinimaxChatParameters | None = None,
-        **kwagrs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxChatParameters()
-        if system_prompt is not None:
-            parameters.prompt = system_prompt
         super().__init__(parameters=parameters)
 
         self.model = model
-        self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
-        self.api_key = api_key or os.environ['MINIMAX_API_KEY']
-        self.api_base = api_base or self.default_api_base
-        self.http_client = HttpClient(**kwagrs)
+        self.settings = settings or MinimaxSettings()  # type: ignore
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxChatParameters) -> HttpxPostKwargs:
         minimax_messages = [convert_to_minimax_message(message) for message in messages]
@@ -107,14 +98,14 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
             **parameters_dict,
         }
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 'text/chatcompletion',
             'json': json_data,
             'headers': headers,
-            'params': {'GroupId': self.group_id},
+            'params': {'GroupId': self.settings.group_id},
         }
 
     def _completion(self, messages: Messages, parameters: MinimaxChatParameters) -> ChatCompletionOutput:

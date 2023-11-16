@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from functools import partial
 from typing import Any, AsyncIterator, Callable, ClassVar, Dict, Iterator, List, Literal, Optional, Type, Union, cast
 
@@ -36,6 +35,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelInfo, ModelParameters
+from generate.settings.openai import OpenAISettings
 from generate.types import Probability, Temperature
 
 
@@ -255,32 +255,25 @@ def parse_openai_model_reponse(response: dict[str, Any]) -> ChatCompletionOutput
 
 class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'openai'
-    default_api_base: ClassVar[str] = 'https://api.openai.com/v1'
 
     def __init__(
         self,
         model: str = 'gpt-3.5-turbo',
-        api_key: str | None = None,
-        api_base: str | None = None,
-        system_prompt: str | None = None,
+        settings: OpenAISettings | None = None,
         parameters: OpenAIChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or OpenAIChatParameters()
         super().__init__(parameters=parameters)
+
         self.model = model
-        self.system_prompt = system_prompt
-        self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
-        self.api_key = api_key or os.environ['OPENAI_API_KEY']
+        self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]
-        if self.system_prompt:
-            openai_messages.insert(0, {'role': 'system', 'content': self.system_prompt})
-
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
         }
         params = {
             'model': self.model,
@@ -288,7 +281,7 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
             **parameters.custom_model_dump(),
         }
         return {
-            'url': f'{self.api_base}/chat/completions',
+            'url': f'{self.settings.api_base}/chat/completions',
             'headers': headers,
             'json': params,
         }

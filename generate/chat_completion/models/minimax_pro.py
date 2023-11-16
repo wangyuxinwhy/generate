@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt, field_validator, model_validator
@@ -28,6 +27,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
+from generate.settings.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
 
@@ -155,32 +155,20 @@ def convert_to_minimax_pro_message(
 
 class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
     model_type: ClassVar[str] = 'minimax_pro'
-    default_api_base: ClassVar[str] = 'https://api.minimax.chat/v1/text/chatcompletion_pro'
 
     def __init__(
         self,
         model: str = 'abab5.5-chat',
-        group_id: str | None = None,
-        api_key: str | None = None,
-        api_base: str | None = None,
-        bot_name: str | None = None,
-        system_prompt: str | None = None,
-        default_user_name: str = '用户',
+        settings: MinimaxSettings | None = None,
         parameters: MinimaxProChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxProChatParameters()
-        self.default_user_name = default_user_name
-        if system_prompt is not None:
-            parameters.set_system_prompt(system_prompt)
-        if bot_name is not None:
-            parameters.set_bot_name(bot_name)
         super().__init__(parameters=parameters)
 
         self.model = model
-        self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
-        self.api_key = api_key or os.environ['MINIMAX_API_KEY']
-        self.api_base = api_base or self.default_api_base
+        self.default_user_name = '用户'
+        self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
@@ -193,14 +181,14 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
         parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
         json_data = {'model': self.model, 'messages': minimax_pro_messages, **parameters_dict}
         headers = {
-            'Authorization': f'Bearer {self.api_key}',
+            'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.api_base,
+            'url': self.settings.api_base + 'text/chatcompletion_pro',
             'json': json_data,
             'headers': headers,
-            'params': {'GroupId': self.group_id},
+            'params': {'GroupId': self.settings.group_id},
         }
 
     def _completion(self, messages: Messages, parameters: MinimaxProChatParameters) -> ChatCompletionOutput:
