@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Option
 
 import httpx
 from pydantic import Field, field_validator, model_validator
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -23,9 +23,7 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -127,7 +125,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         api_base: str | None = None,
         secret_key: str | None = None,
         parameters: WenxinChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or WenxinChatParameters()
         super().__init__(parameters=parameters)
@@ -137,8 +135,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         self._secret_key = secret_key or os.environ['WENXIN_SECRET_KEY']
         self._access_token = self.get_access_token()
         self._access_token_expires_at = datetime.now() + timedelta(days=self.access_token_refresh_days)
-        self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     @property
     @override
@@ -223,7 +220,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
@@ -241,7 +238,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:

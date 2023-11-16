@@ -6,7 +6,7 @@ import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -18,9 +18,7 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -77,7 +75,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
         agent_key: str | None = None,
         api: str | None = None,
         parameters: BailianChatParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         try:
             import broadscope_bailian
@@ -97,8 +95,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
             agent_key=self.agent_key,
         )
         self.token = client.get_token()
-        self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
         if not isinstance(messages[-1], UserMessage):
@@ -164,7 +161,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
         )
         current_length = 0
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output, current_length = self._parse_stream_line(line, current_length)
             reply += output.stream.delta
             if output.is_finish:
@@ -184,7 +181,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin):
         )
         current_length = 0
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output, current_length = self._parse_stream_line(line, current_length)
             reply += output.stream.delta
             if output.is_finish:

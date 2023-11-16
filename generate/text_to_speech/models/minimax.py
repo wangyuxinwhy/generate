@@ -5,9 +5,9 @@ from typing import Any, ClassVar, List, Literal, Optional
 
 import httpx
 from pydantic import Field, model_validator
-from typing_extensions import Annotated, Self, TypedDict, Unpack, override
+from typing_extensions import Annotated, Self, TypedDict, override
 
-from generate.http import HttpClient, HttpClientInitKwargs, HttpxPostKwargs, UnexpectedResponseError
+from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.model import ModelParameters
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
@@ -47,7 +47,7 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: MinimaxSpeechParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxSpeechParameters()
         super().__init__(parameters)
@@ -55,7 +55,7 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
         self.api_key = api_key or os.environ['MINIMAX_API_KEY']
         self.api_base = api_base or self.default_api_base
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxSpeechParameters) -> HttpxPostKwargs:
         parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
@@ -122,7 +122,7 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         api_key: str | None = None,
         api_base: str | None = None,
         parameters: MinimaxProSpeechParameters | None = None,
-        **kwargs: Unpack[HttpClientInitKwargs],
+        http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or MinimaxProSpeechParameters()
         super().__init__(parameters)
@@ -130,7 +130,7 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         self.group_id = group_id or os.environ['MINIMAX_GROUP_ID']
         self.api_key = api_key or os.environ['MINIMAX_API_KEY']
         self.api_base = api_base or self.default_api_base
-        self.http_client = HttpClient(**kwargs)
+        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxProSpeechParameters) -> HttpxPostKwargs:
         parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
