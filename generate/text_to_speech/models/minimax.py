@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, ClassVar, List, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import Field, model_validator
 from typing_extensions import Annotated, Self, TypedDict, override
