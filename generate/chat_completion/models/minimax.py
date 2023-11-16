@@ -20,7 +20,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -96,7 +95,6 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
         self.api_key = api_key or os.environ['MINIMAX_API_KEY']
         self.api_base = api_base or self.default_api_base
         self.http_client = HttpClient(**kwagrs)
-        self.http_stream_client = HttpStreamClient(**kwagrs)
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxChatParameters) -> HttpxPostKwargs:
         minimax_messages = [convert_to_minimax_message(message) for message in messages]
@@ -160,7 +158,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
@@ -178,7 +176,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:

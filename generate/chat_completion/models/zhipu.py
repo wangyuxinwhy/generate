@@ -21,7 +21,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -119,8 +118,7 @@ class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
         self.model = model
         self.api_key = api_key or os.environ['ZHIPU_API_KEY']
         self.api_base = (api_base or self.default_api_base).rstrip('/')
-        self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(stream_strategy='basic', **kwargs)
+        self.http_client = HttpClient(stream_strategy='basic', **kwargs)
 
     def _get_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
         zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
@@ -173,7 +171,7 @@ class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         message = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             message += line
             yield ChatCompletionStreamOutput(
                 model_info=self.model_info,
@@ -193,7 +191,7 @@ class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         message = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             message += line
             yield ChatCompletionStreamOutput(
                 model_info=self.model_info,

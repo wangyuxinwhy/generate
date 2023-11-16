@@ -33,7 +33,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -275,7 +274,6 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
         self.api_base = api_base or os.getenv('OPENAI_API_BASE') or self.default_api_base
         self.api_key = api_key or os.environ['OPENAI_API_KEY']
         self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(**kwargs)
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]
@@ -318,7 +316,7 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
@@ -336,7 +334,7 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:

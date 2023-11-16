@@ -25,7 +25,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -184,7 +183,6 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
         self.api_key = api_key or os.environ['MINIMAX_API_KEY']
         self.api_base = api_base or self.default_api_base
         self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(**kwargs)
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
         minimax_pro_messages = [
@@ -249,7 +247,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
             model_info=self.model_info,
             stream=Stream(delta='', control='start'),
         )
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             yield output
             if output.is_finish:
@@ -263,7 +261,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
             model_info=self.model_info,
             stream=Stream(delta='', control='start'),
         )
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             yield output
             if output.is_finish:

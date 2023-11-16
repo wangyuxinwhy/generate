@@ -24,7 +24,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -82,8 +81,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
         self.secret_key = secret_key or os.environ['BAICHUAN_SECRET_KEY']
         self.api_base = (api_base or self.default_api_base).rstrip('/')
         self.stream_api_base = (stream_api_base or self.default_stream_api_base).rstrip('/')
-        self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(stream_strategy='basic', **kwargs)
+        self.http_client = HttpClient(stream_strategy='basic', **kwargs)
 
     def _get_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
         baichuan_messages: list[BaichuanMessage] = [convert_to_baichuan_message(message) for message in messages]
@@ -149,7 +147,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
@@ -167,7 +165,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:

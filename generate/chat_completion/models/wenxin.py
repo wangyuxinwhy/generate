@@ -25,7 +25,6 @@ from generate.http import (
     HttpClient,
     HttpClientInitKwargs,
     HttpMixin,
-    HttpStreamClient,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -138,7 +137,6 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
         self._access_token = self.get_access_token()
         self._access_token_expires_at = datetime.now() + timedelta(days=self.access_token_refresh_days)
         self.http_client = HttpClient(**kwargs)
-        self.http_stream_client = HttpStreamClient(**kwargs)
 
     @property
     @override
@@ -223,7 +221,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        for line in self.http_stream_client.post(request_parameters=request_parameters):
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
@@ -241,7 +239,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin):
             stream=Stream(delta='', control='start'),
         )
         reply = ''
-        async for line in self.http_stream_client.async_post(request_parameters=request_parameters):
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             output = self._parse_stream_line(line)
             reply += output.stream.delta
             if output.is_finish:
