@@ -19,13 +19,18 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 ## Features
 
 * **多模态**，支持文本生成，图像生成以及语音生成
-* **跨平台**，支持 OpenAI，Azure，Minimax 在内的多家平台
+* **跨平台**，完整支持 OpenAI，Azure，Minimax 在内的多家平台，
 * **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析
 * **异步和流式**，提供流式调用，非流式调用，同步调用，异步调用，适配不同的应用场景
 * **自带电池**，提供输入检查，参数检查，计费，*ChatEngine*, *CompletionEngine*, *function* 等功能
 * **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
 
+> 完整支持是指，只要是平台提供的功能和参数，`generate` 包都原生支持，不打折扣！比如，OpenAI 的 Function Call, Tool Calls，MinimaxPro 的 Plugins 等
 ## 基础使用
+
+<a target="_blank" href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 ### 安装
 
