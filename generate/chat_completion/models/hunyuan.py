@@ -21,7 +21,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -56,7 +55,7 @@ def convert_to_hunyuan_message(message: Message) -> HunyuanMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class HunyuanChat(ChatCompletionModel[HunyuanChatParameters], HttpMixin):
+class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
     model_type: ClassVar[str] = 'hunyuan'
 
     def __init__(

@@ -17,7 +17,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -64,7 +63,7 @@ class BailianChatParameters(ModelParameters):
     doc_tag_ids: Optional[List[int]] = Field(default=None, alias='DocTagIds')
 
 
-class BailianChat(ChatCompletionModel[BailianChatParameters], HttpMixin, TokenMixin):
+class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
     model_type: ClassVar[str] = 'bailian'
 
     def __init__(

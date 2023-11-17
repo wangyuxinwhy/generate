@@ -18,7 +18,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -102,7 +101,7 @@ def generate_token(api_key: str) -> str:
     )
 
 
-class BaseZhipuChat(ChatCompletionModel[P], HttpMixin):
+class BaseZhipuChat(ChatCompletionModel[P]):
     def __init__(
         self,
         model: str,

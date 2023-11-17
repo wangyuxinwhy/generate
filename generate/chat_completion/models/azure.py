@@ -13,11 +13,11 @@ from generate.chat_completion.models.openai import (
     convert_to_openai_message,
     parse_openai_model_reponse,
 )
-from generate.http import HttpClient, HttpMixin, HttpResponse, HttpxPostKwargs
+from generate.http import HttpClient, HttpResponse, HttpxPostKwargs
 from generate.settings.azure import AzureSettings
 
 
-class AzureChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
+class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
     model_type: ClassVar[str] = 'azure'
 
     def __init__(
