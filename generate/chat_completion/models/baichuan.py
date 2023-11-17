@@ -21,7 +21,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -58,7 +57,7 @@ def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class BaichuanChat(ChatCompletionModel[BaichuanChatParameters], HttpMixin):
+class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
     model_type: ClassVar[str] = 'baichuan'
 
     def __init__(

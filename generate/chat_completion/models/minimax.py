@@ -17,7 +17,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -70,7 +69,7 @@ def convert_to_minimax_message(message: Message) -> MinimaxMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class MinimaxChat(ChatCompletionModel[MinimaxChatParameters], HttpMixin):
+class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
     model_type: ClassVar[str] = 'minimax'
 
     def __init__(

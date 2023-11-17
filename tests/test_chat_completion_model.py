@@ -12,7 +12,6 @@ from generate.chat_completion import (
     ChatModels,
 )
 from generate.chat_completion.message import Prompt
-from generate.http import HttpMixin
 from generate.model import ModelParameters
 from generate.test import get_pytest_params
 
@@ -32,8 +31,6 @@ def test_model_type_is_unique() -> None:
     ],
 )
 def test_http_chat_model(chat_completion_model: ChatCompletionModel, parameters: dict) -> None:
-    if isinstance(chat_completion_model, HttpMixin):
-        chat_completion_model.timeout = 10
     prompt = '这是测试，只回复你好'
     sync_output = chat_completion_model.generate(prompt, **parameters)
     async_output = asyncio.run(chat_completion_model.async_generate(prompt))
@@ -47,8 +44,6 @@ def test_http_chat_model(chat_completion_model: ChatCompletionModel, parameters:
     get_pytest_params('test_stream_chat_completion', ChatModelRegistry, types='model', exclude=['azure']),
 )
 def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> None:
-    if isinstance(chat_completion_model, HttpMixin):
-        chat_completion_model.timeout = 10
     prompt = '这是测试，只回复你好'
     sync_output = list(chat_completion_model.stream_generate(prompt))[-1]
     async_output = asyncio.run(async_stream_helper(chat_completion_model, prompt))

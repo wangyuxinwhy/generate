@@ -20,12 +20,11 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.wenxin import WenxinSettings
+from generate.settings.baidu import WenxinSettings
 from generate.token import TokenMixin
 from generate.types import JsonSchema, Probability, Temperature
 
@@ -106,7 +105,7 @@ class WenxinChatParameters(ModelParameters):
         return value
 
 
-class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin, TokenMixin):
+class WenxinChat(ChatCompletionModel[WenxinChatParameters], TokenMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
@@ -166,7 +165,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], HttpMixin, TokenMixi
 
     def _completion(self, messages: Messages, parameters: WenxinChatParameters) -> ChatCompletionOutput:
         request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
+        response = self.http_client.post(request_parameters)
         return self._parse_reponse(response.json())
 
     async def _async_completion(self, messages: Messages, parameters: WenxinChatParameters) -> ChatCompletionOutput:

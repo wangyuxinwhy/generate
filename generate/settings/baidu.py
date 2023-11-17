@@ -9,3 +9,12 @@ class WenxinSettings(BaseSettings):
     secret_key: SecretStr
     comlpetion_api_base: str = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/'
     access_token_api: str = 'https://aip.baidubce.com/oauth/2.0/token'
+
+
+class BaiduCreationSettings(BaseSettings):
+    model_config = SettingsConfigDict(extra='ignore', env_prefix='baidu_creation_', env_file='.env')
+
+    api_key: SecretStr
+    secret_key: SecretStr
+    image_generation_api: str = 'https://aip.baidubce.com/rpc/2.0/ernievilg/v1/txt2imgv2'
+    access_token_api: str = 'https://aip.baidubce.com/oauth/2.0/token'

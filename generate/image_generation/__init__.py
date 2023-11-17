@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Type
 
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
-from generate.image_generation.models import OpenAIImageGeneration, OpenAIImageGenerationParameters
+from generate.image_generation.models import (
+    BaiduImageGeneration,
+    BaiduImageGenerationParameters,
+    OpenAIImageGeneration,
+    OpenAIImageGenerationParameters,
+)
 from generate.model import ModelParameters
 
 ImageGenerationModels: list[tuple[Type[ImageGenerationModel], Type[ModelParameters]]] = [
@@ -20,4 +25,6 @@ __all__ = [
     'GeneratedImage',
     'OpenAIImageGeneration',
     'OpenAIImageGenerationParameters',
+    'BaiduImageGeneration',
+    'BaiduImageGenerationParameters',
 ]

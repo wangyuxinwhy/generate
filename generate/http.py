@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Dict, Generator, Literal, Mapping, Optional, Sequence, Union
+from typing import Any, AsyncGenerator, Dict, Generator, Literal, Mapping, Optional, Sequence, Union, overload
 
 import httpx
-from httpx import Response
+from httpx import Limits, Response
 from httpx._types import ProxiesTypes
 from httpx_sse import aconnect_sse, connect_sse
 from pydantic import BaseModel
@@ -55,166 +55,181 @@ class UnexpectedResponseError(Exception):
 class HttpClient:
     def __init__(
         self,
-        retry: Union[bool, RetryStrategy] = False,
-        timeout: int | None = None,
+        retry: bool | RetryStrategy = False,
+        timeout: int | None = 60,
         proxies: ProxiesTypes | None = None,
         stream_strategy: Literal['sse', 'basic'] = 'sse',
+        limits: Limits | None = None,
     ) -> None:
-        self.timeout = timeout or 60
+        self._timeout = timeout
+        self._limits = limits or Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=600)
         if isinstance(retry, RetryStrategy):
-            self.retry_strategy = retry
+            self._retry = retry
         else:
-            self.retry_strategy = RetryStrategy() if retry else None
-        self.proxies = proxies
+            self._retry = RetryStrategy() if retry else None
+        self._proxies = proxies
         self.stream_strategy = stream_strategy
+        self.client = self.create_httpx_client(is_async=False)
+        self.async_client = self.create_httpx_client(is_async=True)
+
+    @property
+    def timeout(self) -> int | None:
+        return self._timeout
+
+    @timeout.setter
+    def timeout(self, timeout: int) -> None:
+        self._timeout = timeout
+        self.client = self.create_httpx_client(is_async=False)
+        self.async_client = self.create_httpx_client(is_async=True)
+
+    @property
+    def retry(self) -> RetryStrategy | None:
+        return self._retry
+
+    @retry.setter
+    def retry(self, retry: bool | RetryStrategy) -> None:
+        if isinstance(retry, RetryStrategy):
+            self._retry = retry
+        else:
+            self._retry = RetryStrategy() if retry else None
+        self.client = self.create_httpx_client(is_async=False)
+        self.async_client = self.create_httpx_client(is_async=True)
+
+    @property
+    def proxies(self) -> ProxiesTypes | None:
+        return self._proxies
+
+    @proxies.setter
+    def proxies(self, proxies: ProxiesTypes | None) -> None:
+        self._proxies = proxies
+        self.client = self.create_httpx_client(is_async=False)
+        self.async_client = self.create_httpx_client(is_async=True)
+
+    @property
+    def limits(self) -> Limits:
+        return self._limits
+
+    @limits.setter
+    def limits(self, limits: Limits) -> None:
+        self._limits = limits
+        self.client = self.create_httpx_client(is_async=False)
+        self.async_client = self.create_httpx_client(is_async=True)
+
+    @overload
+    def create_httpx_client(self, is_async: Literal[False]) -> httpx.Client:
+        ...
+
+    @overload
+    def create_httpx_client(self, is_async: Literal[True]) -> httpx.AsyncClient:
+        ...
+
+    def create_httpx_client(self, is_async: bool) -> httpx.AsyncClient | httpx.Client:
+        if is_async:
+            return httpx.AsyncClient(proxies=self._proxies, timeout=self._timeout, limits=self._limits)
+        return httpx.Client(proxies=self._proxies, timeout=self._timeout, limits=self._limits)
 
     def get(self, request_parameters: HttpGetKwargs) -> Response:
-        if self.retry_strategy is None:
+        if self.retry is None:
             return self._get(request_parameters)
 
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
         return retry(wait=wait, stop=stop)(self._get)(request_parameters)
 
     async def async_get(self, request_parameters: HttpGetKwargs) -> Response:
-        if self.retry_strategy is None:
+        if self.retry is None:
             return await self._async_get(request_parameters)
 
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
         return await retry(wait=wait, stop=stop)(self._async_get)(request_parameters)
 
     def post(self, request_parameters: HttpxPostKwargs) -> Response:
-        if self.retry_strategy is None:
+        if self.retry is None:
             return self._post(request_parameters)
 
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
         return retry(wait=wait, stop=stop)(self._post)(request_parameters)
 
     async def async_post(self, request_parameters: HttpxPostKwargs) -> Response:
-        if self.retry_strategy is None:
+        if self.retry is None:
             return await self._async_post(request_parameters)
 
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
         return await retry(wait=wait, stop=stop)(self._async_post)(request_parameters)
 
+    def stream_post(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
+        if self.retry is None:
+            return self._stream_post(request_parameters)
+
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
+        return retry(wait=wait, stop=stop)(self._stream_post)(request_parameters)
+
+    def async_stream_post(self, request_parameters: HttpxPostKwargs) -> AsyncGenerator[str, None]:
+        if self.retry is None:
+            return self._async_stream_post(request_parameters)
+
+        wait = wait_random_exponential(min=self.retry.min_wait_seconds, max=self.retry.max_wait_seconds)
+        stop = stop_after_attempt(self.retry.max_attempt)
+        return retry(wait=wait, stop=stop)(self._async_stream_post)(request_parameters)
+
     def _post(self, request_parameters: HttpxPostKwargs) -> Response:
-        with httpx.Client(proxies=self.proxies) as client:
-            request_parameters.update({'timeout': self.timeout})
-            logger.debug(f'POST {request_parameters}')
-            http_response = client.post(**request_parameters)  # type: ignore
+        logger.debug(f'POST {request_parameters}')
+        http_response = self.client.post(**request_parameters)  # type: ignore
         http_response.raise_for_status()
         logger.debug(f'Response {http_response}')
         return http_response
 
     async def _async_post(self, request_parameters: HttpxPostKwargs) -> Response:
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
-            request_parameters.update({'timeout': self.timeout})
-            logger.debug(f'POST {request_parameters}')
-            http_response = await client.post(**request_parameters)  # type: ignore
+        logger.debug(f'POST {request_parameters}')
+        http_response = await self.async_client.post(**request_parameters)  # type: ignore
         http_response.raise_for_status()
         logger.debug(f'Response {http_response}')
         return http_response
 
     def _get(self, request_parameters: HttpGetKwargs) -> Response:
-        with httpx.Client(proxies=self.proxies) as client:
-            request_parameters.update({'timeout': self.timeout})
-            logger.debug(f'GET {request_parameters}')
-            http_response = client.get(**request_parameters)
+        logger.debug(f'GET {request_parameters}')
+        http_response = self.client.get(**request_parameters)
         http_response.raise_for_status()
         return http_response
 
     async def _async_get(self, request_parameters: HttpGetKwargs) -> Response:
-        async with httpx.AsyncClient(proxies=self.proxies) as client:
-            request_parameters.update({'timeout': self.timeout})
-            logger.debug(f'GET {request_parameters}')
-            http_response = await client.get(**request_parameters)
+        logger.debug(f'GET {request_parameters}')
+        http_response = await self.async_client.get(**request_parameters)
         http_response.raise_for_status()
         return http_response
 
-    def stream_post(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
-        if self.retry_strategy is None:
-            return self._stream_post(request_parameters)
-
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
-        return retry(wait=wait, stop=stop)(self._stream_post)(request_parameters)
-
-    def async_stream_post(self, request_parameters: HttpxPostKwargs) -> AsyncGenerator[str, None]:
-        if self.retry_strategy is None:
-            return self._async_stream_post(request_parameters)
-
-        wait = wait_random_exponential(min=self.retry_strategy.min_wait_seconds, max=self.retry_strategy.max_wait_seconds)
-        stop = stop_after_attempt(self.retry_strategy.max_attempt)
-        return retry(wait=wait, stop=stop)(self._async_stream_post)(request_parameters)
-
     def _stream_post(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
-        request_parameters.update({'timeout': self.timeout})
         logger.debug(f'POST {request_parameters}')
         if self.stream_strategy == 'sse':
             return self._generate_data_from_sse_stream(request_parameters)
         return self._generate_data_from_basic_stream(request_parameters)
 
     def _generate_data_from_sse_stream(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
-        with httpx.Client(proxies=self.proxies) as client, connect_sse(
-            client=client, method='POST', **request_parameters
-        ) as source:
+        with connect_sse(client=self.client, method='POST', **request_parameters) as source:
             for sse in source.iter_sse():
                 yield sse.data
 
     def _generate_data_from_basic_stream(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
-        with httpx.Client(proxies=self.proxies) as client, client.stream('POST', **request_parameters) as source:
+        with self.client.stream('POST', **request_parameters) as source:
             for line in source.iter_lines():
                 yield line
 
     def _async_stream_post(self, request_parameters: HttpxPostKwargs) -> AsyncGenerator[str, None]:
-        request_parameters.update({'timeout': self.timeout})
         logger.debug(f'POST {request_parameters}')
         if self.stream_strategy == 'sse':
             return self._async_generate_data_from_sse_stream(request_parameters)
         return self._async_generate_data_from_basic_stream(request_parameters)
 
     async def _async_generate_data_from_sse_stream(self, http_parameters: HttpxPostKwargs) -> AsyncGenerator[str, None]:
-        async with httpx.AsyncClient(proxies=self.proxies) as client, aconnect_sse(
-            client=client, method='POST', **http_parameters
-        ) as source:
+        async with aconnect_sse(client=self.async_client, method='POST', **http_parameters) as source:
             async for sse in source.aiter_sse():
                 yield sse.data
 
     async def _async_generate_data_from_basic_stream(self, http_parameters: HttpxPostKwargs) -> AsyncGenerator[str, None]:
-        async with httpx.AsyncClient(proxies=self.proxies) as client, client.stream('POST', **http_parameters) as source:
+        async with self.async_client.stream('POST', **http_parameters) as source:
             async for line in source.aiter_lines():
                 yield line
-
-
-class HttpMixin:
-    http_client: HttpClient
-
-    @property
-    def timeout(self) -> int:
-        return self.http_client.timeout
-
-    @timeout.setter
-    def timeout(self, timeout: int) -> None:
-        self.http_client.timeout = timeout
-
-    @property
-    def retry(self) -> RetryStrategy | None:
-        return self.http_client.retry_strategy
-
-    @retry.setter
-    def retry(self, retry: Union[bool, RetryStrategy]) -> None:
-        if isinstance(retry, RetryStrategy):
-            self.retry_strategy = retry
-        else:
-            self.retry_strategy = RetryStrategy() if retry else None
-
-    @property
-    def proxies(self) -> ProxiesTypes | None:
-        return self.http_client.proxies
-
-    @proxies.setter
-    def proxies(self, proxies: ProxiesTypes | None) -> None:
-        self.http_client.proxies = proxies

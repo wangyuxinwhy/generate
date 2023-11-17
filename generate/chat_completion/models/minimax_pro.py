@@ -22,7 +22,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -153,7 +152,7 @@ def convert_to_minimax_pro_message(
     raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage, FunctionCallMessage))
 
 
-class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters], HttpMixin):
+class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
     model_type: ClassVar[str] = 'minimax_pro'
 
     def __init__(

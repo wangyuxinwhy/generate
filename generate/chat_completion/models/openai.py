@@ -30,7 +30,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
-    HttpMixin,
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
@@ -253,7 +252,7 @@ def parse_openai_model_reponse(response: dict[str, Any]) -> ChatCompletionOutput
         )
 
 
-class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
+class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
     model_type: ClassVar[str] = 'openai'
 
     def __init__(
@@ -288,7 +287,7 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters], HttpMixin):
 
     def _completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
         request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
+        response = self.http_client.post(request_parameters)
         return parse_openai_model_reponse(response.json())
 
     async def _async_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
