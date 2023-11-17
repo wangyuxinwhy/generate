@@ -31,9 +31,7 @@ def test_model_type_is_unique() -> None:
         {'temperature': 0.5, 'top_p': 0.85, 'max_tokens': 20},
     ],
 )
-def test_http_chat_model(
-    model_cls: Type[ChatCompletionModel], parameter_cls: Type[ModelParameters], parameters: dict
-) -> None:
+def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameter_cls: Type[ModelParameters], parameters: dict) -> None:
     model = model_cls(parameters=parameter_cls())
     prompt = '这是测试，只回复你好'
     sync_output = model.generate(prompt, **parameters)
