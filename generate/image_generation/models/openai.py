@@ -140,6 +140,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         return ImageGenerationOutput(
             model_info=self.model_info,
             images=generated_images,
+            cost=self.calculate_cost(parameters),
         )
 
     def calculate_cost(self, parameters: OpenAIImageGenerationParameters) -> float:

@@ -8,6 +8,8 @@ from generate.image_generation.models import (
     BaiduImageGenerationParameters,
     OpenAIImageGeneration,
     OpenAIImageGenerationParameters,
+    QianfanImageGeneration,
+    QianfanImageGenerationParameters,
 )
 from generate.model import ModelParameters
 
@@ -29,4 +31,6 @@ __all__ = [
     'OpenAIImageGenerationParameters',
     'BaiduImageGeneration',
     'BaiduImageGenerationParameters',
+    'QianfanImageGeneration',
+    'QianfanImageGenerationParameters',
 ]

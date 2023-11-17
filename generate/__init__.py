@@ -22,6 +22,14 @@ from generate.chat_completion import (
 from generate.chat_completion.function_call import function
 from generate.chat_engine import ChatEngine
 from generate.completion_engine import CompletionEngine
+from generate.image_generation import (
+    BaiduImageGeneration,
+    BaiduImageGenerationParameters,
+    OpenAIImageGeneration,
+    OpenAIImageGenerationParameters,
+    QianfanImageGeneration,
+    QianfanImageGenerationParameters,
+)
 from generate.text_to_speech import (
     MinimaxProSpeech,
     MinimaxProSpeechParameters,
@@ -68,6 +76,12 @@ __all__ = [
     'MinimaxSpeechParameters',
     'MinimaxProSpeech',
     'MinimaxProSpeechParameters',
+    'OpenAIImageGeneration',
+    'OpenAIImageGenerationParameters',
+    'BaiduImageGeneration',
+    'BaiduImageGenerationParameters',
+    'QianfanImageGeneration',
+    'QianfanImageGenerationParameters',
     'function',
     'load_chat_model',
     'load_speech_model',
