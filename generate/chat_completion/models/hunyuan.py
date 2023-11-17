@@ -25,7 +25,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.hunyuan import HunyuanSettings
+from generate.platforms.hunyuan import HunyuanSettings
 from generate.types import Probability, Temperature
 
 
@@ -186,7 +186,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
             'expired': timestamp + 24 * 60 * 60,
             'stream': int(stream),
         }
-        json_dict.update(parameters.model_dump(exclude_none=True))
+        json_dict.update(parameters.custom_model_dump())
         return json_dict
 
     @staticmethod

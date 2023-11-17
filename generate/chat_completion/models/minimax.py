@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Self, TypedDict, override
 
 from generate.chat_completion import ChatCompletionModel
@@ -21,7 +21,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.minimax import MinimaxSettings
+from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
 
@@ -35,8 +35,11 @@ class RoleMeta(TypedDict):
     bot_name: str
 
 
+DEFAULT_MINIMAX_SYSTEM_PROMPT = 'MM智能助理是一款由MiniMax自研的，没有调用其他产品的接口的大型语言模型。MiniMax是一家中国科技公司，一直致力于进行大模型相关的研究。'
+
+
 class MinimaxChatParameters(ModelParameters):
-    prompt: str = 'MM智能助理是一款由MiniMax自研的，没有调用其他产品的接口的大型语言模型。MiniMax是一家中国科技公司，一直致力于进行大模型相关的研究。'
+    system_prompt: str = Field(default=DEFAULT_MINIMAX_SYSTEM_PROMPT, serialization_alias='prompt')
     role_meta: RoleMeta = {'user_name': '用户', 'bot_name': 'MM智能助理'}
     beam_width: Optional[Annotated[int, Field(ge=1, le=4)]] = None
     temperature: Optional[Temperature] = None
@@ -45,12 +48,13 @@ class MinimaxChatParameters(ModelParameters):
     skip_info_mask: Optional[bool] = None
     continue_last_message: Optional[bool] = None
 
-    @field_validator('temperature', 'top_p', mode='after')
-    @classmethod
-    def zero_is_not_valid(cls, value: float) -> float:
-        if value == 0:
-            return 0.01
-        return value
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        if 'temperature' in output:
+            output['temperature'] = max(0.01, output['temperature'])
+        if 'top_p' in output:
+            output['top_p'] = max(0.01, output['top_p'])
+        return output
 
 
 def convert_to_minimax_message(message: Message) -> MinimaxMessage:
@@ -88,9 +92,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxChatParameters) -> HttpxPostKwargs:
         minimax_messages = [convert_to_minimax_message(message) for message in messages]
-        parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
-        if 'temperature' in parameters_dict:
-            parameters_dict['temperature'] = max(0.01, parameters_dict['temperature'])
+        parameters_dict = parameters.custom_model_dump()
         json_data = {
             'model': self.model,
             'messages': minimax_messages,

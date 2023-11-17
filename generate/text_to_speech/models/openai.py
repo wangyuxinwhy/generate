@@ -7,7 +7,7 @@ from typing_extensions import Annotated, Self, override
 
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters
-from generate.settings.openai import OpenAISettings
+from generate.platforms.openai import OpenAISettings
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
@@ -35,11 +35,10 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:
-        parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
         json_data = {
             'model': self.model,
             'input': text,
-            **parameters_dict,
+            **parameters.custom_model_dump(),
         }
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',

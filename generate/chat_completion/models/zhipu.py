@@ -22,7 +22,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.zhipu import ZhipuSettings
+from generate.platforms.zhipu import ZhipuSettings
 from generate.types import Probability, Temperature
 
 P = TypeVar('P', bound=ModelParameters)
@@ -39,7 +39,14 @@ class ZhipuChatParameters(ModelParameters):
     temperature: Optional[Temperature] = None
     top_p: Optional[Probability] = None
     request_id: Optional[str] = None
-    ref: Optional[ZhipuRef] = None
+    search_query: Optional[str] = None
+
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        if self.search_query:
+            output['ref'] = {'enable': True, 'search_query': self.search_query}
+        output['return_type'] = 'text'
+        return output
 
 
 class ZhipuMeta(TypedDict):
@@ -57,6 +64,11 @@ class ZhipuCharacterChatParameters(ModelParameters):
         'user_name': '陆星辰',
     }
     request_id: Optional[str] = None
+
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        output['return_type'] = 'text'
+        return output
 
 
 class ZhipuMessage(TypedDict):
@@ -121,8 +133,7 @@ class BaseZhipuChat(ChatCompletionModel[P]):
         headers = {
             'Authorization': generate_token(self.settings.api_key.get_secret_value()),
         }
-        parameters_dict = parameters.model_dump(exclude_none=True)
-        params = {'prompt': zhipu_messages, **parameters_dict}
+        params = {'prompt': zhipu_messages, **parameters.custom_model_dump()}
         return {
             'url': f'{self.settings.api_base}/{self.model}/invoke',
             'headers': headers,

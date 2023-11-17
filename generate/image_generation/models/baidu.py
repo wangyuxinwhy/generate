@@ -10,7 +10,7 @@ from typing_extensions import Annotated, Self
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters
-from generate.settings.baidu import BaiduCreationSettings
+from generate.platforms.baidu import BaiduCreationSettings
 from generate.token import TokenMixin
 
 ValidSize = Literal[
@@ -28,7 +28,7 @@ ValidSize = Literal[
 
 class BaiduImageGenerationParameters(ModelParameters):
     size: ValidSize = '1024x1024'
-    n: Optional[Annotated[int, Field(ge=1, le=10)]] = None
+    n: Optional[Annotated[int, Field(ge=1, le=8)]] = None
     reference_image: Union[HttpUrl, Base64Str, None] = None
     change_degree: Optional[Annotated[int, Field(ge=1, le=10)]] = None
 
