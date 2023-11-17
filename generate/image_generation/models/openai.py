@@ -10,7 +10,7 @@ from typing_extensions import Annotated, Self
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters
-from generate.settings.openai import OpenAISettings
+from generate.platforms.openai import OpenAISettings
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
 MAX_PROMPT_LENGTH_DALLE_2 = 1000
@@ -94,7 +94,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         json_data = {
             'model': self.model,
             'prompt': prompt,
-            **parameters.model_dump(exclude_none=True),
+            **parameters.custom_model_dump(),
         }
         return {
             'url': self.settings.api_base + 'images/generations',

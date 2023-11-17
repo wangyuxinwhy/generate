@@ -34,7 +34,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelInfo, ModelParameters
-from generate.settings.openai import OpenAISettings
+from generate.platforms.openai import OpenAISettings
 from generate.types import Probability, Temperature
 
 

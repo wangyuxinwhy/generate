@@ -14,7 +14,7 @@ from generate.chat_completion.models.openai import (
     parse_openai_model_reponse,
 )
 from generate.http import HttpClient, HttpResponse, HttpxPostKwargs
-from generate.settings.azure import AzureSettings
+from generate.platforms.azure import AzureSettings
 
 
 class AzureChat(ChatCompletionModel[OpenAIChatParameters]):

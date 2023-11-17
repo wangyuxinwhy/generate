@@ -7,7 +7,7 @@ from typing_extensions import Annotated, Self, TypedDict, override
 
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.model import ModelParameters
-from generate.settings.minimax import MinimaxSettings
+from generate.platforms.minimax import MinimaxSettings
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
@@ -52,11 +52,10 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxSpeechParameters) -> HttpxPostKwargs:
-        parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
         json_data = {
             'model': self.model,
             'text': text,
-            **parameters_dict,
+            **parameters.custom_model_dump(),
         }
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
@@ -122,11 +121,10 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxProSpeechParameters) -> HttpxPostKwargs:
-        parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
         json_data = {
             'model': self.model,
             'text': text,
-            **parameters_dict,
+            **parameters.custom_model_dump(),
         }
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',

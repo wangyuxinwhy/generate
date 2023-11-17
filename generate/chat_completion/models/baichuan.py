@@ -25,7 +25,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.baichuan import BaichuanSettings
+from generate.platforms.baichuan import BaichuanSettings
 from generate.types import Probability, Temperature
 
 
@@ -38,7 +38,7 @@ class BaichuanChatParameters(ModelParameters):
     temperature: Optional[Temperature] = None
     top_k: Optional[Annotated[int, Field(ge=0)]] = None
     top_p: Optional[Probability] = None
-    with_search_enhance: Optional[bool] = None
+    search: Optional[bool] = Field(default=None, alias='with_search_enhance')
 
 
 def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
@@ -81,7 +81,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
             'model': self.model,
             'messages': baichuan_messages,
         }
-        parameters_dict = parameters.model_dump(exclude_none=True)
+        parameters_dict = parameters.custom_model_dump()
         if parameters_dict:
             data['parameters'] = parameters_dict
         time_stamp = int(time.time())

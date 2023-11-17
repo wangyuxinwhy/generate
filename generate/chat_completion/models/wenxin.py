@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
@@ -24,8 +24,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.baidu import WenxinSettings
-from generate.token import TokenMixin
+from generate.platforms.baidu import QianfanSettings, QianfanTokenMixin
 from generate.types import JsonSchema, Probability, Temperature
 
 
@@ -89,7 +88,7 @@ class WenxinChatParameters(ModelParameters):
     functions: Optional[List[WenxinFunction]] = None
     penalty_score: Optional[Annotated[float, Field(ge=1, le=2)]] = None
     system: Optional[str] = None
-    user_id: Optional[str] = None
+    user: Optional[str] = Field(default=None, serialization_alias='user_id')
 
     @model_validator(mode='after')
     def system_function_conflict(self) -> Self:
@@ -97,27 +96,25 @@ class WenxinChatParameters(ModelParameters):
             raise ValueError('system and functions cannot be used together')
         return self
 
-    @field_validator('temperature', mode='after')
-    @classmethod
-    def temperature_gt_0(cls, value: float) -> float | Any:
-        if value == 0:
-            return 0.01
-        return value
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        if 'temperature' in output:
+            output['temperature'] = max(0.01, output['temperature'])
+        return output
 
 
-class WenxinChat(ChatCompletionModel[WenxinChatParameters], TokenMixin):
+class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
     }
-    token_refresh_days: ClassVar[int] = 20
 
     def __init__(
         self,
         model: str = 'ERNIE-Bot',
-        settings: WenxinSettings | None = None,
+        settings: QianfanSettings | None = None,
         parameters: WenxinChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
@@ -126,32 +123,12 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], TokenMixin):
 
         self._token = None
         self.model = model
-        self.settings = settings or WenxinSettings()  # type: ignore
+        self.settings = settings or QianfanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
-
-    def _get_token(self) -> str:
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        params = {
-            'grant_type': 'client_credentials',
-            'client_id': self.settings.api_key.get_secret_value(),
-            'client_secret': self.settings.secret_key.get_secret_value(),
-        }
-        response = self.http_client.post(
-            {
-                'url': self.settings.access_token_api,
-                'headers': headers,
-                'params': params,
-                'json': None,
-            }
-        )
-        response_dict = response.json()
-        if 'error' in response_dict:
-            raise UnexpectedResponseError(response_dict)
-        return response_dict['access_token']
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
         wenxin_messages: list[WenxinMessage] = [convert_to_wenxin_message(message) for message in messages]
-        parameters_dict = parameters.model_dump(exclude_none=True)
+        parameters_dict = parameters.custom_model_dump()
         if 'temperature' in parameters_dict:
             parameters_dict['temperature'] = max(0.01, parameters_dict['temperature'])
         json_data = {'messages': wenxin_messages, **parameters_dict}

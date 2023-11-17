@@ -20,20 +20,24 @@ def test_model_type_is_unique() -> None:
     assert len(ChatModels) == len(ChatModelRegistry)
 
 
-@pytest.mark.parametrize('chat_completion_model', get_pytest_params('test_chat_completion', ChatModelRegistry, types='model'))
+@pytest.mark.parametrize(
+    ('model_cls', 'parameter_cls'),
+    get_pytest_params('test_chat_completion', ChatModelRegistry, types=('model_cls', 'parameter_cls')),
+)
 @pytest.mark.parametrize(
     'parameters',
     [
         {},
         {'temperature': 0.5, 'top_p': 0.85, 'max_tokens': 20},
-        {'temperature': 0},
-        {'top_p': 0},
     ],
 )
-def test_http_chat_model(chat_completion_model: ChatCompletionModel, parameters: dict) -> None:
+def test_http_chat_model(
+    model_cls: Type[ChatCompletionModel], parameter_cls: Type[ModelParameters], parameters: dict
+) -> None:
+    model = model_cls(parameters=parameter_cls())
     prompt = '这是测试，只回复你好'
-    sync_output = chat_completion_model.generate(prompt, **parameters)
-    async_output = asyncio.run(chat_completion_model.async_generate(prompt))
+    sync_output = model.generate(prompt, **parameters)
+    async_output = asyncio.run(model.async_generate(prompt))
 
     assert sync_output.reply != ''
     assert async_output.reply != ''

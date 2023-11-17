@@ -5,7 +5,7 @@ import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import NotRequired, Self, TypedDict, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -21,7 +21,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.bailian import BailianSettings
+from generate.platforms.bailian import BailianSettings
 from generate.token import TokenMixin
 from generate.types import Probability
 
@@ -59,8 +59,23 @@ class BailianChatParameters(ModelParameters):
     top_p: Optional[Probability] = Field(default=None, alias='TopP')
     has_thoughts: Optional[bool] = Field(default=None, alias='HasThoughts')
     doc_reference_type: Literal['indexed', 'simpole'] = Field(default=None, alias='DocReferenceType')
-    parameters: Optional[BailianParameter] = Field(default=None, alias='Parameters')
+    top_k: Optional[Annotated[int, Field(ge=0)]] = None
+    seed: Optional[int] = None
+    use_raw_prompt: Optional[bool] = None
     doc_tag_ids: Optional[List[int]] = Field(default=None, alias='DocTagIds')
+
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        parameters = {}
+        if 'top_k' in output:
+            parameters['TopK'] = output.pop('top_k')
+        if 'seed' in output:
+            parameters['Seed'] = output.pop('seed')
+        if 'use_raw_prompt' in output:
+            parameters['UseRawPrompt'] = output.pop('use_raw_prompt')
+        if parameters:
+            output['Parameters'] = parameters
+        return output
 
 
 class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
@@ -99,7 +114,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         prompt = messages[-1].content
         history = convert_to_bailian_chat_qa_pair(messages[:-1])
 
-        json_dict = parameters.model_dump(exclude_none=True, by_alias=True)
+        json_dict = parameters.custom_model_dump()
         headers = {
             'Content-Type': 'application/json;charset=UTF-8',
             'Authorization': f'Bearer {self.token}',

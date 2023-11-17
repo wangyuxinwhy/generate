@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
-from pydantic import Field, PositiveInt, field_validator, model_validator
+from pydantic import Field, PositiveInt, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
 
 from generate.chat_completion.base import ChatCompletionModel
@@ -26,7 +26,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters
-from generate.settings.minimax import MinimaxSettings
+from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
 
@@ -73,6 +73,7 @@ class MinimaxProChatParameters(ModelParameters):
     mask_sensitive_info: Optional[bool] = None
     sample_messages: Optional[List[MinimaxProMessage]] = None
     functions: Optional[List[FunctionJsonSchema]] = None
+    search: Optional[bool] = None
     plugins: Optional[List[str]] = None
 
     @model_validator(mode='after')
@@ -81,13 +82,6 @@ class MinimaxProChatParameters(ModelParameters):
         if (sender_name := self.reply_constraints['sender_name']) not in names:
             raise ValueError(f'reply_constraints sender_name {sender_name} must be in bot_setting names: {names}')
         return self
-
-    @field_validator('temperature', 'top_p', mode='after')
-    @classmethod
-    def zero_is_not_valid(cls, value: float) -> float:
-        if value == 0:
-            return 0.01
-        return value
 
     @property
     def bot_name(self) -> str | None:
@@ -107,6 +101,17 @@ class MinimaxProChatParameters(ModelParameters):
             self.reply_constraints['sender_name'] = bot_name
         else:
             raise ValueError('set bot_name is not supported when bot_setting has more than one bot')
+
+    def custom_model_dump(self) -> dict[str, Any]:
+        output = super().custom_model_dump()
+        if 'temperature' in output:
+            output['temperature'] = max(0.01, output['temperature'])
+        if 'top_p' in output:
+            output['top_p'] = max(0.01, output['top_p'])
+        if 'search' in output:
+            original_plugins = output.get('plugins', [])
+            output['plugins'] = list(set(original_plugins + ['plugin_web_search']))
+        return output
 
 
 def convert_to_minimax_pro_message(
@@ -177,8 +182,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
             )
             for message in messages
         ]
-        parameters_dict = parameters.model_dump(exclude_none=True, by_alias=True)
-        json_data = {'model': self.model, 'messages': minimax_pro_messages, **parameters_dict}
+        json_data = {'model': self.model, 'messages': minimax_pro_messages, **parameters.custom_model_dump()}
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
