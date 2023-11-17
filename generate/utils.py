@@ -8,7 +8,7 @@ from generate.image_generation import ImageGenerationModel, ImageGenerationModel
 from generate.text_to_speech import SpeechModelRegistry, TextToSpeechModel, TextToSpeechOutput
 
 
-def load_chat_model(model_id: str, **kwargs: Any) -> ChatCompletionModel:
+def load_chat_model(model_id: str, **kwargs: Any) -> ChatCompletionModel[Any]:
     if '/' not in model_id:
         model_type = model_id
         return ChatModelRegistry[model_type][0](**kwargs)  # type: ignore
@@ -17,7 +17,7 @@ def load_chat_model(model_id: str, **kwargs: Any) -> ChatCompletionModel:
     return model_cls.from_name(name, **kwargs)
 
 
-def load_speech_model(speech_model_id: str, **kwargs: Any) -> TextToSpeechModel:
+def load_speech_model(speech_model_id: str, **kwargs: Any) -> TextToSpeechModel[Any]:
     if '/' not in speech_model_id:
         model_type = speech_model_id
         return SpeechModelRegistry[model_type][0](**kwargs)  # type: ignore
@@ -26,7 +26,7 @@ def load_speech_model(speech_model_id: str, **kwargs: Any) -> TextToSpeechModel:
     return model_cls.from_name(name, **kwargs)
 
 
-def load_image_generation_model(model_id: str, **kwargs: Any) -> ImageGenerationModel:
+def load_image_generation_model(model_id: str, **kwargs: Any) -> ImageGenerationModel[Any]:
     if '/' not in model_id:
         model_type = model_id
         return ImageGenerationModelRegistry[model_type][0](**kwargs)  # type: ignore

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Callable, Generic, TypeVar
+from typing import Any, Callable, Dict, Generic, TypeVar, cast
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
@@ -20,7 +20,7 @@ class FunctionJsonSchema(TypedDict):
     description: NotRequired[str]
 
 
-def get_json_schema(function: Callable) -> FunctionJsonSchema:
+def get_json_schema(function: Callable[..., Any]) -> FunctionJsonSchema:
     function_name = function.__name__
     docstring = parse(text=function.__doc__ or '')
     parameters = TypeAdapter(function).json_schema()
@@ -71,7 +71,7 @@ class function(Generic[P, T]):  # noqa: N801
         raise ValueError(f'message is not a function call: {message}')
 
 
-def recusive_remove(dictionary: dict, remove_key: str) -> None:
+def recusive_remove(obj: Any, remove_key: str) -> None:
     """
     Recursively removes a key from a dictionary and all its nested dictionaries.
 
@@ -82,9 +82,10 @@ def recusive_remove(dictionary: dict, remove_key: str) -> None:
     Returns:
         None
     """
-    if isinstance(dictionary, dict):
-        for key in list(dictionary.keys()):
+    if isinstance(obj, dict):
+        obj = cast(Dict[str, Any], obj)
+        for key in list(obj.keys()):
             if key == remove_key:
-                del dictionary[key]
+                del obj[key]
             else:
-                recusive_remove(dictionary[key], remove_key)
+                recusive_remove(obj[key], remove_key)

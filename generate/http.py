@@ -48,7 +48,7 @@ class UnexpectedResponseError(Exception):
         response (dict): The response from the server.
     """
 
-    def __init__(self, response: dict, *args: Any) -> None:
+    def __init__(self, response: dict[str, Any], *args: Any) -> None:
         super().__init__(response, *args)
 
 

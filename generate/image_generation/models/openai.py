@@ -118,7 +118,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         self, prompt: str, parameters: OpenAIImageGenerationParameters, response: Response
     ) -> ImageGenerationOutput:
         response_data = response.json()
-        generated_images = []
+        generated_images: list[GeneratedImage] = []
         for image_data in response_data['data']:
             image_prompt = image_data.get('revised_prompt') or prompt
             url = image_data.get('url')

@@ -14,11 +14,9 @@ from generate.chat_completion.message import (
     FunctionCall,
     FunctionCallMessage,
     FunctionMessage,
-    ImageUrlPart,
     Message,
     Messages,
     MessageTypeError,
-    MessageValueError,
     SystemMessage,
     TextPart,
     ToolCall,
@@ -65,7 +63,7 @@ class OpenAIToolCall(TypedDict):
 
 class OpenAIMessage(TypedDict):
     role: str
-    content: Union[str, None, List[Dict]]
+    content: Union[str, None, List[Dict[str, Any]]]
     name: NotRequired[str]
     function_call: NotRequired[OpenAIFunctionCall]
     tool_call_id: NotRequired[str]
@@ -101,12 +99,12 @@ def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
 
 
 def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMessage:
-    content = []
+    content: list[dict[str, Any]] = []
     for part in message.content:
         if isinstance(part, TextPart):
             content.append({'type': 'text', 'text': part.text})
-        elif isinstance(part, ImageUrlPart):
-            image_url_part_dict = {
+        else:
+            image_url_part_dict: dict[str, Any] = {
                 'type': 'image_url',
                 'image_url': {
                     'url': part.image_url.url,
@@ -115,9 +113,6 @@ def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMess
             if part.image_url.detail:
                 image_url_part_dict['image_url']['detail'] = part.image_url.detail
             content.append(image_url_part_dict)
-        else:
-            raise MessageValueError(message, f'OpenAI does not support {type(part)} ')
-
     return {
         'role': 'user',
         'content': content,

@@ -8,7 +8,7 @@ from generate.token import TokenMixin
 
 
 class QianfanSettings(BaseSettings):
-    model_config = SettingsConfigDict(extra='ignore', env_prefix='wenxin_', env_file='.env')
+    model_config = SettingsConfigDict(extra='ignore', env_prefix='qianfan_', env_file='.env')
 
     api_key: SecretStr
     secret_key: SecretStr

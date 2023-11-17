@@ -33,7 +33,7 @@ class BaiduImageGenerationParameters(ModelParameters):
     change_degree: Optional[Annotated[int, Field(ge=1, le=10)]] = None
 
     def custom_model_dump(self) -> dict[str, Any]:
-        output_data = {}
+        output_data: dict[str, Any] = {}
         width, height = self.size.split('x')
         output_data['width'] = int(width)
         output_data['height'] = int(height)
@@ -146,7 +146,7 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
         if task_status == 'FAILED':
             raise UnexpectedResponseError(task_info, 'Task failed')
         if task_status == 'SUCCESS':
-            image_urls = []
+            image_urls: list[str] = []
             for sub_result in task_info['data']['sub_task_result_list']:
                 image_url = sub_result['final_image_list'][0]['img_url']
                 image_urls.append(image_url)
@@ -155,7 +155,7 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
 
     def _get_image(self, task_id: str) -> list[str]:
         start_time = time.time()
-        task_info = {}
+        task_info: dict[str, Any] = {}
         while (time.time() - start_time) < self.task_timeout:
             response = self.http_client.post(self._get_image_request_parameters(task_id))
             task_info = response.json()
@@ -167,7 +167,7 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
 
     async def _async_get_image(self, task_id: str) -> list[str]:
         start_time = time.time()
-        task_info = {}
+        task_info: dict[str, Any] = {}
         while (time.time() - start_time) < self.task_timeout:
             response = await self.http_client.async_post(self._get_image_request_parameters(task_id))
             task_info = response.json()

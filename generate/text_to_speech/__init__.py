@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Type
+from typing import Any, Type
 
 from generate.model import ModelParameters
 from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
@@ -13,13 +13,13 @@ from generate.text_to_speech.models import (
     OpenAISpeechParameters,
 )
 
-SpeechModels: list[tuple[Type[TextToSpeechModel], Type[ModelParameters]]] = [
+SpeechModels: list[tuple[Type[TextToSpeechModel[Any]], Type[ModelParameters]]] = [
     (MinimaxSpeech, MinimaxSpeechParameters),
     (MinimaxProSpeech, MinimaxProSpeechParameters),
     (OpenAISpeech, OpenAISpeechParameters),
 ]
 
-SpeechModelRegistry: dict[str, tuple[Type[TextToSpeechModel], Type[ModelParameters]]] = {
+SpeechModelRegistry: dict[str, tuple[Type[TextToSpeechModel[Any]], Type[ModelParameters]]] = {
     model_cls.model_type: (model_cls, parameter_cls) for model_cls, parameter_cls in SpeechModels
 }
 

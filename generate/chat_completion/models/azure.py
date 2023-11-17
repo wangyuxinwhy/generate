@@ -73,7 +73,7 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
         raise NotImplementedError('Azure does not support streaming')
 
     @override
-    async def _async_stream_completion(
+    def _async_stream_completion(
         self, messages: Messages, parameters: OpenAIChatParameters
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         raise NotImplementedError('Azure does not support streaming')

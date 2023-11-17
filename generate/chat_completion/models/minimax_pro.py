@@ -146,8 +146,6 @@ def convert_to_minimax_pro_message(
         }
 
     if isinstance(message, FunctionMessage):
-        if message.name is None:
-            raise MessageValueError(message, 'function name is required')
         return {
             'sender_type': 'FUNCTION',
             'sender_name': message.name,

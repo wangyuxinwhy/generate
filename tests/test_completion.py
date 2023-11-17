@@ -78,7 +78,7 @@ def test_sync_completion() -> None:
     assert len(results) == len(prompts)
 
 
-async def async_helper(client: CompletionEngine, prompts: Prompts) -> list[ChatCompletionOutput]:
+async def async_helper(client: CompletionEngine[Any], prompts: Prompts) -> list[ChatCompletionOutput]:
     return [result async for result in client.async_run(prompts)]
 
 

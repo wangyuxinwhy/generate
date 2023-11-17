@@ -29,12 +29,12 @@ class TextToSpeechModel(GenerateModel[P, str, TextToSpeechOutput], ABC):
     async def _async_text_to_speech(self, text: str, parameters: P) -> TextToSpeechOutput:
         ...
 
-    def generate(self, text: str, **override_parameters: Any) -> TextToSpeechOutput:
+    def generate(self, prompt: str, **override_parameters: Any) -> TextToSpeechOutput:
         parameters = self._merge_parameters(**override_parameters)
-        logger.debug(f'{text=}, {parameters=}')
-        return self._text_to_speech(text, parameters)
+        logger.debug(f'{prompt=}, {parameters=}')
+        return self._text_to_speech(prompt, parameters)
 
-    async def async_generate(self, text: str, **override_parameters: Any) -> TextToSpeechOutput:
+    async def async_generate(self, prompt: str, **override_parameters: Any) -> TextToSpeechOutput:
         parameters = self._merge_parameters(**override_parameters)
-        logger.debug(f'{text=}, {parameters=}')
-        return await self._async_text_to_speech(text, parameters)
+        logger.debug(f'{prompt=}, {parameters=}')
+        return await self._async_text_to_speech(prompt, parameters)
