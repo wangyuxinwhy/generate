@@ -43,7 +43,7 @@ def generate_default_request_id() -> str:
 
 
 def convert_to_bailian_chat_qa_pair(messages: Messages) -> list[BailianChatQAPair]:
-    pairs = []
+    pairs: list[BailianChatQAPair] = []
     for user_message, assistant_message in zip(messages[::2], messages[1::2]):
         if not isinstance(user_message, UserMessage):
             raise MessageTypeError(user_message, allowed_message_type=(UserMessage,))

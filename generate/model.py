@@ -30,7 +30,7 @@ class ModelOutput(BaseModel):
     extra: Dict[str, Any] = {}
 
     @model_serializer(mode='wrap')
-    def ser_model(self, handler) -> Any:  # noqa: ANN001
+    def ser_model(self, handler: Any) -> Any:  # noqa: ANN001
         output = handler(self)
         output.pop('debug')
         return output

@@ -17,7 +17,7 @@ class TimeberWeight(TypedDict):
 
 
 class MinimaxSpeechParameters(ModelParameters):
-    voice_id: Optional[str] = None
+    voice: Optional[str] = Field(default=None, alias='voice_id')
     speed: Annotated[Optional[float], Field(ge=0.5, le=2.0)] = None
     vol: Annotated[Optional[float], Field(gt=0, le=10)] = None
     pitch: Annotated[Optional[float], Field(ge=-12, le=12)] = None
@@ -25,8 +25,8 @@ class MinimaxSpeechParameters(ModelParameters):
 
     @model_validator(mode='after')
     def voice_exists(self) -> Self:
-        if self.voice_id is None and self.timber_weights is None:
-            self.voice_id = 'male-qn-qingse'
+        if self.voice is None and self.timber_weights is None:
+            self.voice = 'male-qn-qingse'
         return self
 
 

@@ -12,7 +12,7 @@ from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
 
 
 class OpenAISpeechParameters(ModelParameters):
-    voice_id: Annotated[str, Field(serialization_alias='voice')] = 'alloy'
+    voice: str = 'alloy'
     response_format: Optional[Literal['mp3', 'aac', 'opus', 'flac']] = None
     speed: Annotated[Optional[float], Field(ge=0.25, le=4.0)] = None
 

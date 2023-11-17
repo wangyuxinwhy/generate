@@ -7,8 +7,6 @@ from typing_extensions import Annotated
 
 
 class Message(BaseModel):
-    role: str
-    name: Optional[str] = None
     content: Any
 
 
@@ -19,6 +17,7 @@ class SystemMessage(Message):
 
 class UserMessage(Message):
     role: Literal['user'] = 'user'
+    name: Optional[str] = None
     content_type: Literal['text'] = 'text'
     content: str
 
@@ -43,6 +42,7 @@ UserPartTypes = Annotated[Union[TextPart, ImageUrlPart], Field(discriminator='ty
 
 class UserMultiPartMessage(Message):
     role: Literal['user'] = 'user'
+    name: Optional[str] = None
     content_type: Literal['multi_part'] = 'multi_part'
     content: List[UserPartTypes]
 
@@ -62,6 +62,7 @@ class ToolMessage(Message):
 
 class AssistantMessage(Message):
     role: Literal['assistant'] = 'assistant'
+    name: Optional[str] = None
     content_type: Literal['text'] = 'text'
     content: str
 
@@ -74,6 +75,7 @@ class FunctionCall(BaseModel):
 
 class FunctionCallMessage(Message):
     role: Literal['assistant'] = 'assistant'
+    name: Optional[str] = None
     content_type: Literal['function_call'] = 'function_call'
     content: FunctionCall
 
@@ -86,6 +88,7 @@ class ToolCall(BaseModel):
 
 class ToolCallsMessage(Message):
     role: Literal['assistant'] = 'assistant'
+    name: Optional[str] = None
     content_type: Literal['tool_calls'] = 'tool_calls'
     content: List[ToolCall]
 

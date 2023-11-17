@@ -55,15 +55,11 @@ def infer_assistant_message_content_type(message_content: Any) -> Literal['text'
         return 'text'
     if isinstance(obj, FunctionCall):
         return 'function_call'
-    if isinstance(obj, list):
-        return 'tool_calls'
-    raise ValueError(f'Unknown content type: {obj}')
+    return 'tool_calls'
 
 
 def infer_user_message_content_type(message_content: Any) -> Literal['text', 'multi_part']:
     obj = user_content_validator.validate_python(message_content)
     if isinstance(obj, str):
         return 'text'
-    if isinstance(obj, list):
-        return 'multi_part'
-    raise ValueError(f'Unknown content type: {obj}')
+    return 'multi_part'

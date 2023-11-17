@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Type
+from typing import Any, Type
 
 import pytest
 
@@ -31,7 +31,9 @@ def test_model_type_is_unique() -> None:
         {'temperature': 0.5, 'top_p': 0.85, 'max_tokens': 20},
     ],
 )
-def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameter_cls: Type[ModelParameters], parameters: dict) -> None:
+def test_http_chat_model(
+    model_cls: Type[ChatCompletionModel[Any]], parameter_cls: Type[ModelParameters], parameters: dict[str, Any]
+) -> None:
     model = model_cls(parameters=parameter_cls())
     prompt = '这是测试，只回复你好'
     sync_output = model.generate(prompt, **parameters)
@@ -45,7 +47,7 @@ def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameter_cls: Ty
     'chat_completion_model',
     get_pytest_params('test_stream_chat_completion', ChatModelRegistry, types='model', exclude=['azure']),
 )
-def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> None:
+def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel[Any]) -> None:
     prompt = '这是测试，只回复你好'
     sync_output = list(chat_completion_model.stream_generate(prompt))[-1]
     async_output = asyncio.run(async_stream_helper(chat_completion_model, prompt))
@@ -55,7 +57,7 @@ def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> N
     assert async_output.reply != ''
 
 
-async def async_stream_helper(model: ChatCompletionModel, prompt: Prompt) -> ChatCompletionStreamOutput:
+async def async_stream_helper(model: ChatCompletionModel[Any], prompt: Prompt) -> ChatCompletionStreamOutput:
     async for output in model.async_stream_generate(prompt):
         if output.stream.control == 'finish':
             return output
@@ -69,7 +71,7 @@ async def async_stream_helper(model: ChatCompletionModel, prompt: Prompt) -> Cha
     ),
 )
 def test_init_chat_parameters(
-    model_cls: Type[ChatCompletionModel], parameters: ModelParameters, temperature: float = 0.8
+    model_cls: Type[ChatCompletionModel[Any]], parameters: ModelParameters, temperature: float = 0.8
 ) -> None:
     parameters.temperature = temperature
 

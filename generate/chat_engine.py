@@ -25,7 +25,7 @@ P = TypeVar('P', bound=ModelParameters)
 
 
 class ChatEngineKwargs(TypedDict, total=False):
-    functions: Union[List[function], dict[str, Callable], None]
+    functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None]
     call_raise_error: bool
     max_calls_per_turn: int
 
@@ -51,7 +51,7 @@ class ChatEngine(Generic[P]):
     def __init__(
         self,
         chat_model: ChatCompletionModel[P],
-        functions: Union[List[function], dict[str, Callable], None] = None,
+        functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None] = None,
         call_raise_error: bool = False,
         max_calls_per_turn: int = 5,
         stream: bool | Literal['auto'] = 'auto',
@@ -60,10 +60,8 @@ class ChatEngine(Generic[P]):
         self._chat_model = chat_model
 
         if isinstance(functions, list):
-            self._function_map = {}
+            self._function_map: dict[str, Callable[..., Any]] = {}
             for i in functions:
-                if not isinstance(i, function):
-                    raise TypeError(f'Invalid function type: {type(i)}')
                 self._function_map[i.json_schema['name']] = i
         elif isinstance(functions, dict):
             self._function_map = functions
@@ -127,7 +125,7 @@ class ChatEngine(Generic[P]):
         self.history.extend(model_output.messages)
         if self.printer:
             for message in model_output.messages:
-                if self.stream and message.role == 'assistant':
+                if self.stream and isinstance(message, AssistantMessage):
                     continue
                 self.printer.print_message(message)
 

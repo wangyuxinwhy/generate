@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Type
+from typing import Any, Type, TypeVar
 
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.image_generation.models import (
@@ -8,14 +8,18 @@ from generate.image_generation.models import (
     BaiduImageGenerationParameters,
     OpenAIImageGeneration,
     OpenAIImageGenerationParameters,
+    QianfanImageGeneration,
+    QianfanImageGenerationParameters,
 )
 from generate.model import ModelParameters
 
-ImageGenerationModels: list[tuple[Type[ImageGenerationModel], Type[ModelParameters]]] = [
+P = TypeVar('P', bound=ModelParameters)
+
+ImageGenerationModels: list[tuple[Type[ImageGenerationModel[Any]], Type[ModelParameters]]] = [
     (OpenAIImageGeneration, OpenAIImageGenerationParameters),
 ]
 
-ImageGenerationModelRegistry: dict[str, tuple[Type[ImageGenerationModel], Type[ModelParameters]]] = {
+ImageGenerationModelRegistry: dict[str, tuple[Type[ImageGenerationModel[Any]], Type[ModelParameters]]] = {
     model_cls.model_type: (model_cls, parameter_cls) for model_cls, parameter_cls in ImageGenerationModels
 }
 
@@ -27,4 +31,6 @@ __all__ = [
     'OpenAIImageGenerationParameters',
     'BaiduImageGeneration',
     'BaiduImageGenerationParameters',
+    'QianfanImageGeneration',
+    'QianfanImageGenerationParameters',
 ]

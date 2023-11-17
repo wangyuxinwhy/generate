@@ -31,7 +31,7 @@ class QianfanImageGenerationParameters(ModelParameters):
 
 
 class QianfanImageGeneration(ImageGenerationModel[QianfanImageGenerationParameters], QianfanTokenMixin):
-    model_type = 'baidu'
+    model_type = 'qianfan'
 
     def __init__(
         self,

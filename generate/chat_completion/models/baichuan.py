@@ -77,7 +77,7 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
 
     def _get_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
         baichuan_messages: list[BaichuanMessage] = [convert_to_baichuan_message(message) for message in messages]
-        data = {
+        data: dict[str, Any] = {
             'model': self.model,
             'messages': baichuan_messages,
         }
