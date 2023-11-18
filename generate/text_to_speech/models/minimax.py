@@ -48,7 +48,7 @@ class MinimaxProSpeechParametersDict(MinimaxSpeechParametersDict, total=False):
     bitrate: Optional[Literal[32000, 64000, 128000]]
 
 
-class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
+class MinimaxSpeech(TextToSpeechModel):
     model_type = 'minimax'
 
     def __init__(
@@ -58,9 +58,8 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         parameters: MinimaxSpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or MinimaxSpeechParameters()
-        super().__init__(parameters)
         self.model = model
+        self.parameters = parameters or MinimaxSpeechParameters()
         self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -82,7 +81,7 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         }
 
     def generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -93,7 +92,7 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         )
 
     async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -119,18 +118,17 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
         return character_count / 1000
 
 
-class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
+class MinimaxProSpeech(TextToSpeechModel):
     model_type = 'minimax_pro'
 
     def __init__(
         self,
         model: str = 'speech-01',
-        settings: MinimaxSettings | None = None,
         parameters: MinimaxProSpeechParameters | None = None,
+        settings: MinimaxSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or MinimaxProSpeechParameters()
-        super().__init__(parameters)
+        self.parameters = parameters or MinimaxProSpeechParameters()
         self.model = model
         self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
@@ -154,7 +152,7 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         response_data = response.json()
@@ -173,7 +171,7 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
 
     @override
     async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         response_data = response.json()

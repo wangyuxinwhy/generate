@@ -55,20 +55,18 @@ class OpenAIImageGenerationParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters]):
+class OpenAIImageGeneration(ImageGenerationModel):
     model_type = 'openai'
 
     def __init__(
         self,
         model: str = 'dall-e-3',
-        settings: OpenAISettings | None = None,
         parameters: OpenAIImageGenerationParameters | None = None,
+        settings: OpenAISettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAIImageGenerationParameters()
-        super().__init__(parameters)
-
         self.model = model
+        self.parameters = parameters or OpenAIImageGenerationParameters()
         self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self._check_parameters()
@@ -115,7 +113,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
     @override
     def generate(self, prompt: str, **kwargs: Unpack[OpenAIImageGenerationParametersDict]) -> ImageGenerationOutput:
         self._check_prompt(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, parameters, response)
@@ -123,7 +121,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
     @override
     async def async_generate(self, prompt: str, **kwargs: Unpack[OpenAIImageGenerationParametersDict]) -> ImageGenerationOutput:
         self._check_prompt(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, parameters, response)

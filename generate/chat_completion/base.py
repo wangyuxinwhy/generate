@@ -2,19 +2,18 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, ClassVar, Iterator, TypeVar
+from typing import AsyncIterator, ClassVar, Iterator
 
 from typing_extensions import Unpack
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.model import GenerateModel, ModelParameters, ModelParametersDict
+from generate.model import GenerateModel, ModelParametersDict
 
-P = TypeVar('P', bound=ModelParameters)
 logger = logging.getLogger(__name__)
 
 
-class ChatCompletionModel(GenerateModel[P, Prompt, ChatCompletionOutput], ABC):
+class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
     model_task: ClassVar[str] = 'chat_completion'
     model_type: ClassVar[str]
 

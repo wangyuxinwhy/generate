@@ -20,6 +20,7 @@ from generate.chat_completion.model_output import ChatCompletionOutput, ChatComp
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
@@ -86,7 +87,7 @@ def convert_to_minimax_message(message: Message) -> MinimaxMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
+class MinimaxChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'minimax'
 
     def __init__(
@@ -96,10 +97,8 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
         parameters: MinimaxChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or MinimaxChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters or MinimaxChatParameters()
         self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -125,7 +124,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -133,12 +132,12 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
             messages = [AssistantMessage(content=response['choices'][0]['text'])]
             return ChatCompletionOutput(
@@ -167,7 +166,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -188,7 +187,7 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,

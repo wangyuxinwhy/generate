@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator
 
 from typing_extensions import Self, Unpack
 
@@ -25,28 +25,27 @@ class FakeChatParametersDict(ModelParametersDict, total=False):
     prefix: str
 
 
-class FakeChat(ChatCompletionModel[FakeChatParameters]):
+class FakeChat(ChatCompletionModel):
     model_type = 'test'
 
-    def __init__(self, default_parameters: FakeChatParameters | None = None) -> None:
-        default_parameters = default_parameters or FakeChatParameters()
-        super().__init__(default_parameters)
+    def __init__(self, parameters: FakeChatParameters | None = None) -> None:
+        self.parameters = parameters or FakeChatParameters()
 
     def generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
     def stream_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -62,7 +61,7 @@ class FakeChat(ChatCompletionModel[FakeChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -79,7 +78,7 @@ class FakeChat(ChatCompletionModel[FakeChatParameters]):
         return 'TestModel'
 
     @classmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
+    def from_name(cls, name: str) -> Self:
         return cls()
 
 
@@ -98,7 +97,7 @@ def test_sync_completion() -> None:
     assert len(results) == len(prompts)
 
 
-async def async_helper(client: CompletionEngine[Any], prompts: Prompts) -> list[ChatCompletionOutput]:
+async def async_helper(client: CompletionEngine, prompts: Prompts) -> list[ChatCompletionOutput]:
     return [result async for result in client.async_run(prompts)]
 
 

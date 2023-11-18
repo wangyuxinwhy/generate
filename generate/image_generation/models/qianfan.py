@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import base64
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack, override
 
-from generate.http import HttpClient, HttpxPostKwargs
+from generate.http import HttpClient, HttpxPostKwargs, ResponseValue
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenMixin
@@ -39,26 +39,24 @@ class QianfanImageGenerationParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class QianfanImageGeneration(ImageGenerationModel[QianfanImageGenerationParameters], QianfanTokenMixin):
+class QianfanImageGeneration(ImageGenerationModel, QianfanTokenMixin):
     model_type = 'qianfan'
 
     def __init__(
         self,
         model: str = 'sd_xl',
-        settings: QianfanSettings | None = None,
         parameters: QianfanImageGenerationParameters | None = None,
+        settings: QianfanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or QianfanImageGenerationParameters()
-        super().__init__(parameters)
-
         self.model = model
+        self.parameters = parameters or QianfanImageGenerationParameters()
         self.settings = settings or QianfanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[QianfanImageGenerationParametersDict]) -> ImageGenerationOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, response.json())
@@ -67,7 +65,7 @@ class QianfanImageGeneration(ImageGenerationModel[QianfanImageGenerationParamete
     async def async_generate(
         self, prompt: str, **kwargs: Unpack[QianfanImageGenerationParametersDict]
     ) -> ImageGenerationOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, response.json())
@@ -87,9 +85,9 @@ class QianfanImageGeneration(ImageGenerationModel[QianfanImageGenerationParamete
             },
         }
 
-    def _construct_model_output(self, prompt: str, response_data: dict[str, Any]) -> ImageGenerationOutput:
+    def _construct_model_output(self, prompt: str, response_value: ResponseValue) -> ImageGenerationOutput:
         images: list[GeneratedImage] = []
-        for image_data in response_data['data']:
+        for image_data in response_value['data']:
             image = GeneratedImage(
                 prompt=prompt,
                 image_format='png',
@@ -100,8 +98,8 @@ class QianfanImageGeneration(ImageGenerationModel[QianfanImageGenerationParamete
             model_info=self.model_info,
             images=images,
             extra={
-                'usage': response_data['usage'],
-                'task_id': response_data['id'],
+                'usage': response_value['usage'],
+                'task_id': response_value['id'],
             },
         )
 

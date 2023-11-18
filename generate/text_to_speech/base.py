@@ -14,5 +14,5 @@ class TextToSpeechOutput(ModelOutput):
     cost: Optional[float] = None
 
 
-class TextToSpeechModel(GenerateModel[P, str, TextToSpeechOutput], ABC):
+class TextToSpeechModel(GenerateModel[str, TextToSpeechOutput], ABC):
     model_task: ClassVar[str] = 'text_to_speech'

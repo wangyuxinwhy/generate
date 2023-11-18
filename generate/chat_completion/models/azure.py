@@ -18,20 +18,18 @@ from generate.http import HttpClient, HttpxPostKwargs
 from generate.platforms.azure import AzureSettings
 
 
-class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
+class AzureChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'azure'
 
     def __init__(
         self,
         model: str | None = None,
-        settings: AzureSettings | None = None,
         parameters: OpenAIChatParameters | None = None,
+        settings: AzureSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAIChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model or os.environ['AZURE_CHAT_API_ENGINE']
+        self.parameters = parameters or OpenAIChatParameters()
         self.settings = settings or AzureSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -55,7 +53,7 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
         output = parse_openai_model_reponse(response.json())
@@ -65,7 +63,7 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         output = parse_openai_model_reponse(response.json())

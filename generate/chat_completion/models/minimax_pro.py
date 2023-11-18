@@ -25,6 +25,7 @@ from generate.chat_completion.model_output import ChatCompletionOutput, ChatComp
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
@@ -170,20 +171,18 @@ def convert_to_minimax_pro_message(
     raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage, FunctionCallMessage))
 
 
-class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
+class MinimaxProChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'minimax_pro'
 
     def __init__(
         self,
         model: str = 'abab5.5-chat',
-        settings: MinimaxSettings | None = None,
         parameters: MinimaxProChatParameters | None = None,
+        settings: MinimaxSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or MinimaxProChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters or MinimaxProChatParameters()
         self.default_user_name = '用户'
         self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
@@ -210,7 +209,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -218,12 +217,12 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
             messages = [self._convert_to_message(i) for i in response['choices'][0]['messages']]
             finish_reason = response['choices'][0]['finish_reason']
@@ -253,7 +252,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -270,7 +269,7 @@ class MinimaxProChat(ChatCompletionModel[MinimaxProChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,

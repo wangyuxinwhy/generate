@@ -23,6 +23,7 @@ from generate.chat_completion.model_output import ChatCompletionOutput, ChatComp
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
@@ -114,7 +115,7 @@ class WenxinChatParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
+class WenxinChat(ChatCompletionModel, QianfanTokenMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
@@ -125,17 +126,16 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
     def __init__(
         self,
         model: str = 'ERNIE-Bot',
-        settings: QianfanSettings | None = None,
         parameters: WenxinChatParameters | None = None,
+        settings: QianfanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or WenxinChatParameters()
-        super().__init__(parameters=parameters)
-
-        self._token = None
         self.model = model
+        self.parameters = parameters or WenxinChatParameters()
         self.settings = settings or QianfanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
+
+        self._token = None
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
         wenxin_messages: list[WenxinMessage] = [convert_to_wenxin_message(message) for message in messages]
@@ -154,7 +154,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
         return self._parse_reponse(response.json())
@@ -162,12 +162,12 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response.get('error_msg'):
             raise UnexpectedResponseError(response)
         if response.get('function_call'):
@@ -203,7 +203,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -224,7 +224,7 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,

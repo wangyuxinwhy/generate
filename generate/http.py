@@ -14,7 +14,7 @@ from typing_extensions import Required, TypedDict
 from generate.types import PrimitiveData
 
 logger = logging.getLogger(__name__)
-HttpResponse = Dict[str, Any]
+ResponseValue = Dict[str, Any]
 QueryParams = Mapping[str, Union[PrimitiveData, Sequence[PrimitiveData]]]
 Headers = Dict[str, str]
 
@@ -48,7 +48,7 @@ class UnexpectedResponseError(Exception):
         response (dict): The response from the server.
     """
 
-    def __init__(self, response: dict[str, Any], *args: Any) -> None:
+    def __init__(self, response: ResponseValue, *args: Any) -> None:
         super().__init__(response, *args)
 
 

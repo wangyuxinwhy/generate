@@ -5,10 +5,8 @@ from typing import (
     AsyncGenerator,
     ClassVar,
     Generator,
-    Generic,
     Literal,
     NoReturn,
-    TypeVar,
 )
 
 import anyio
@@ -16,11 +14,10 @@ import asyncer
 import tqdm
 from typing_extensions import Self, TypedDict, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
 from generate.chat_completion.message import Prompt, Prompts, ensure_messages
 from generate.utils import load_chat_model
 
-P = TypeVar('P', bound=ModelParameters)
 ErrorMode = Literal['raise', 'ignore']
 ProgressBarMode = Literal['auto', 'never', 'always']
 
@@ -32,7 +29,7 @@ class CompletionEngineKwargs(TypedDict):
     progress_bar_mode: ProgressBarMode
 
 
-class CompletionEngine(Generic[P]):
+class CompletionEngine:
     """
     Args:
         chat_model (BaseChatModel[T_P]): The chat model to use for generating completions.
@@ -47,7 +44,7 @@ class CompletionEngine(Generic[P]):
 
     def __init__(
         self,
-        chat_model: ChatCompletionModel[P],
+        chat_model: ChatCompletionModel,
         async_capacity: int = 3,
         max_requests_per_minute: int = 20,
         error_mode: ErrorMode = 'raise',

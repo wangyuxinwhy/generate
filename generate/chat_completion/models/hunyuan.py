@@ -24,6 +24,7 @@ from generate.chat_completion.model_output import ChatCompletionOutput, ChatComp
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
@@ -62,18 +63,16 @@ def convert_to_hunyuan_message(message: Message) -> HunyuanMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
+class HunyuanChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'hunyuan'
 
     def __init__(
         self,
-        settings: HunyuanSettings | None = None,
         parameters: HunyuanChatParameters | None = None,
+        settings: HunyuanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or HunyuanChatParameters()
-        super().__init__(parameters=parameters)
-
+        self.parameters = parameters or HunyuanChatParameters()
         self.settings = settings or HunyuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -94,7 +93,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -102,12 +101,12 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response.get('error'):
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['choices'][0]['messages']['content'])]
@@ -138,7 +137,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -159,7 +158,7 @@ class HunyuanChat(ChatCompletionModel[HunyuanChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,

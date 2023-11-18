@@ -1,12 +1,11 @@
 import logging
 from abc import ABC
-from typing import ClassVar, List, Optional, TypeVar
+from typing import ClassVar, List, Optional
 
 from pydantic import BaseModel
 
-from generate.model import GenerateModel, ModelOutput, ModelParameters
+from generate.model import GenerateModel, ModelOutput
 
-P = TypeVar('P', bound=ModelParameters)
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +20,6 @@ class ImageGenerationOutput(ModelOutput):
     images: List[GeneratedImage] = []
 
 
-class ImageGenerationModel(GenerateModel[P, str, ImageGenerationOutput], ABC):
+class ImageGenerationModel(GenerateModel[str, ImageGenerationOutput], ABC):
     model_task: ClassVar[str] = 'image_generation'
     model_type: ClassVar[str]

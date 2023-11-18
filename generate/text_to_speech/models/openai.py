@@ -23,7 +23,7 @@ class OpenAISpeechParametersDict(TypedDict, total=False):
     speed: Optional[float]
 
 
-class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
+class OpenAISpeech(TextToSpeechModel):
     model_type = 'openai'
 
     def __init__(
@@ -33,10 +33,8 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
         parameters: OpenAISpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAISpeechParameters()
-        super().__init__(parameters)
-
         self.model = model
+        self.parameters = parameters or OpenAISpeechParameters()
         self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -58,7 +56,7 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -70,7 +68,7 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
 
     @override
     async def async_generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(

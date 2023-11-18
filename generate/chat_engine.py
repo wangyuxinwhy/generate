@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Generic, List, Literal, TypedDict, TypeVar, Union
+from typing import Any, Callable, List, Literal, TypedDict, Union
 
 from typing_extensions import Self, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters, function
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, function
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -21,8 +21,6 @@ from generate.chat_completion.message import (
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
 from generate.utils import load_chat_model
 
-P = TypeVar('P', bound=ModelParameters)
-
 
 class ChatEngineKwargs(TypedDict, total=False):
     functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None]
@@ -30,7 +28,7 @@ class ChatEngineKwargs(TypedDict, total=False):
     max_calls_per_turn: int
 
 
-class ChatEngine(Generic[P]):
+class ChatEngine:
     """
     A chat engine that uses a chat model to generate responses.It will manage the chat history and function calls.
 
@@ -50,7 +48,7 @@ class ChatEngine(Generic[P]):
 
     def __init__(
         self,
-        chat_model: ChatCompletionModel[P],
+        chat_model: ChatCompletionModel,
         functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None] = None,
         call_raise_error: bool = False,
         max_calls_per_turn: int = 5,
@@ -93,7 +91,7 @@ class ChatEngine(Generic[P]):
         return cls(chat_model, **kwargs)
 
     @property
-    def chat_model(self) -> ChatCompletionModel[P]:
+    def chat_model(self) -> ChatCompletionModel:
         return self._chat_model
 
     @property

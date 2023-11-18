@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, TypeVar
+from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
 import cachetools.func  # type: ignore
 import jwt
@@ -21,13 +21,13 @@ from generate.chat_completion.model_output import ChatCompletionOutput, ChatComp
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.zhipu import ZhipuSettings
 from generate.types import Probability, Temperature
 
-P = TypeVar('P', bound=ModelParameters)
 API_TOKEN_TTL_SECONDS = 3 * 60
 CACHE_TTL_SECONDS = API_TOKEN_TTL_SECONDS - 30
 
@@ -127,22 +127,21 @@ def generate_token(api_key: str) -> str:
     )
 
 
-class BaseZhipuChat(ChatCompletionModel[P]):
+class BaseZhipuChat(ChatCompletionModel):
     def __init__(
         self,
         model: str,
-        parameters: P,
+        parameters: ModelParameters,
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters
         self.settings = settings or ZhipuSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.http_client.stream_strategy = 'basic'
 
-    def _get_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
+    def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
         zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
         headers = {
             'Authorization': generate_token(self.settings.api_key.get_secret_value()),
@@ -154,7 +153,7 @@ class BaseZhipuChat(ChatCompletionModel[P]):
             'json': params,
         }
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response['success']:
             text = response['data']['choices'][0]['content']
             messages = [AssistantMessage(content=text)]
@@ -167,7 +166,7 @@ class BaseZhipuChat(ChatCompletionModel[P]):
 
         raise UnexpectedResponseError(response)
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: P) -> HttpxPostKwargs:
+    def _get_stream_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
         http_parameters['url'] = f'{self.settings.api_base}/{self.model}/sse-invoke'
         return http_parameters
@@ -180,23 +179,23 @@ class BaseZhipuChat(ChatCompletionModel[P]):
         return None
 
 
-class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
+class ZhipuChat(BaseZhipuChat):
     model_type: ClassVar[str] = 'zhipu'
 
     def __init__(
         self,
         model: str = 'chatglm_turbo',
-        settings: ZhipuSettings | None = None,
         parameters: ZhipuChatParameters | None = None,
+        settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
-        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -204,7 +203,7 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -214,7 +213,7 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -238,7 +237,7 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -268,23 +267,23 @@ class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
         return cls(model=name)
 
 
-class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
+class ZhipuCharacterChat(BaseZhipuChat):
     model_type: ClassVar[str] = 'zhipu-character'
 
     def __init__(
         self,
         model: str = 'characterglm',
-        settings: ZhipuSettings | None = None,
         parameters: ZhipuCharacterChatParameters | None = None,
+        settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         parameters = parameters or ZhipuCharacterChatParameters()
-        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -292,7 +291,7 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -302,7 +301,7 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -326,7 +325,7 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self._merge_parameters(**kwargs)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
