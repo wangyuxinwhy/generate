@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, List, Literal, TypedDict, Union
+from typing import Any, Callable, List, Literal, Mapping, Sequence, TypedDict
 
 from typing_extensions import Self, Unpack
 
@@ -23,7 +23,7 @@ from generate.utils import load_chat_model
 
 
 class ChatEngineKwargs(TypedDict, total=False):
-    functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None]
+    functions: Sequence[function] | Mapping[str, Callable] | None
     call_raise_error: bool
     max_calls_per_turn: int
 
@@ -49,7 +49,7 @@ class ChatEngine:
     def __init__(
         self,
         chat_model: ChatCompletionModel,
-        functions: Union[List[function[Any, Any]], dict[str, Callable[..., Any]], None] = None,
+        functions: Sequence[function] | Mapping[str, Callable] | None = None,
         call_raise_error: bool = False,
         max_calls_per_turn: int = 5,
         stream: bool | Literal['auto'] = 'auto',
@@ -58,9 +58,9 @@ class ChatEngine:
         self._chat_model = chat_model
 
         if isinstance(functions, list):
-            self._function_map: dict[str, Callable[..., Any]] = {}
-            for i in functions:
-                self._function_map[i.json_schema['name']] = i
+            self._function_map: dict[str, Callable] = {}
+            for _function in functions:
+                self._function_map[_function.json_schema['name']] = _function
         elif isinstance(functions, dict):
             self._function_map = functions
         else:
