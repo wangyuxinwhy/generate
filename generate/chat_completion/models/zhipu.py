@@ -5,7 +5,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, Ty
 
 import cachetools.func  # type: ignore
 import jwt
-from typing_extensions import NotRequired, Self, TypedDict, override
+from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -13,7 +13,9 @@ from generate.chat_completion.message import (
     Message,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
@@ -21,7 +23,7 @@ from generate.http import (
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.zhipu import ZhipuSettings
 from generate.types import Probability, Temperature
 
@@ -49,6 +51,13 @@ class ZhipuChatParameters(ModelParameters):
         return output
 
 
+class ZhipuChatParametersDict(ModelParametersDict, total=False):
+    temperature: Optional[Temperature]
+    top_p: Optional[Probability]
+    request_id: Optional[str]
+    search_query: Optional[str]
+
+
 class ZhipuMeta(TypedDict):
     user_info: str
     bot_info: str
@@ -69,6 +78,11 @@ class ZhipuCharacterChatParameters(ModelParameters):
         output = super().custom_model_dump()
         output['return_type'] = 'text'
         return output
+
+
+class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
+    meta: ZhipuMeta
+    request_id: Optional[str]
 
 
 class ZhipuMessage(TypedDict):
@@ -140,18 +154,6 @@ class BaseZhipuChat(ChatCompletionModel[P]):
             'json': params,
         }
 
-    @override
-    def _completion(self, messages: Messages, parameters: P) -> ChatCompletionOutput:
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    async def _async_completion(self, messages: Messages, parameters: P) -> ChatCompletionOutput:
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
     def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         if response['success']:
             text = response['data']['choices'][0]['content']
@@ -170,8 +172,49 @@ class BaseZhipuChat(ChatCompletionModel[P]):
         http_parameters['url'] = f'{self.settings.api_base}/{self.model}/sse-invoke'
         return http_parameters
 
+    def calculate_cost(self, usage: dict[str, Any]) -> float | None:
+        if self.name == 'chatglm_turbo':
+            return 0.005 * (usage['total_tokens'] / 1000)
+        if self.name == 'characterglm':
+            return 0.015 * (usage['total_tokens'] / 1000)
+        return None
+
+
+class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
+    model_type: ClassVar[str] = 'zhipu'
+
+    def __init__(
+        self,
+        model: str = 'chatglm_turbo',
+        settings: ZhipuSettings | None = None,
+        parameters: ZhipuChatParameters | None = None,
+        http_client: HttpClient | None = None,
+    ) -> None:
+        parameters = parameters or ZhipuChatParameters()
+        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
+
     @override
-    def _stream_completion(self, messages: Messages, parameters: P) -> Iterator[ChatCompletionStreamOutput]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -191,7 +234,11 @@ class BaseZhipuChat(ChatCompletionModel[P]):
         )
 
     @override
-    async def _async_stream_completion(self, messages: Messages, parameters: P) -> AsyncIterator[ChatCompletionStreamOutput]:
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -210,13 +257,6 @@ class BaseZhipuChat(ChatCompletionModel[P]):
             stream=Stream(delta='', control='finish'),
         )
 
-    def calculate_cost(self, usage: dict[str, Any]) -> float | None:
-        if self.name == 'chatglm_turbo':
-            return 0.005 * (usage['total_tokens'] / 1000)
-        if self.name == 'characterglm':
-            return 0.015 * (usage['total_tokens'] / 1000)
-        return None
-
     @property
     @override
     def name(self) -> str:
@@ -224,22 +264,8 @@ class BaseZhipuChat(ChatCompletionModel[P]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
-
-
-class ZhipuChat(BaseZhipuChat[ZhipuChatParameters]):
-    model_type: ClassVar[str] = 'zhipu'
-
-    def __init__(
-        self,
-        model: str = 'chatglm_turbo',
-        settings: ZhipuSettings | None = None,
-        parameters: ZhipuChatParameters | None = None,
-        http_client: HttpClient | None = None,
-    ) -> None:
-        parameters = parameters or ZhipuChatParameters()
-        super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)
 
 
 class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
@@ -254,3 +280,77 @@ class ZhipuCharacterChat(BaseZhipuChat[ZhipuCharacterChatParameters]):
     ) -> None:
         parameters = parameters or ZhipuCharacterChatParameters()
         super().__init__(model=model, settings=settings, parameters=parameters, http_client=http_client)
+
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = self.http_client.post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(messages, parameters)
+        response = await self.http_client.async_post(request_parameters=request_parameters)
+        return self._parse_reponse(response.json())
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        message = ''
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
+            message += line
+            yield ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                stream=Stream(delta=line, control='continue'),
+            )
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            messages=[AssistantMessage(content=message)],
+            stream=Stream(delta='', control='finish'),
+        )
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
+        message = ''
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
+            message += line
+            yield ChatCompletionStreamOutput(
+                model_info=self.model_info,
+                stream=Stream(delta=line, control='continue'),
+            )
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            messages=[AssistantMessage(content=message)],
+            stream=Stream(delta='', control='finish'),
+        )
+
+    @property
+    @override
+    def name(self) -> str:
+        return self.model
+
+    @classmethod
+    @override
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

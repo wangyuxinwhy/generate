@@ -4,7 +4,7 @@ import json
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field, model_validator
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -15,7 +15,9 @@ from generate.chat_completion.message import (
     Message,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
@@ -23,7 +25,7 @@ from generate.http import (
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenMixin
 from generate.types import JsonSchema, Probability, Temperature
 
@@ -103,6 +105,15 @@ class WenxinChatParameters(ModelParameters):
         return output
 
 
+class WenxinChatParametersDict(ModelParametersDict, total=False):
+    temperature: Optional[Temperature]
+    top_p: Optional[Probability]
+    functions: Optional[List[WenxinFunction]]
+    penalty_score: Optional[float]
+    system: Optional[str]
+    user: Optional[str]
+
+
 class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
@@ -140,12 +151,18 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
             'headers': {'Content-Type': 'application/json'},
         }
 
-    def _completion(self, messages: Messages, parameters: WenxinChatParameters) -> ChatCompletionOutput:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
         return self._parse_reponse(response.json())
 
-    async def _async_completion(self, messages: Messages, parameters: WenxinChatParameters) -> ChatCompletionOutput:
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -181,7 +198,12 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
         http_parameters['json']['stream'] = True
         return http_parameters
 
-    def _stream_completion(self, messages: Messages, parameters: WenxinChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -197,9 +219,12 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
             if output.is_finish:
                 break
 
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: WenxinChatParameters
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -249,5 +274,5 @@ class WenxinChat(ChatCompletionModel[WenxinChatParameters], QianfanTokenMixin):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

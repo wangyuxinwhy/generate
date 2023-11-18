@@ -5,11 +5,11 @@ import time
 from typing import Any, Literal, Optional, Union
 
 from pydantic import Base64Str, Field, HttpUrl
-from typing_extensions import Annotated, Self
+from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import BaiduCreationSettings
 from generate.token import TokenMixin
 
@@ -47,6 +47,13 @@ class BaiduImageGenerationParameters(ModelParameters):
         if self.change_degree:
             output_data['change_degree'] = self.change_degree
         return output_data
+
+
+class BaiduImageGenerationParametersDict(ModelParametersDict, total=False):
+    size: ValidSize
+    n: Optional[int]
+    reference_image: Union[HttpUrl, Base64Str, None]
+    change_degree: Optional[int]
 
 
 class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters], TokenMixin):
@@ -100,11 +107,14 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
             },
         }
 
-    def _image_generation(self, prompt: str, parameters: BaiduImageGenerationParameters) -> ImageGenerationOutput:
+    @override
+    def generate(self, prompt: str, **kwargs: Unpack[BaiduImageGenerationParametersDict]) -> ImageGenerationOutput:
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
-        image_urls: list[str] = self._get_image(response.json()['data']['task_id'])
-        images: list[GeneratedImage] = []
+        task_id = response.json()['data']['task_id']
+        image_urls = self._get_image_urls(task_id)
+        generated_images: list[GeneratedImage] = []
         for image_url in image_urls:
             image = GeneratedImage(
                 url=image_url,
@@ -112,15 +122,17 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
                 image_format='png',
                 content=self.http_client.get({'url': image_url}).content,
             )
-            images.append(image)
-        return ImageGenerationOutput(model_info=self.model_info, cost=0.3 * (parameters.n or 1), images=images)
+            generated_images.append(image)
+        return ImageGenerationOutput(model_info=self.model_info, cost=0.3 * (parameters.n or 1), images=generated_images)
 
-    async def _async_image_generation(self, prompt: str, parameters: BaiduImageGenerationParameters) -> ImageGenerationOutput:
+    @override
+    async def async_generate(self, prompt: str, **kwargs: Unpack[BaiduImageGenerationParametersDict]) -> ImageGenerationOutput:
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
-        image_urls: list[str] = await self._async_get_image(response.json()['data']['task_id'])
+        image_urls = await self._async_get_image_urls(response.json()['data']['task_id'])
         images: list[GeneratedImage] = []
-        images_response = await asyncio.gather(*[self.http_client.async_get({'url': image_url}) for image_url in image_urls])
+        images_response = await asyncio.gather(*(self.http_client.async_get({'url': image_url}) for image_url in image_urls))
         for image_url, image_response in zip(image_urls, images_response):
             image = GeneratedImage(
                 url=image_url,
@@ -153,7 +165,7 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
             return image_urls
         return None
 
-    def _get_image(self, task_id: str) -> list[str]:
+    def _get_image_urls(self, task_id: str) -> list[str]:
         start_time = time.time()
         task_info: dict[str, Any] = {}
         while (time.time() - start_time) < self.task_timeout:
@@ -165,7 +177,7 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
             time.sleep(1)
         raise UnexpectedResponseError(task_info, 'Timeout')
 
-    async def _async_get_image(self, task_id: str) -> list[str]:
+    async def _async_get_image_urls(self, task_id: str) -> list[str]:
         start_time = time.time()
         task_info: dict[str, Any] = {}
         while (time.time() - start_time) < self.task_timeout:
@@ -178,11 +190,13 @@ class BaiduImageGeneration(ImageGenerationModel[BaiduImageGenerationParameters],
         raise UnexpectedResponseError(task_info, 'Timeout')
 
     @property
+    @override
     def name(self) -> str:
         return 'getImgv2'
 
     @classmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
+    @override
+    def from_name(cls, name: str) -> Self:
         if name and name != 'getImgv2':
             raise ValueError(f'Invalid model name: {name}, expected: getImgv2')
-        return cls(**kwargs)
+        return cls()

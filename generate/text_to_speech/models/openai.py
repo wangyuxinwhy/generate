@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import Field
-from typing_extensions import Annotated, Self, override
+from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters
@@ -15,6 +15,12 @@ class OpenAISpeechParameters(ModelParameters):
     voice: str = 'alloy'
     response_format: Optional[Literal['mp3', 'aac', 'opus', 'flac']] = None
     speed: Annotated[Optional[float], Field(ge=0.25, le=4.0)] = None
+
+
+class OpenAISpeechParametersDict(TypedDict, total=False):
+    voice: str
+    response_format: Optional[Literal['mp3', 'aac', 'opus', 'flac']]
+    speed: Optional[float]
 
 
 class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
@@ -50,24 +56,28 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
             'headers': headers,
         }
 
-    def _text_to_speech(self, text: str, parameters: OpenAISpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    @override
+    def generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
             model_info=self.model_info,
             audio=response.content,
             audio_format=parameters.response_format or 'mp3',
-            cost=self.calculate_cost(text),
+            cost=self.calculate_cost(prompt),
         )
 
-    async def _async_text_to_speech(self, text: str, parameters: OpenAISpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    @override
+    async def async_generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(
             model_info=self.model_info,
             audio=response.content,
             audio_format=parameters.response_format or 'mp3',
-            cost=self.calculate_cost(text),
+            cost=self.calculate_cost(prompt),
         )
 
     @property
@@ -77,8 +87,8 @@ class OpenAISpeech(TextToSpeechModel[OpenAISpeechParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)
 
     def calculate_cost(self, text: str) -> float | None:
         dollar_to_yuan = 7

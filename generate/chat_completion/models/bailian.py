@@ -5,14 +5,16 @@ import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
@@ -20,7 +22,7 @@ from generate.http import (
     HttpxPostKwargs,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.bailian import BailianSettings
 from generate.token import TokenMixin
 from generate.types import Probability
@@ -78,6 +80,18 @@ class BailianChatParameters(ModelParameters):
         return output
 
 
+class BailianChatParametersDict(ModelParametersDict, total=False):
+    request_id: str
+    session_id: Optional[str]
+    top_p: Optional[Probability]
+    has_thoughts: Optional[bool]
+    doc_reference_type: Optional[Literal['indexed', 'simpole']]
+    top_k: Optional[int]
+    seed: Optional[int]
+    use_raw_prompt: Optional[bool]
+    doc_tag_ids: Optional[List[int]]
+
+
 class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
     model_type: ClassVar[str] = 'bailian'
 
@@ -129,13 +143,17 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         }
 
     @override
-    def _completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
     @override
-    async def _async_completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -163,7 +181,11 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         return http_post_kwargs
 
     @override
-    def _stream_completion(self, messages: Messages, parameters: BailianChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -181,9 +203,11 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
                 break
 
     @override
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: BailianChatParameters
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -230,7 +254,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
+    def from_name(cls, name: str) -> Self:
         if name:
             raise ValueError(f'{cls} cannot be initialized from name')
-        return cls(**kwargs)
+        return cls()

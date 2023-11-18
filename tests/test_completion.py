@@ -4,21 +4,25 @@ import asyncio
 import time
 from typing import Any, AsyncIterator, Iterator
 
-from typing_extensions import Self
+from typing_extensions import Self, Unpack
 
 from generate.chat_completion import (
     ChatCompletionModel,
     ChatCompletionOutput,
     ChatCompletionStreamOutput,
-    ModelParameters,
 )
-from generate.chat_completion.message import AssistantMessage, Messages, Prompts, UserMessage
+from generate.chat_completion.message import AssistantMessage, Prompt, Prompts, UserMessage, ensure_messages
 from generate.chat_completion.model_output import Stream
 from generate.completion_engine import CompletionEngine
+from generate.model import ModelParameters, ModelParametersDict
 
 
 class FakeChatParameters(ModelParameters):
     prefix: str = 'Completed:'
+
+
+class FakeChatParametersDict(ModelParametersDict, total=False):
+    prefix: str
 
 
 class FakeChat(ChatCompletionModel[FakeChatParameters]):
@@ -28,26 +32,42 @@ class FakeChat(ChatCompletionModel[FakeChatParameters]):
         default_parameters = default_parameters or FakeChatParameters()
         super().__init__(default_parameters)
 
-    def _completion(self, messages: Messages, parameters: FakeChatParameters) -> ChatCompletionOutput:
-        content = f'Completed: {messages[-1].content}'
+    def generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
-    async def _async_completion(self, messages: Messages, parameters: FakeChatParameters) -> ChatCompletionOutput:
-        content = f'Completed: {messages[-1].content}'
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
 
-    def _stream_completion(self, messages: Messages, parameters: FakeChatParameters) -> Iterator[ChatCompletionStreamOutput]:
-        content = f'Completed: {messages[-1].content}'
+    def stream_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        content = f'{parameters.prefix}{messages[-1].content}'
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             messages=[AssistantMessage(content=content)],
             stream=Stream(delta=content, control='finish'),
         )
 
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: FakeChatParameters
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        content = f'Completed: {messages[-1].content}'
+        messages = ensure_messages(prompt)
+        parameters = self._merge_parameters(**kwargs)
+        content = f'{parameters.prefix}{messages[-1].content}'
+        yield ChatCompletionStreamOutput(
+            model_info=self.model_info,
+            stream=Stream(delta='', control='start'),
+        )
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             messages=[AssistantMessage(content=content)],
@@ -73,8 +93,8 @@ def test_sync_completion() -> None:
     results = list(client.run(prompts))
 
     assert isinstance(results[0].reply, str)
-    assert results[0].reply == 'Completed: Hello, my name is'
-    assert results[1].reply == 'Completed: hello, who are you?'
+    assert results[0].reply == 'Completed:Hello, my name is'
+    assert results[1].reply == 'Completed:hello, who are you?'
     assert len(results) == len(prompts)
 
 
@@ -93,6 +113,6 @@ def test_async_completion() -> None:
     results = asyncio.run(async_helper(client, prompts))
     elapsed_time = time.perf_counter() - start_time
 
-    assert results[0].reply == 'Completed: Hello, my name is'
+    assert results[0].reply == 'Completed:Hello, my name is'
     assert len(results) == len(prompts)
     assert elapsed_time > (2 * CompletionEngine.NUM_SECONDS_PER_MINUTE)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, List, Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
-from typing_extensions import Annotated, Self, TypedDict, override
+from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.model import ModelParameters
@@ -30,9 +30,22 @@ class MinimaxSpeechParameters(ModelParameters):
         return self
 
 
+class MinimaxSpeechParametersDict(TypedDict, total=False):
+    voice: Optional[str]
+    speed: Optional[float]
+    vol: Optional[float]
+    pitch: Optional[float]
+    timber_weights: Optional[List[TimeberWeight]]
+
+
 class MinimaxProSpeechParameters(MinimaxSpeechParameters):
     audio_sample_rate: Annotated[Optional[int], Field(ge=16000, le=24000)] = 24000
     bitrate: Literal[32000, 64000, 128000] = 128000
+
+
+class MinimaxProSpeechParametersDict(MinimaxSpeechParametersDict, total=False):
+    audio_sample_rate: Optional[int]
+    bitrate: Optional[Literal[32000, 64000, 128000]]
 
 
 class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
@@ -68,24 +81,26 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
             'params': {'GroupId': self.settings.group_id},
         }
 
-    def _text_to_speech(self, text: str, parameters: MinimaxSpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    def generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
             model_info=self.model_info,
             audio=response.content,
             audio_format='mp3',
-            cost=self.calculate_cost(text),
+            cost=self.calculate_cost(prompt),
         )
 
-    async def _async_text_to_speech(self, text: str, parameters: MinimaxSpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(
             model_info=self.model_info,
             audio=response.content,
             audio_format='mp3',
-            cost=self.calculate_cost(text),
+            cost=self.calculate_cost(prompt),
         )
 
     @property
@@ -95,8 +110,8 @@ class MinimaxSpeech(TextToSpeechModel[MinimaxSpeechParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)
 
     @staticmethod
     def calculate_cost(text: str) -> float:
@@ -137,8 +152,10 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
             'params': {'GroupId': self.settings.group_id},
         }
 
-    def _text_to_speech(self, text: str, parameters: MinimaxProSpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    @override
+    def generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         response_data = response.json()
         if response_data['base_resp']['status_code'] != 0:
@@ -154,8 +171,10 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
         model_output.extra.update(response_data['extra_info'])
         return model_output
 
-    async def _async_text_to_speech(self, text: str, parameters: MinimaxProSpeechParameters) -> TextToSpeechOutput:
-        request_parameters = self._get_request_parameters(text, parameters)
+    @override
+    async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
+        parameters = self._merge_parameters(**kwargs)
+        request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         response_data = response.json()
         if response_data['base_resp']['status_code'] != 0:
@@ -181,5 +200,5 @@ class MinimaxProSpeech(TextToSpeechModel[MinimaxProSpeechParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)
