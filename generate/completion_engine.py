@@ -18,25 +18,27 @@ from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
 from generate.chat_completion.message import Prompt, Prompts, ensure_messages
 from generate.utils import load_chat_model
 
-ErrorMode = Literal['raise', 'ignore']
-ProgressBarMode = Literal['auto', 'never', 'always']
-
 
 class CompletionEngineKwargs(TypedDict):
     async_capacity: int
     max_requests_per_minute: int
-    error_mode: ErrorMode
-    progress_bar_mode: ProgressBarMode
+    error_mode: Literal['raise', 'ignore']
+    progress_bar_mode: Literal['auto', 'never', 'always']
 
 
 class CompletionEngine:
     """
+    This is the completion engine for the chat completion model.
+
+    Responsible for managing and executing large-scale requests to a given chat completion model, this class introduces
+    capabilities like asynchronous requests handling, rate limiting (max requests per minute), and progress tracking.
+
     Args:
-        chat_model (BaseChatModel[T_P]): The chat model to use for generating completions.
-        async_capacity (int, optional): The maximum number of asynchronous requests that can be made at once. Defaults to 3.
-        max_requests_per_minute (int, optional): The maximum number of requests that can be made per minute. Defaults to 20.
-        error_mode (ErrorMode, optional): The error handling mode. Defaults to 'raise'.
-        progress_bar_mode (ProgressBarMode, optional): The progress bar mode. Defaults to 'auto'.
+        chat_model (ChatCompletionModel): The chat model for generating completions.
+        async_capacity (int, optional): The maximum number of asynchronous requests that can be made concurrently. Defaults to 3.
+        max_requests_per_minute (int, optional): The maximum number of requests that can be made per minute to avoid rate limiting. Defaults to 20.
+        error_mode (Literal['raise', 'ignore'], optional): The error handling mode. If 'raise', it raises the exception, if 'ignore', it ignores the exception and returns an error message. Defaults to 'raise'.
+        progress_bar_mode (Literal['auto', 'never', 'always'], optional): The progress bar mode. If 'always', it always shows the progress bar, if 'auto', it shows the progress bar when the number of tasks exceeds a certain threshold. Defaults to 'auto'.
     """
 
     NUM_SECONDS_PER_MINUTE: ClassVar[int] = 60
@@ -47,8 +49,8 @@ class CompletionEngine:
         chat_model: ChatCompletionModel,
         async_capacity: int = 3,
         max_requests_per_minute: int = 20,
-        error_mode: ErrorMode = 'raise',
-        progress_bar_mode: ProgressBarMode = 'auto',
+        error_mode: Literal['raise', 'ignore'] = 'raise',
+        progress_bar_mode: Literal['auto', 'never', 'always'] = 'auto',
     ) -> None:
         self.chat_model = chat_model
         self.async_capacity = async_capacity

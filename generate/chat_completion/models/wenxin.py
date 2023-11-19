@@ -27,7 +27,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
-from generate.platforms.baidu import QianfanSettings, QianfanTokenMixin
+from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 from generate.types import JsonSchema, Probability, Temperature
 
 
@@ -115,7 +115,7 @@ class WenxinChatParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class WenxinChat(ChatCompletionModel, QianfanTokenMixin):
+class WenxinChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
@@ -134,8 +134,7 @@ class WenxinChat(ChatCompletionModel, QianfanTokenMixin):
         self.parameters = parameters or WenxinChatParameters()
         self.settings = settings or QianfanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
-
-        self._token = None
+        self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
         wenxin_messages: list[WenxinMessage] = [convert_to_wenxin_message(message) for message in messages]
@@ -147,7 +146,7 @@ class WenxinChat(ChatCompletionModel, QianfanTokenMixin):
         return {
             'url': self.settings.comlpetion_api_base + self.model_name_entrypoint_map[self.model],
             'json': json_data,
-            'params': {'access_token': self.token},
+            'params': {'access_token': self.token_manager.token},
             'headers': {'Content-Type': 'application/json'},
         }
 

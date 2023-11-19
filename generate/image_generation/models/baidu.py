@@ -10,8 +10,7 @@ from typing_extensions import Annotated, Self, Unpack, override
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters, ModelParametersDict
-from generate.platforms.baidu import BaiduCreationSettings
-from generate.token import TokenMixin
+from generate.platforms.baidu import BaiduCreationSettings, BaiduCreationTokenManager
 
 ValidSize = Literal[
     '512x512',
@@ -56,7 +55,7 @@ class BaiduImageGenerationParametersDict(ModelParametersDict, total=False):
     change_degree: Optional[int]
 
 
-class BaiduImageGeneration(ImageGenerationModel, TokenMixin):
+class BaiduImageGeneration(ImageGenerationModel):
     model_type = 'baidu'
 
     def __init__(
@@ -64,31 +63,13 @@ class BaiduImageGeneration(ImageGenerationModel, TokenMixin):
         parameters: BaiduImageGenerationParameters | None = None,
         settings: BaiduCreationSettings | None = None,
         http_client: HttpClient | None = None,
+        task_timeout: int = 60,
     ) -> None:
         self.parameters = parameters or BaiduImageGenerationParameters()
         self.settings = settings or BaiduCreationSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
-        self.task_timeout = 60
-
-    def _get_token(self) -> str:
-        headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        params = {
-            'grant_type': 'client_credentials',
-            'client_id': self.settings.api_key.get_secret_value(),
-            'client_secret': self.settings.secret_key.get_secret_value(),
-        }
-        response = self.http_client.post(
-            {
-                'url': self.settings.access_token_api,
-                'headers': headers,
-                'params': params,
-                'json': None,
-            }
-        )
-        response_dict = response.json()
-        if 'error' in response_dict:
-            raise UnexpectedResponseError(response_dict)
-        return response_dict['access_token']
+        self.token_manager = BaiduCreationTokenManager(self.settings, self.http_client)
+        self.task_timeout = task_timeout
 
     def _get_request_parameters(self, prompt: str, parameters: BaiduImageGenerationParameters) -> HttpxPostKwargs:
         headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
@@ -101,7 +82,7 @@ class BaiduImageGeneration(ImageGenerationModel, TokenMixin):
             'json': json_data,
             'headers': headers,
             'params': {
-                'access_token': self.token,
+                'access_token': self.token_manager.token,
             },
         }
 
@@ -145,7 +126,7 @@ class BaiduImageGeneration(ImageGenerationModel, TokenMixin):
         return {
             'url': 'https://aip.baidubce.com/rpc/2.0/ernievilg/v1/getImgv2',
             'params': {
-                'access_token': self.token,
+                'access_token': self.token_manager.token,
             },
             'headers': {'Content-Type': 'application/json'},
             'json': {'task_id': str(task_id)},

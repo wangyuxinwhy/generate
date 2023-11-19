@@ -45,7 +45,7 @@ class UnexpectedResponseError(Exception):
     Exception raised when an unexpected response is received from the server.
 
     Attributes:
-        response (dict): The response from the server.
+        response (dict[str, Any]): The response from the server.
     """
 
     def __init__(self, response: ResponseValue, *args: Any) -> None:
@@ -53,6 +53,17 @@ class UnexpectedResponseError(Exception):
 
 
 class HttpClient:
+    """
+    A class representing an HTTP client.
+
+    Args:
+        retry (bool | RetryStrategy, optional): Whether to enable retry for failed requests. Defaults to False.
+        timeout (int | None, optional): The timeout value for requests in seconds. Defaults to 60.
+        proxies (ProxiesTypes | None, optional): The proxies to be used for requests. Defaults to None.
+        stream_strategy (Literal['sse', 'basic'], optional): The strategy for streaming requests. Defaults to 'sse'.
+        limits (Limits | None, optional): The limits for the HTTP client. Defaults to None.
+    """
+
     def __init__(
         self,
         retry: bool | RetryStrategy = False,

@@ -24,8 +24,7 @@ from generate.http import (
     UnexpectedResponseError,
 )
 from generate.model import ModelParameters, ModelParametersDict
-from generate.platforms.bailian import BailianSettings
-from generate.token import TokenMixin
+from generate.platforms.bailian import BailianSettings, BailianTokenManager
 from generate.types import Probability
 
 
@@ -93,7 +92,7 @@ class BailianChatParametersDict(ModelParametersDict, total=False):
     doc_tag_ids: Optional[List[int]]
 
 
-class BailianChat(ChatCompletionModel, TokenMixin):
+class BailianChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'bailian'
 
     def __init__(
@@ -106,6 +105,7 @@ class BailianChat(ChatCompletionModel, TokenMixin):
         self._token = None
         self.settings = settings or BailianSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
+        self.token_manager = BailianTokenManager(self.settings, self.http_client)
 
     def _get_token(self) -> str:
         try:
@@ -130,7 +130,7 @@ class BailianChat(ChatCompletionModel, TokenMixin):
         json_dict = parameters.custom_model_dump()
         headers = {
             'Content-Type': 'application/json;charset=UTF-8',
-            'Authorization': f'Bearer {self.token}',
+            'Authorization': f'Bearer {self.token_manager.token}',
         }
         json_dict['Prompt'] = prompt
         json_dict['AppId'] = self.settings.app_id

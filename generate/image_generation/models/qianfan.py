@@ -9,7 +9,7 @@ from typing_extensions import Annotated, Self, Unpack, override
 from generate.http import HttpClient, HttpxPostKwargs, ResponseValue
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
 from generate.model import ModelParameters, ModelParametersDict
-from generate.platforms.baidu import QianfanSettings, QianfanTokenMixin
+from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 
 ValidSize = Literal[
     '768x768',
@@ -39,7 +39,7 @@ class QianfanImageGenerationParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class QianfanImageGeneration(ImageGenerationModel, QianfanTokenMixin):
+class QianfanImageGeneration(ImageGenerationModel):
     model_type = 'qianfan'
 
     def __init__(
@@ -53,6 +53,7 @@ class QianfanImageGeneration(ImageGenerationModel, QianfanTokenMixin):
         self.parameters = parameters or QianfanImageGenerationParameters()
         self.settings = settings or QianfanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
+        self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[QianfanImageGenerationParametersDict]) -> ImageGenerationOutput:
@@ -81,7 +82,7 @@ class QianfanImageGeneration(ImageGenerationModel, QianfanTokenMixin):
             'json': json_data,
             'headers': headers,
             'params': {
-                'access_token': self.token,
+                'access_token': self.token_manager.token,
             },
         }
 
