@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, Generic, TypeVar, cast
+from typing import Any, Callable, Generic, TypeVar
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
@@ -83,7 +83,6 @@ def recusive_remove(obj: Any, remove_key: str) -> None:
         None
     """
     if isinstance(obj, dict):
-        obj = cast(Dict[str, Any], obj)
         for key in list(obj.keys()):
             if key == remove_key:
                 del obj[key]

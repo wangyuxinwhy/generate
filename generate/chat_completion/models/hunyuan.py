@@ -193,7 +193,7 @@ class HunyuanChat(ChatCompletionModel):
         self, messages: list[HunyuanMessage], parameters: HunyuanChatParameters, stream: bool = False
     ) -> dict[str, Any]:
         timestamp = int(time.time()) + 10000
-        json_dict: dict[str, Any] = {
+        json_dict = {
             'app_id': self.settings.app_id,
             'secret_id': self.settings.secret_id.get_secret_value(),
             'query_id': 'query_id_' + str(uuid.uuid4()),

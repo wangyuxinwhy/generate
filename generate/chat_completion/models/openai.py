@@ -119,7 +119,7 @@ def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
 
 
 def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMessage:
-    content: list[dict[str, Any]] = []
+    content = []
     for part in message.content:
         if isinstance(part, TextPart):
             content.append({'type': 'text', 'text': part.text})

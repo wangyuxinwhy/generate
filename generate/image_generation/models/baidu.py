@@ -32,7 +32,7 @@ class BaiduImageGenerationParameters(ModelParameters):
     change_degree: Optional[Annotated[int, Field(ge=1, le=10)]] = None
 
     def custom_model_dump(self) -> dict[str, Any]:
-        output_data: dict[str, Any] = {}
+        output_data = {}
         width, height = self.size.split('x')
         output_data['width'] = int(width)
         output_data['height'] = int(height)

@@ -20,8 +20,8 @@ def test_model_type_is_unique() -> None:
 
 
 @pytest.mark.parametrize(
-    ('model_cls', 'parameter_cls'),
-    get_pytest_params('test_chat_completion', ChatModelRegistry, types=('model_cls', 'parameter_cls')),
+    ('model_cls'),
+    get_pytest_params('test_chat_completion', ChatModelRegistry, types='model_cls'),
 )
 @pytest.mark.parametrize(
     'parameters',
