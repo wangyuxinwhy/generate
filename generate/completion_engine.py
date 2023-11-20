@@ -2,46 +2,43 @@ from __future__ import annotations
 
 import time
 from typing import (
-    Any,
     AsyncGenerator,
     ClassVar,
     Generator,
-    Generic,
     Literal,
     NoReturn,
-    TypedDict,
-    TypeVar,
 )
 
 import anyio
 import asyncer
 import tqdm
-from typing_extensions import Self, Unpack
+from typing_extensions import Self, TypedDict, Unpack
 
-from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput, ModelParameters
+from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
 from generate.chat_completion.message import Prompt, Prompts, ensure_messages
 from generate.utils import load_chat_model
-
-P = TypeVar('P', bound=ModelParameters)
-ErrorMode = Literal['raise', 'ignore']
-ProgressBarMode = Literal['auto', 'never', 'always']
 
 
 class CompletionEngineKwargs(TypedDict):
     async_capacity: int
     max_requests_per_minute: int
-    error_mode: ErrorMode
-    progress_bar_mode: ProgressBarMode
+    error_mode: Literal['raise', 'ignore']
+    progress_bar_mode: Literal['auto', 'never', 'always']
 
 
-class CompletionEngine(Generic[P]):
+class CompletionEngine:
     """
+    This is the completion engine for the chat completion model.
+
+    Responsible for managing and executing large-scale requests to a given chat completion model, this class introduces
+    capabilities like asynchronous requests handling, rate limiting (max requests per minute), and progress tracking.
+
     Args:
-        chat_model (BaseChatModel[T_P]): The chat model to use for generating completions.
-        async_capacity (int, optional): The maximum number of asynchronous requests that can be made at once. Defaults to 3.
-        max_requests_per_minute (int, optional): The maximum number of requests that can be made per minute. Defaults to 20.
-        error_mode (ErrorMode, optional): The error handling mode. Defaults to 'raise'.
-        progress_bar_mode (ProgressBarMode, optional): The progress bar mode. Defaults to 'auto'.
+        chat_model (ChatCompletionModel): The chat model for generating completions.
+        async_capacity (int, optional): The maximum number of asynchronous requests that can be made concurrently. Defaults to 3.
+        max_requests_per_minute (int, optional): The maximum number of requests that can be made per minute to avoid rate limiting. Defaults to 20.
+        error_mode (Literal['raise', 'ignore'], optional): The error handling mode. If 'raise', it raises the exception, if 'ignore', it ignores the exception and returns an error message. Defaults to 'raise'.
+        progress_bar_mode (Literal['auto', 'never', 'always'], optional): The progress bar mode. If 'always', it always shows the progress bar, if 'auto', it shows the progress bar when the number of tasks exceeds a certain threshold. Defaults to 'auto'.
     """
 
     NUM_SECONDS_PER_MINUTE: ClassVar[int] = 60
@@ -49,11 +46,11 @@ class CompletionEngine(Generic[P]):
 
     def __init__(
         self,
-        chat_model: ChatCompletionModel[P],
+        chat_model: ChatCompletionModel,
         async_capacity: int = 3,
         max_requests_per_minute: int = 20,
-        error_mode: ErrorMode = 'raise',
-        progress_bar_mode: ProgressBarMode = 'auto',
+        error_mode: Literal['raise', 'ignore'] = 'raise',
+        progress_bar_mode: Literal['auto', 'never', 'always'] = 'auto',
     ) -> None:
         self.chat_model = chat_model
         self.async_capacity = async_capacity
@@ -67,10 +64,10 @@ class CompletionEngine(Generic[P]):
         chat_model = load_chat_model(model_id)
         return cls(chat_model, **kwargs)
 
-    def run(self, prompts: Prompts, **kwargs: Any) -> Generator[ChatCompletionOutput, None, None]:
+    def run(self, prompts: Prompts) -> Generator[ChatCompletionOutput, None, None]:
         progress_bar = self._get_progress_bar(num_tasks=len(prompts))
         for prompt in prompts:
-            task_result = self._run_single_task(prompt=prompt, progress_bar=progress_bar, **kwargs)
+            task_result = self._run_single_task(prompt=prompt, progress_bar=progress_bar)
             yield task_result
         progress_bar.close()
 
@@ -78,7 +75,6 @@ class CompletionEngine(Generic[P]):
         self,
         prompt: Prompt,
         progress_bar: tqdm.tqdm[NoReturn],
-        **kwargs: Any,
     ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         sleep_time = self._calculate_sleep_time()
@@ -87,7 +83,7 @@ class CompletionEngine(Generic[P]):
         self._task_created_time_list.append(int(time.time()))
 
         try:
-            output = self.chat_model.generate(prompt=messages, **kwargs)
+            output = self.chat_model.generate(prompt=messages)
         except Exception as e:
             if self.error_mode == 'raise':
                 raise
@@ -98,7 +94,7 @@ class CompletionEngine(Generic[P]):
             progress_bar.update(1)
             return output
 
-    async def async_run(self, prompts: Prompts, **kwargs: Any) -> AsyncGenerator[ChatCompletionOutput, None]:
+    async def async_run(self, prompts: Prompts) -> AsyncGenerator[ChatCompletionOutput, None]:
         limiter = anyio.CapacityLimiter(self.async_capacity)
         task_created_lock = anyio.Lock()
         progress_bar = self._get_progress_bar(num_tasks=len(prompts))
@@ -112,7 +108,6 @@ class CompletionEngine(Generic[P]):
                     limiter=limiter,
                     task_created_lock=task_created_lock,
                     progress_bar=progress_bar,
-                    **kwargs,
                 )
                 soon_values.append(soon_value)
             for soon_value in soon_values:
@@ -128,7 +123,6 @@ class CompletionEngine(Generic[P]):
         limiter: anyio.CapacityLimiter,
         task_created_lock: anyio.Lock,
         progress_bar: tqdm.tqdm[NoReturn],
-        **kwargs: Any,
     ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
 
@@ -139,7 +133,7 @@ class CompletionEngine(Generic[P]):
                     if sleep_time > 0:
                         await anyio.sleep(sleep_time)
                     self._task_created_time_list.append(int(time.time()))
-                output = await self.chat_model.async_generate(messages, **kwargs)
+                output = await self.chat_model.async_generate(messages)
             except Exception as e:
                 if self.error_mode == 'raise':
                     raise

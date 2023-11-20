@@ -4,7 +4,7 @@ import json
 from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
 from pydantic import Field, PositiveInt
-from typing_extensions import Annotated, Self, TypedDict, override
+from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.chat_completion import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -12,15 +12,18 @@ from generate.chat_completion.message import (
     Message,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
@@ -57,6 +60,17 @@ class MinimaxChatParameters(ModelParameters):
         return output
 
 
+class MinimaxChatParametersDict(ModelParametersDict, total=False):
+    system_prompt: str
+    role_meta: RoleMeta
+    beam_width: Optional[int]
+    temperature: Optional[Temperature]
+    top_p: Optional[Probability]
+    max_tokens: Optional[int]
+    skip_info_mask: Optional[bool]
+    continue_last_message: Optional[bool]
+
+
 def convert_to_minimax_message(message: Message) -> MinimaxMessage:
     if isinstance(message, UserMessage):
         return {
@@ -73,7 +87,7 @@ def convert_to_minimax_message(message: Message) -> MinimaxMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
+class MinimaxChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'minimax'
 
     def __init__(
@@ -83,10 +97,8 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
         parameters: MinimaxChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or MinimaxChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters or MinimaxChatParameters()
         self.settings = settings or MinimaxSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -109,17 +121,23 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
             'params': {'GroupId': self.settings.group_id},
         }
 
-    def _completion(self, messages: Messages, parameters: MinimaxChatParameters) -> ChatCompletionOutput:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    async def _async_completion(self, messages: Messages, parameters: MinimaxChatParameters) -> ChatCompletionOutput:
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
             messages = [AssistantMessage(content=response['choices'][0]['text'])]
             return ChatCompletionOutput(
@@ -143,7 +161,12 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
         http_parameters['json']['use_standard_sse'] = True
         return http_parameters
 
-    def _stream_completion(self, messages: Messages, parameters: MinimaxChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -159,9 +182,12 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
             if output.is_finish:
                 break
 
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: MinimaxChatParameters
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -208,5 +234,5 @@ class MinimaxChat(ChatCompletionModel[MinimaxChatParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

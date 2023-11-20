@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Type
+from typing import Type
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import function, get_json_schema
@@ -29,7 +29,7 @@ from generate.chat_completion.models import (
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
 from generate.model import ModelParameters
 
-ChatModels: list[tuple[Type[ChatCompletionModel[Any]], Type[ModelParameters]]] = [
+ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (AzureChat, OpenAIChatParameters),
     (OpenAIChat, OpenAIChatParameters),
     (MinimaxProChat, MinimaxProChatParameters),
@@ -42,7 +42,7 @@ ChatModels: list[tuple[Type[ChatCompletionModel[Any]], Type[ModelParameters]]] =
     (BailianChat, BailianChatParameters),
 ]
 
-ChatModelRegistry: dict[str, tuple[Type[ChatCompletionModel[Any]], Type[ModelParameters]]] = {
+ChatModelRegistry: dict[str, tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = {
     model_cls.model_type: (model_cls, parameter_cls) for model_cls, parameter_cls in ChatModels
 }
 

@@ -3,13 +3,20 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, ConfigDict, model_serializer
-from typing_extensions import Self
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import Self, TypedDict, Unpack
 
 
 class ModelParameters(BaseModel):
     def custom_model_dump(self) -> dict[str, Any]:
         return {**self.model_dump(exclude_none=True, by_alias=True), **self.model_dump(exclude_unset=True, by_alias=True)}
+
+    def update_with_validate(self, **kwargs: Any) -> Self:
+        return self.__class__.model_validate({**self.model_dump(exclude_unset=True), **kwargs})  # type: ignore
+
+
+class ModelParametersDict(TypedDict, total=False):
+    ...
 
 
 class ModelInfo(BaseModel):
@@ -29,24 +36,14 @@ class ModelOutput(BaseModel):
     cost: Optional[float] = None
     extra: Dict[str, Any] = {}
 
-    @model_serializer(mode='wrap')
-    def ser_model(self, handler: Any) -> Any:  # noqa: ANN001
-        output = handler(self)
-        output.pop('debug')
-        return output
 
-
-P = TypeVar('P', bound=ModelParameters)
 I = TypeVar('I', bound=Any)  # noqa: E741
 O = TypeVar('O', bound=ModelOutput)  # noqa: E741
 
 
-class GenerateModel(Generic[P, I, O], ABC):
+class GenerateModel(Generic[I, O], ABC):
     model_task: ClassVar[str]
     model_type: ClassVar[str]
-
-    def __init__(self, parameters: P) -> None:
-        self.parameters = parameters
 
     @property
     @abstractmethod
@@ -55,15 +52,15 @@ class GenerateModel(Generic[P, I, O], ABC):
 
     @classmethod
     @abstractmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
+    def from_name(cls, name: str) -> Self:
         ...
 
     @abstractmethod
-    def generate(self, prompt: I, **override_parameters: Any) -> O:
+    def generate(self, prompt: I, **kwargs: Unpack[ModelParametersDict]) -> O:
         ...
 
     @abstractmethod
-    async def async_generate(self, prompt: I, **override_parameters: Any) -> O:
+    async def async_generate(self, prompt: I, **kwargs: Unpack[ModelParametersDict]) -> O:
         ...
 
     @property
@@ -73,8 +70,3 @@ class GenerateModel(Generic[P, I, O], ABC):
     @property
     def model_id(self) -> str:
         return self.model_info.model_id
-
-    def _merge_parameters(self, **override_parameters: Any) -> P:
-        return self.parameters.__class__.model_validate(
-            {**self.parameters.model_dump(exclude_unset=True), **override_parameters}
-        )

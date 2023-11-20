@@ -5,7 +5,7 @@ from functools import partial
 from typing import Any, AsyncIterator, Callable, ClassVar, Dict, Iterator, List, Literal, Optional, Type, Union, cast
 
 from pydantic import Field, PositiveInt
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
@@ -17,6 +17,7 @@ from generate.chat_completion.message import (
     Message,
     Messages,
     MessageTypeError,
+    Prompt,
     SystemMessage,
     TextPart,
     ToolCall,
@@ -24,14 +25,16 @@ from generate.chat_completion.message import (
     ToolMessage,
     UserMessage,
     UserMultiPartMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelInfo, ModelParameters
+from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
 from generate.types import Probability, Temperature
 
@@ -91,6 +94,23 @@ class OpenAIChatParameters(ModelParameters):
     tool_choice: Union[Literal['auto'], OpenAIToolChoice, None] = None
 
 
+class OpenAIChatParametersDict(ModelParametersDict, total=False):
+    temperature: Optional[Temperature]
+    top_p: Optional[Probability]
+    max_tokens: Optional[PositiveInt]
+    functions: Optional[List[FunctionJsonSchema]]
+    function_call: Union[Literal['auto'], FunctionCallName, None]
+    stop: Union[str, List[str], None]
+    presence_penalty: Optional[float]
+    frequency_penalty: Optional[float]
+    logit_bias: Optional[Dict[int, int]]
+    user: Optional[str]
+    response_format: Optional[OpenAIResponseFormat]
+    seed: Optional[int]
+    tools: Optional[List[OpenAITool]]
+    tool_choice: Union[Literal['auto'], OpenAIToolChoice, None]
+
+
 def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
     return {
         'role': role,
@@ -99,7 +119,7 @@ def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
 
 
 def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMessage:
-    content: list[dict[str, Any]] = []
+    content = []
     for part in message.content:
         if isinstance(part, TextPart):
             content.append({'type': 'text', 'text': part.text})
@@ -196,7 +216,7 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     return None
 
 
-def parse_openai_model_reponse(response: dict[str, Any]) -> ChatCompletionOutput:
+def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
     message = response['choices'][0]['message']
     try:
         if function_call := message.get('function_call'):
@@ -247,20 +267,18 @@ def parse_openai_model_reponse(response: dict[str, Any]) -> ChatCompletionOutput
         )
 
 
-class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
+class OpenAIChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'openai'
 
     def __init__(
         self,
         model: str = 'gpt-3.5-turbo',
-        settings: OpenAISettings | None = None,
         parameters: OpenAIChatParameters | None = None,
+        settings: OpenAISettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAIChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters or OpenAIChatParameters()
         self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -280,12 +298,18 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
             'json': params,
         }
 
-    def _completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
         return parse_openai_model_reponse(response.json())
 
-    async def _async_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return parse_openai_model_reponse(response.json())
@@ -295,7 +319,12 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
         http_parameters['json']['stream'] = True
         return http_parameters
 
-    def _stream_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -311,9 +340,12 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
             if output.is_finish:
                 break
 
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: OpenAIChatParameters
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -350,5 +382,5 @@ class OpenAIChat(ChatCompletionModel[OpenAIChatParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

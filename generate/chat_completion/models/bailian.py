@@ -5,24 +5,26 @@ import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, override
+from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
-from generate.platforms.bailian import BailianSettings
-from generate.token import TokenMixin
+from generate.model import ModelParameters, ModelParametersDict
+from generate.platforms.bailian import BailianSettings, BailianTokenManager
 from generate.types import Probability
 
 
@@ -78,21 +80,32 @@ class BailianChatParameters(ModelParameters):
         return output
 
 
-class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
+class BailianChatParametersDict(ModelParametersDict, total=False):
+    request_id: str
+    session_id: Optional[str]
+    top_p: Optional[Probability]
+    has_thoughts: Optional[bool]
+    doc_reference_type: Optional[Literal['indexed', 'simpole']]
+    top_k: Optional[int]
+    seed: Optional[int]
+    use_raw_prompt: Optional[bool]
+    doc_tag_ids: Optional[List[int]]
+
+
+class BailianChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'bailian'
 
     def __init__(
         self,
-        settings: BailianSettings | None = None,
         parameters: BailianChatParameters | None = None,
+        settings: BailianSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or BailianChatParameters()
-        super().__init__(parameters=parameters)
-
+        self.parameters = parameters or BailianChatParameters()
         self._token = None
         self.settings = settings or BailianSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
+        self.token_manager = BailianTokenManager(self.settings, self.http_client)
 
     def _get_token(self) -> str:
         try:
@@ -117,7 +130,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         json_dict = parameters.custom_model_dump()
         headers = {
             'Content-Type': 'application/json;charset=UTF-8',
-            'Authorization': f'Bearer {self.token}',
+            'Authorization': f'Bearer {self.token_manager.token}',
         }
         json_dict['Prompt'] = prompt
         json_dict['AppId'] = self.settings.app_id
@@ -129,18 +142,22 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         }
 
     @override
-    def _completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
     @override
-    async def _async_completion(self, messages: Messages, parameters: BailianChatParameters) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if not response['Success']:
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['Data']['Text'])]
@@ -163,7 +180,11 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
         return http_post_kwargs
 
     @override
-    def _stream_completion(self, messages: Messages, parameters: BailianChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -181,9 +202,11 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
                 break
 
     @override
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: BailianChatParameters
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -230,7 +253,7 @@ class BailianChat(ChatCompletionModel[BailianChatParameters], TokenMixin):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
+    def from_name(cls, name: str) -> Self:
         if name:
             raise ValueError(f'{cls} cannot be initialized from name')
-        return cls(**kwargs)
+        return cls()

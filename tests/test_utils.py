@@ -37,5 +37,5 @@ def test_generate_speech() -> None:
 
 
 def test_generate_image() -> None:
-    output = generate_image('可爱的猫', model_id='openai/dall-e-2', size='256x256')
+    output = generate_image('可爱的猫', model_id='openai/dall-e-2')
     assert len(output.images[0].content) != 0

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import base64
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from httpx import Response
 from pydantic import Field
-from typing_extensions import Annotated, Self
+from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
@@ -46,24 +46,32 @@ class OpenAIImageGenerationParameters(ModelParameters):
     user: Optional[str] = None
 
 
-class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters]):
+class OpenAIImageGenerationParametersDict(ModelParametersDict, total=False):
+    quality: Optional[Literal['hd', 'standard']]
+    response_format: Optional[Literal['url', 'b64_json']]
+    size: Optional[Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792']]
+    style: Optional[Literal['vivid', 'natural']]
+    n: Optional[int]
+    user: Optional[str]
+
+
+class OpenAIImageGeneration(ImageGenerationModel):
     model_type = 'openai'
 
     def __init__(
         self,
         model: str = 'dall-e-3',
-        settings: OpenAISettings | None = None,
         parameters: OpenAIImageGenerationParameters | None = None,
+        settings: OpenAISettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAIImageGenerationParameters()
-        super().__init__(parameters)
         self.model = model
+        self.parameters = parameters or OpenAIImageGenerationParameters()
         self.settings = settings or OpenAISettings()  # type: ignore
         self.http_client = http_client or HttpClient()
-        self.check_parameters()
+        self._check_parameters()
 
-    def check_parameters(self) -> None:
+    def _check_parameters(self) -> None:
         if self.model == 'dall-e-3':
             if self.parameters.n is not None and self.parameters.n != 1:
                 raise ValueError('dall-e-3 only supports n=1')
@@ -79,7 +87,7 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
             if self.parameters.style is not None:
                 raise ValueError('dall-e-2 does not support style')
 
-    def check_prompt(self, prompt: str) -> None:
+    def _check_prompt(self, prompt: str) -> None:
         if self.model == 'dall-e-3' and len(prompt) >= MAX_PROMPT_LENGTH_DALLE_3:
             raise ValueError('dall-e-3 does not support prompt length >= 4000')
 
@@ -102,14 +110,18 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
             'headers': headers,
         }
 
-    def _image_generation(self, prompt: str, parameters: OpenAIImageGenerationParameters) -> ImageGenerationOutput:
-        self.check_prompt(prompt)
+    @override
+    def generate(self, prompt: str, **kwargs: Unpack[OpenAIImageGenerationParametersDict]) -> ImageGenerationOutput:
+        self._check_prompt(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, parameters, response)
 
-    async def _async_image_generation(self, prompt: str, parameters: OpenAIImageGenerationParameters) -> ImageGenerationOutput:
-        self.check_prompt(prompt)
+    @override
+    async def async_generate(self, prompt: str, **kwargs: Unpack[OpenAIImageGenerationParametersDict]) -> ImageGenerationOutput:
+        self._check_prompt(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._construct_model_output(prompt, parameters, response)
@@ -151,9 +163,11 @@ class OpenAIImageGeneration(ImageGenerationModel[OpenAIImageGenerationParameters
         return model_price * dollar_to_yuan
 
     @property
+    @override
     def name(self) -> str:
         return self.model
 
     @classmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    @override
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

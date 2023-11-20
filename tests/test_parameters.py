@@ -2,7 +2,7 @@ from typing import Union
 
 from typing_extensions import TypedDict
 
-from generate.chat_completion.base import ModelParameters
+from generate.model import ModelParameters
 
 
 class ToolChoice(TypedDict):

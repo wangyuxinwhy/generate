@@ -1,36 +1,35 @@
 from __future__ import annotations
 
 import os
-from typing import Any, AsyncIterator, ClassVar, Iterator
+from typing import AsyncIterator, ClassVar, Iterator
 
-from typing_extensions import Self, override
+from typing_extensions import Self, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
-from generate.chat_completion.message import Messages
+from generate.chat_completion.message import Messages, Prompt, ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai import (
     OpenAIChatParameters,
+    OpenAIChatParametersDict,
     convert_to_openai_message,
     parse_openai_model_reponse,
 )
-from generate.http import HttpClient, HttpResponse, HttpxPostKwargs
+from generate.http import HttpClient, HttpxPostKwargs
 from generate.platforms.azure import AzureSettings
 
 
-class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
+class AzureChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'azure'
 
     def __init__(
         self,
         model: str | None = None,
-        settings: AzureSettings | None = None,
         parameters: OpenAIChatParameters | None = None,
+        settings: AzureSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or OpenAIChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model or os.environ['AZURE_CHAT_API_ENGINE']
+        self.parameters = parameters or OpenAIChatParameters()
         self.settings = settings or AzureSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
 
@@ -51,30 +50,35 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
             'params': {'api-version': self.settings.api_version},
         }
 
-    def _completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
+        response = self.http_client.post(request_parameters)
         output = parse_openai_model_reponse(response.json())
         output.model_info.type = self.model_type
         return output
 
-    async def _async_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> ChatCompletionOutput:
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         output = parse_openai_model_reponse(response.json())
         output.model_info.type = self.model_type
         return output
 
-    def _parse_reponse(self, response: HttpResponse) -> ChatCompletionOutput:
-        return parse_openai_model_reponse(response)
-
     @override
-    def _stream_completion(self, messages: Messages, parameters: OpenAIChatParameters) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
         raise NotImplementedError('Azure does not support streaming')
 
     @override
-    def _async_stream_completion(
-        self, messages: Messages, parameters: OpenAIChatParameters
+    def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         raise NotImplementedError('Azure does not support streaming')
 
@@ -85,5 +89,5 @@ class AzureChat(ChatCompletionModel[OpenAIChatParameters]):
 
     @classmethod
     @override
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

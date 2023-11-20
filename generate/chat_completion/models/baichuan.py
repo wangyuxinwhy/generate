@@ -5,10 +5,10 @@ import json
 import time
 import uuid
 from datetime import datetime
-from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional, TypedDict
+from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
 from pydantic import Field
-from typing_extensions import Annotated, Self
+from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.message import (
@@ -16,15 +16,18 @@ from generate.chat_completion.message import (
     Message,
     Messages,
     MessageTypeError,
+    Prompt,
     UserMessage,
+    ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
+    ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters
+from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baichuan import BaichuanSettings
 from generate.types import Probability, Temperature
 
@@ -39,6 +42,13 @@ class BaichuanChatParameters(ModelParameters):
     top_k: Optional[Annotated[int, Field(ge=0)]] = None
     top_p: Optional[Probability] = None
     search: Optional[bool] = Field(default=None, alias='with_search_enhance')
+
+
+class BaichuanChatParametersDict(ModelParametersDict, total=False):
+    temperature: Optional[Temperature]
+    top_k: Optional[int]
+    top_p: Optional[Probability]
+    search: Optional[bool]
 
 
 def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
@@ -57,20 +67,18 @@ def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
 
-class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
+class BaichuanChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'baichuan'
 
     def __init__(
         self,
         model: str = 'Baichuan2-53B',
-        settings: BaichuanSettings | None = None,
         parameters: BaichuanChatParameters | None = None,
+        settings: BaichuanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        parameters = parameters or BaichuanChatParameters()
-        super().__init__(parameters=parameters)
-
         self.model = model
+        self.parameters = parameters or BaichuanChatParameters()
         self.settings = settings or BaichuanSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.http_client.stream_strategy = 'basic'
@@ -101,17 +109,23 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
             'json': data,
         }
 
-    def _completion(self, messages: Messages, parameters: BaichuanChatParameters) -> ChatCompletionOutput:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    async def _async_completion(self, messages: Messages, parameters: BaichuanChatParameters) -> ChatCompletionOutput:
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]) -> ChatCompletionOutput:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
             text = response['data']['messages'][-1]['content']
             finish_reason = response['data']['messages'][-1]['finish_reason']
@@ -130,9 +144,12 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
         http_parameters['url'] = self.settings.stream_api_base
         return http_parameters
 
-    def _stream_completion(
-        self, messages: Messages, parameters: BaichuanChatParameters
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -148,9 +165,12 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
             if output.is_finish:
                 break
 
-    async def _async_stream_completion(
-        self, messages: Messages, parameters: BaichuanChatParameters
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
@@ -197,9 +217,11 @@ class BaichuanChat(ChatCompletionModel[BaichuanChatParameters]):
         return None
 
     @property
+    @override
     def name(self) -> str:
         return self.model
 
     @classmethod
-    def from_name(cls, name: str, **kwargs: Any) -> Self:
-        return cls(model=name, **kwargs)
+    @override
+    def from_name(cls, name: str) -> Self:
+        return cls(model=name)

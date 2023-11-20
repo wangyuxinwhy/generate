@@ -14,7 +14,7 @@ from typing_extensions import Required, TypedDict
 from generate.types import PrimitiveData
 
 logger = logging.getLogger(__name__)
-HttpResponse = Dict[str, Any]
+ResponseValue = Dict[str, Any]
 QueryParams = Mapping[str, Union[PrimitiveData, Sequence[PrimitiveData]]]
 Headers = Dict[str, str]
 
@@ -45,14 +45,25 @@ class UnexpectedResponseError(Exception):
     Exception raised when an unexpected response is received from the server.
 
     Attributes:
-        response (dict): The response from the server.
+        response (dict[str, Any]): The response from the server.
     """
 
-    def __init__(self, response: dict[str, Any], *args: Any) -> None:
+    def __init__(self, response: ResponseValue, *args: Any) -> None:
         super().__init__(response, *args)
 
 
 class HttpClient:
+    """
+    A class representing an HTTP client.
+
+    Args:
+        retry (bool | RetryStrategy, optional): Whether to enable retry for failed requests. Defaults to False.
+        timeout (int | None, optional): The timeout value for requests in seconds. Defaults to 60.
+        proxies (ProxiesTypes | None, optional): The proxies to be used for requests. Defaults to None.
+        stream_strategy (Literal['sse', 'basic'], optional): The strategy for streaming requests. Defaults to 'sse'.
+        limits (Limits | None, optional): The limits for the HTTP client. Defaults to None.
+    """
+
     def __init__(
         self,
         retry: bool | RetryStrategy = False,
