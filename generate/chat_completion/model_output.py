@@ -31,11 +31,6 @@ class ChatCompletionOutput(ModelOutput, Generic[M]):
         return self.finish_reason is not None
 
 
-# class StreamInfo(TypedDict):
-#     delta: Union[str, Dict[str, Any]]
-#     control: Literal['start', 'continue', 'finish']
-
-
 class Stream(BaseModel):
     delta: str = ''
     control: Literal['start', 'continue', 'finish']
