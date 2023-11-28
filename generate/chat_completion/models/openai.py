@@ -27,16 +27,18 @@ from generate.chat_completion.message import (
     UserMultiPartMessage,
     ensure_messages,
 )
+from generate.chat_completion.message.core import UnionAssistantMessage
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
     ResponseValue,
-    UnexpectedResponseError,
 )
 from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
 from generate.types import Probability, Temperature
+
+OpenAIAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMessage]
 
 
 class FunctionCallName(TypedDict):
@@ -112,6 +114,8 @@ class OpenAIChatParametersDict(ModelParametersDict, total=False):
 
 
 def _to_text_message_dict(role: str, message: Message) -> OpenAIMessage:
+    if not isinstance(message.content, str):
+        raise TypeError(f'Unexpected message content: {type(message.content)}')
     return {
         'role': role,
         'content': message.content,
@@ -216,55 +220,113 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     return None
 
 
-def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
-    message = response['choices'][0]['message']
-    try:
-        if function_call := message.get('function_call'):
-            function_call = cast(OpenAIFunctionCall, function_call)
-            messages = [
-                FunctionCallMessage(
-                    content=FunctionCall(
-                        name=function_call['name'],
-                        arguments=function_call['arguments'],
+def convert_openai_message_to_generate_message(
+    message: dict[str, Any]
+) -> FunctionCallMessage | ToolCallsMessage | AssistantMessage:
+    if function_call := message.get('function_call'):
+        function_call = cast(OpenAIFunctionCall, function_call)
+        return FunctionCallMessage(
+            content=FunctionCall(
+                name=function_call.get('name') or '',
+                arguments=function_call['arguments'],
+            ),
+        )
+    if tool_calls := message.get('tool_calls'):
+        tool_calls = cast(List[OpenAIToolCall], tool_calls)
+        return ToolCallsMessage(
+            content=[
+                ToolCall(
+                    id=tool_call['id'],
+                    function=FunctionCall(
+                        name=tool_call['function'].get('name') or '',
+                        arguments=tool_call['function']['arguments'],
                     ),
                 )
-            ]
-        elif tool_calls := message.get('tool_calls'):
-            tool_calls = cast(List[OpenAIToolCall], tool_calls)
-            messages = [
-                ToolCallsMessage(
-                    content=[
-                        ToolCall(
-                            id=tool_call['id'],
-                            function=FunctionCall(
-                                name=tool_call['function']['name'],
-                                arguments=tool_call['function']['arguments'],
-                            ),
-                        )
-                        for tool_call in tool_calls
-                    ],
-                )
-            ]
-        else:
-            messages = [AssistantMessage(content=message['content'])]
-    except (KeyError, IndexError) as e:
-        raise UnexpectedResponseError(response) from e
-    else:
-        extra = {'usage': response['usage']}
-        if system_fingerprint := response.get('system_fingerprint'):
-            extra['system_fingerprint'] = system_fingerprint
-
-        choice = response['choices'][0]
-        if (finish_reason := choice.get('finish_reason')) is None:
-            finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
-
-        return ChatCompletionOutput(
-            model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
-            messages=messages,
-            finish_reason=finish_reason or '',
-            cost=calculate_cost(response['model'], response['usage']['prompt_tokens'], response['usage']['completion_tokens']),
-            extra=extra,
+                for tool_call in tool_calls
+            ],
         )
+    return AssistantMessage(content=message['content'] or '')
+
+
+def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[OpenAIAssistantMessage]:
+    message = convert_openai_message_to_generate_message(response['choices'][0]['message'])
+    extra = {'usage': response['usage']}
+    if system_fingerprint := response.get('system_fingerprint'):
+        extra['system_fingerprint'] = system_fingerprint
+
+    choice = response['choices'][0]
+    if (finish_reason := choice.get('finish_reason')) is None:
+        finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
+
+    return ChatCompletionOutput[OpenAIAssistantMessage](
+        model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
+        messages=[message],
+        finish_reason=finish_reason or '',
+        cost=calculate_cost(response['model'], response['usage']['prompt_tokens'], response['usage']['completion_tokens']),
+        extra=extra,
+    )
+
+
+def parse_openai_stream_model_reponse(  # noqa: PLR0912
+    response: ResponseValue, message: OpenAIAssistantMessage | None = None
+) -> ChatCompletionStreamOutput[OpenAIAssistantMessage] | None:
+    delta = ''
+    delta_dict = response['choices'][0]['delta']
+    is_start = message is None
+
+    if message is None:
+        if 'content' in delta_dict and delta_dict['content'] is None:
+            return None
+        output_message = convert_openai_message_to_generate_message(delta_dict)
+        message = output_message
+    elif not delta_dict:
+        pass
+    elif isinstance(message, AssistantMessage):
+        delta = delta_dict['content']
+        message.content += delta
+    elif isinstance(message, FunctionCallMessage):
+        message.content.arguments += delta_dict['function_call']['arguments']
+    elif isinstance(message, ToolCallsMessage):
+        index = delta_dict['tool_calls'][0]['index']
+        if index >= len(message.content):
+            new_tool_calls_message = convert_openai_message_to_generate_message(delta_dict)
+            new_tool_calls_message = cast(ToolCallsMessage, new_tool_calls_message)
+            message.content.append(new_tool_calls_message.content[0])
+        else:
+            message.content[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
+    else:
+        raise TypeError(f'Unexpected message type: {type(message)}')
+
+    extra = {}
+    if usage := response.get('usage'):
+        extra['usage'] = usage
+        cost = calculate_cost(response['model'], usage['prompt_tokens'], usage['completion_tokens'])
+    else:
+        cost = None
+    if system_fingerprint := response.get('system_fingerprint'):
+        extra['system_fingerprint'] = system_fingerprint
+
+    choice = response['choices'][0]
+    if (finish_reason := choice.get('finish_reason')) is None:
+        finish_reason: str | None = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
+
+    if finish_reason is None:
+        return ChatCompletionStreamOutput[OpenAIAssistantMessage](
+            model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
+            messages=[message],
+            finish_reason=finish_reason,
+            extra=extra,
+            cost=cost,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
+        )
+    return ChatCompletionStreamOutput[OpenAIAssistantMessage](
+        model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
+        messages=[message],
+        finish_reason=finish_reason,
+        cost=cost,
+        extra=extra,
+        stream=Stream(delta=delta, control='finish'),
+    )
 
 
 class OpenAIChat(ChatCompletionModel):
@@ -299,7 +361,9 @@ class OpenAIChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+    def generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
+    ) -> ChatCompletionOutput[OpenAIAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -307,7 +371,9 @@ class OpenAIChat(ChatCompletionModel):
         return parse_openai_model_reponse(response.json())
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(
+        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
+    ) -> ChatCompletionOutput[OpenAIAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -322,20 +388,17 @@ class OpenAIChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    ) -> Iterator[ChatCompletionStreamOutput[OpenAIAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
+        message: UnionAssistantMessage | None = None
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            parsed_line = json.loads(line)
+            output = parse_openai_stream_model_reponse(parsed_line, message)
+            if output is None:
+                continue
+            message = output.message
             yield output
             if output.is_finish:
                 break
@@ -343,37 +406,20 @@ class OpenAIChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput[OpenAIAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+        message: OpenAIAssistantMessage | None = None
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
+            parsed_line = json.loads(line)
+            output = parse_openai_stream_model_reponse(parsed_line, message)
+            if output is None:
+                continue
+            message = output.message
             yield output
             if output.is_finish:
                 break
-
-    def _parse_stream_line(self, line: str) -> ChatCompletionStreamOutput:
-        parsed_line = json.loads(line)
-        delta = parsed_line['choices'][0]['delta']
-        if 'content' in delta:
-            return ChatCompletionStreamOutput(
-                model_info=self.model_info,
-                stream=Stream(delta=delta['content'], control='continue'),
-            )
-        return ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='finish'),
-            finish_reason=parsed_line['choices'][0]['finish_reason'],
-        )
 
     @property
     @override

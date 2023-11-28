@@ -11,11 +11,11 @@ from generate.chat_completion.message import (
     FunctionCall,
     FunctionCallMessage,
     FunctionMessage,
-    Message,
     MessageTypeError,
     ToolCall,
     ToolCallsMessage,
     ToolMessage,
+    UnionMessage,
     UserMessage,
 )
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
@@ -78,7 +78,7 @@ class ChatEngine:
         else:
             self.printer = printer
 
-        self.history: list[Message] = []
+        self.history: list[UnionMessage] = []
         self.model_ouptuts: list[ChatCompletionOutput] = []
         self._call_count = 0
 
@@ -109,11 +109,11 @@ class ChatEngine:
             else:
                 model_output = self._chat_model.generate(self.history, **kwargs)
             self._handle_model_output(model_output)
-            if isinstance(model_output.last_message, AssistantMessage):
+            if isinstance(model_output.message, AssistantMessage):
                 return model_output.reply
 
     def _handle_model_output(self, model_output: ChatCompletionOutput, **kwargs: Any) -> None:
-        if not model_output.last_message:
+        if not model_output.message:
             raise RuntimeError('messages in model output is empty.', model_output.model_dump())
 
         self.model_ouptuts.append(model_output)
@@ -124,25 +124,23 @@ class ChatEngine:
                     continue
                 self.printer.print_message(message)
 
-        if isinstance(model_output.last_message, FunctionCallMessage):
+        if isinstance(model_output.message, FunctionCallMessage):
             self._call_count += 1
             if self._call_count > self.max_calls_per_turn:
                 raise RuntimeError('Maximum number of function calls reached.')
-            function_call = model_output.last_message.content
+            function_call = model_output.message.content
             self._handle_function_call(function_call)
 
-        if isinstance(model_output.last_message, ToolCallsMessage):
+        if isinstance(model_output.message, ToolCallsMessage):
             self._call_count += 1
             if self._call_count > self.max_calls_per_turn:
                 raise RuntimeError('Maximum number of tool calls reached.')
-            tool_calls = model_output.last_message.content
+            tool_calls = model_output.message.content
             self._handle_tool_calls(tool_calls, **kwargs)
 
     def _handle_function_call(self, function_call: FunctionCall) -> None:
         function_output = self._run_function_call(function_call)
-        function_message = FunctionMessage(
-            role='function', name=function_call.name, content=json.dumps(function_output, ensure_ascii=False)
-        )
+        function_message = FunctionMessage(name=function_call.name, content=json.dumps(function_output, ensure_ascii=False))
         self.history.append(function_message)
         if self.printer:
             self.printer.print_message(function_message)
@@ -182,7 +180,7 @@ class ChatEngine:
             else:
                 model_output = await self._chat_model.async_generate(self.history, **kwargs)
             self._handle_model_output(model_output)
-            if isinstance(model_output.last_message, AssistantMessage):
+            if isinstance(model_output.message, AssistantMessage):
                 return model_output.reply
 
     async def _async_stream_chat_helper(self, **kwargs: Any) -> ChatCompletionOutput:
@@ -212,9 +210,7 @@ class ChatEngine:
 
     async def _async_recursive_function_call(self, function_call: FunctionCall, **kwargs: Any) -> str:
         function_output = self._run_function_call(function_call)
-        function_message = FunctionMessage(
-            role='function', name=function_call.name, content=json.dumps(function_output, ensure_ascii=False)
-        )
+        function_message = FunctionMessage(name=function_call.name, content=json.dumps(function_output, ensure_ascii=False))
         self.history.append(function_message)
         if self.printer:
             self.printer.print_message(function_message)
@@ -222,20 +218,20 @@ class ChatEngine:
         model_output = await self._chat_model.async_generate(self.history, **kwargs)
         self._handle_model_output(model_output)
 
-        if not model_output.last_message:
+        if not model_output.message:
             raise RuntimeError('messages in model output is empty.', model_output.model_dump())
 
-        if isinstance(model_output.last_message, AssistantMessage):
-            return model_output.last_message.content
+        if isinstance(model_output.message, AssistantMessage):
+            return model_output.message.content
 
-        if isinstance(model_output.last_message, FunctionCallMessage):
+        if isinstance(model_output.message, FunctionCallMessage):
             self._call_count += 1
             if self._call_count > self.max_calls_per_turn:
                 raise RuntimeError('Maximum number of function calls reached.')
-            function_call = model_output.last_message.content
+            function_call = model_output.message.content
             return await self._async_recursive_function_call(function_call, **kwargs)
 
-        raise MessageTypeError(model_output.last_message, allowed_message_type=(AssistantMessage, FunctionCallMessage))
+        raise MessageTypeError(model_output.message, allowed_message_type=(AssistantMessage, FunctionCallMessage))
 
     def reset(self) -> None:
         self.history.clear()

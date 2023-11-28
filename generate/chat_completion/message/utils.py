@@ -5,6 +5,7 @@ from generate.chat_completion.message.core import (
     Message,
     Messages,
     Prompt,
+    UnionMessage,
     UserMessage,
     assistant_content_validator,
     message_validator,
@@ -26,25 +27,17 @@ def ensure_messages(prompt: Prompt) -> Messages:
         ValidationError: If the prompt is not valid.
     """
     if isinstance(prompt, str):
-        return [UserMessage(role='user', content=prompt)]
+        return [UserMessage(content=prompt)]
     if isinstance(prompt, dict):
-        if prompt['role'] == 'assistant':
-            prompt['content_type'] = infer_assistant_message_content_type(prompt['content'])
-        if prompt['role'] == 'user':
-            prompt['content_type'] = infer_user_message_content_type(prompt['content'])
         return [message_validator.validate_python(prompt)]
     if isinstance(prompt, Message):
         return [prompt]
 
-    messages: list[Message] = []
+    messages: list[UnionMessage] = []
     for i in prompt:
         if isinstance(i, Message):
             messages.append(i)
         else:
-            if i['role'] == 'assistant':
-                i['content_type'] = infer_assistant_message_content_type(i['content'])
-            if i['role'] == 'user':
-                i['content_type'] = infer_user_message_content_type(i['content'])
             messages.append(message_validator.validate_python(i))
     return messages
 

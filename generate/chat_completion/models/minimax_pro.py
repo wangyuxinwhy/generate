@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union, cast
 
 from pydantic import Field, PositiveInt, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
@@ -31,6 +31,8 @@ from generate.http import (
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
+
+MinimaxProAssistantMessage = Union[FunctionCallMessage, AssistantMessage, UserMessage, FunctionMessage]
 
 
 class BotSettingDict(TypedDict):
@@ -207,7 +209,9 @@ class MinimaxProChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
+    def generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
+    ) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -215,20 +219,24 @@ class MinimaxProChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
+    ) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
         try:
-            messages = [self._convert_to_message(i) for i in response['choices'][0]['messages']]
+            messages: list[FunctionCallMessage | UserMessage | AssistantMessage | FunctionMessage] = [
+                self._convert_to_message(i) for i in response['choices'][0]['messages']
+            ]
             finish_reason = response['choices'][0]['finish_reason']
             num_web_search = sum([i for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
 
-            return ChatCompletionOutput(
+            return ChatCompletionOutput[MinimaxProAssistantMessage](
                 model_info=self.model_info,
                 messages=messages,
                 finish_reason=finish_reason,
@@ -250,44 +258,56 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    ) -> Iterator[ChatCompletionStreamOutput[MinimaxProAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
+        message = []
+        is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput[MinimaxProAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
+        message = []
+        is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
-    def _parse_stream_line(self, line: str) -> ChatCompletionStreamOutput:
+    def _parse_stream_line(
+        self, line: str, messages: Messages, is_start: bool
+    ) -> ChatCompletionStreamOutput[MinimaxProAssistantMessage]:
+        messages = list(messages)
         parsed_line = json.loads(line)
-        delta = parsed_line['choices'][0]['messages'][0]['text']
-        if parsed_line['reply']:
-            return ChatCompletionStreamOutput(
+        output_messages = [self._convert_to_message(i) for i in parsed_line['choices'][0]['messages']]
+        delta = ''
+        for index, output_message in enumerate(output_messages, start=1):
+            if index > len(messages):
+                messages.append(output_message)
+                if isinstance(output_message, AssistantMessage):
+                    delta = output_message.content
+            elif isinstance(output_message, FunctionCallMessage):
+                messages[index - 1] = output_message
+            elif isinstance(output_message, AssistantMessage):
+                message = cast(AssistantMessage, messages[index - 1])
+                delta = output_message.content
+                message.content += output_message.content
+            else:
+                raise ValueError(f'unknown message type: {output_message}')
+
+        if parsed_line.get('usage'):
+            return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
                 model_info=self.model_info,
-                messages=[AssistantMessage(content=parsed_line['reply'])],
+                messages=messages,
                 finish_reason=parsed_line['choices'][0]['finish_reason'],
                 cost=self.calculate_cost(parsed_line['usage']),
                 extra={
@@ -297,13 +317,17 @@ class MinimaxProChat(ChatCompletionModel):
                 },
                 stream=Stream(delta=delta, control='finish'),
             )
-        return ChatCompletionStreamOutput(
+        return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
             model_info=self.model_info,
-            stream=Stream(delta=delta, control='continue'),
+            messages=messages,
+            finish_reason=None,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
 
     @staticmethod
-    def _convert_to_message(message: MinimaxProMessage) -> Message:
+    def _convert_to_message(
+        message: MinimaxProMessage
+    ) -> FunctionCallMessage | UserMessage | AssistantMessage | FunctionMessage:
         if 'function_call' in message:
             return FunctionCallMessage(
                 name=message['sender_name'],

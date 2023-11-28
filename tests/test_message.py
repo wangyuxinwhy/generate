@@ -19,7 +19,11 @@ def test_ensure_messages_with_dict() -> None:
     assert ensure_messages(prompt) == expected_messages
 
     prompt = {'role': 'assistant', 'name': 'bot', 'content': {'name': 'test', 'arguments': 'test'}}
-    expected_messages = [FunctionCallMessage(role='assistant', name='bot', content=FunctionCall(name='test', arguments='test'))]
+    expected_messages = [FunctionCallMessage(name='bot', content=FunctionCall(name='test', arguments='test'))]
+    assert ensure_messages(prompt) == expected_messages
+
+    prompt = {'role': 'assistant', 'name': 'bot', 'content': 'test'}
+    expected_messages = [AssistantMessage(name='bot', content='test')]
     assert ensure_messages(prompt) == expected_messages
 
 
