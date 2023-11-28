@@ -27,7 +27,6 @@ from generate.chat_completion.message import (
     UserMultiPartMessage,
     ensure_messages,
 )
-from generate.chat_completion.message.core import UnionAssistantMessage
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
@@ -267,66 +266,76 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[
     )
 
 
-def parse_openai_stream_model_reponse(  # noqa: PLR0912
-    response: ResponseValue, message: OpenAIAssistantMessage | None = None
-) -> ChatCompletionStreamOutput[OpenAIAssistantMessage] | None:
-    delta = ''
-    delta_dict = response['choices'][0]['delta']
-    is_start = message is None
+class _StreamResponseProcessor:
+    def __init__(self) -> None:
+        self.message: OpenAIAssistantMessage | None = None
+        self.is_start = True
 
-    if message is None:
-        if 'content' in delta_dict and delta_dict['content'] is None:
-            return None
-        output_message = convert_openai_message_to_generate_message(delta_dict)
-        message = output_message
-    elif not delta_dict:
-        pass
-    elif isinstance(message, AssistantMessage):
-        delta = delta_dict['content']
-        message.content += delta
-    elif isinstance(message, FunctionCallMessage):
-        message.content.arguments += delta_dict['function_call']['arguments']
-    elif isinstance(message, ToolCallsMessage):
-        index = delta_dict['tool_calls'][0]['index']
-        if index >= len(message.content):
-            new_tool_calls_message = convert_openai_message_to_generate_message(delta_dict)
-            new_tool_calls_message = cast(ToolCallsMessage, new_tool_calls_message)
-            message.content.append(new_tool_calls_message.content[0])
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[OpenAIAssistantMessage] | None:
+        delta, extra = '', {}
+        delta_dict = response['choices'][0]['delta']
+
+        if self.message is None:
+            self.message = self.process_initial_message(delta_dict)
+            if self.message is None:
+                return None
         else:
-            message.content[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
-    else:
-        raise TypeError(f'Unexpected message type: {type(message)}')
-
-    extra = {}
-    if usage := response.get('usage'):
-        extra['usage'] = usage
-        cost = calculate_cost(response['model'], usage['prompt_tokens'], usage['completion_tokens'])
-    else:
-        cost = None
-    if system_fingerprint := response.get('system_fingerprint'):
-        extra['system_fingerprint'] = system_fingerprint
-
-    choice = response['choices'][0]
-    if (finish_reason := choice.get('finish_reason')) is None:
-        finish_reason: str | None = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
-
-    if finish_reason is None:
+            self.update_existing_message(delta_dict)
+        extra = self.extract_extra_info(response)
+        cost = cost = self.calculate_response_cost(response)
+        finish_reason = self.determine_finish_reason(response)
+        stream_control = 'finish' if finish_reason else 'start' if self.is_start else 'continue'
+        self.is_start = False
         return ChatCompletionStreamOutput[OpenAIAssistantMessage](
             model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
-            messages=[message],
+            messages=[self.message],
             finish_reason=finish_reason,
-            extra=extra,
             cost=cost,
-            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
+            extra=extra,
+            stream=Stream(delta=delta, control=stream_control),
         )
-    return ChatCompletionStreamOutput[OpenAIAssistantMessage](
-        model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
-        messages=[message],
-        finish_reason=finish_reason,
-        cost=cost,
-        extra=extra,
-        stream=Stream(delta=delta, control='finish'),
-    )
+
+    def process_initial_message(self, delta_dict: dict[str, Any]) -> OpenAIAssistantMessage | None:
+        if delta_dict.get('content') is None and delta_dict.get('tool_calls') is None and delta_dict.get('function_call') is None:
+            return None
+        return convert_openai_message_to_generate_message(delta_dict)
+
+    def update_existing_message(self, delta_dict: dict[str, Any]) -> None:
+        if not delta_dict:
+            return
+
+        if isinstance(self.message, AssistantMessage):
+            delta = delta_dict['content']
+            self.message.content += delta
+        elif isinstance(self.message, FunctionCallMessage):
+            self.message.content.arguments += delta_dict['function_call']['arguments']
+        elif isinstance(self.message, ToolCallsMessage):
+            index = delta_dict['tool_calls'][0]['index']
+            if index >= len(self.message.content):
+                new_tool_calls_message = cast(ToolCallsMessage, convert_openai_message_to_generate_message(delta_dict))
+                self.message.content.append(new_tool_calls_message.content[0])
+            else:
+                self.message.content[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
+
+    def extract_extra_info(self, response: ResponseValue) -> dict[str, Any]:
+        extra = {}
+        if usage := response.get('usage'):
+            extra['usage'] = usage
+        if system_fingerprint := response.get('system_fingerprint'):
+            extra['system_fingerprint'] = system_fingerprint
+        return extra
+
+    @staticmethod
+    def calculate_response_cost(response: ResponseValue) -> float | None:
+        if usage := response.get('usage'):
+            return calculate_cost(response['model'], usage['prompt_tokens'], usage['completion_tokens'])
+        return None
+
+    def determine_finish_reason(self, response: ResponseValue) -> str | None:
+        choice = response['choices'][0]
+        if (finish_reason := choice.get('finish_reason')) is None:
+            finish_reason: str | None = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
+        return finish_reason
 
 
 class OpenAIChat(ChatCompletionModel):
@@ -392,13 +401,11 @@ class OpenAIChat(ChatCompletionModel):
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message: UnionAssistantMessage | None = None
+        stream_processor = _StreamResponseProcessor()
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            parsed_line = json.loads(line)
-            output = parse_openai_stream_model_reponse(parsed_line, message)
+            output = stream_processor.process(json.loads(line))
             if output is None:
                 continue
-            message = output.message
             yield output
             if output.is_finish:
                 break
@@ -410,13 +417,11 @@ class OpenAIChat(ChatCompletionModel):
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message: OpenAIAssistantMessage | None = None
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            parsed_line = json.loads(line)
-            output = parse_openai_stream_model_reponse(parsed_line, message)
+        stream_processor = _StreamResponseProcessor()
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
+            output = stream_processor.process(json.loads(line))
             if output is None:
                 continue
-            message = output.message
             yield output
             if output.is_finish:
                 break
