@@ -296,7 +296,11 @@ class _StreamResponseProcessor:
         )
 
     def process_initial_message(self, delta_dict: dict[str, Any]) -> OpenAIAssistantMessage | None:
-        if delta_dict.get('content') is None and delta_dict.get('tool_calls') is None and delta_dict.get('function_call') is None:
+        if (
+            delta_dict.get('content') is None
+            and delta_dict.get('tool_calls') is None
+            and delta_dict.get('function_call') is None
+        ):
             return None
         return convert_openai_message_to_generate_message(delta_dict)
 

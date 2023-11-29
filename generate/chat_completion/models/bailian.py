@@ -236,7 +236,10 @@ class BailianChat(ChatCompletionModel):
         delta = reply[len(message.content) :]
         message.content = reply
         return ChatCompletionStreamOutput(
-            model_info=self.model_info, messages=[message], extra=extra, stream=Stream(delta=delta, control='start' if is_start else 'continue')
+            model_info=self.model_info,
+            messages=[message],
+            extra=extra,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
 
     @property
