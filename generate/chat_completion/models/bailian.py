@@ -142,7 +142,7 @@ class BailianChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -150,14 +150,16 @@ class BailianChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> ChatCompletionOutput[AssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if not response['Success']:
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['Data']['Text'])]
@@ -182,21 +184,15 @@ class BailianChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        current_length = 0
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output, current_length = self._parse_stream_line(line, current_length)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
             if output.is_finish:
                 break
@@ -204,47 +200,47 @@ class BailianChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        current_length = 0
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output, current_length = self._parse_stream_line(line, current_length)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
             if output.is_finish:
                 break
 
-    def _parse_stream_line(self, line: str, current_length: int) -> tuple[ChatCompletionStreamOutput, int]:
+    def _parse_stream_line(
+        self, line: str, message: AssistantMessage, is_start: bool
+    ) -> ChatCompletionStreamOutput[AssistantMessage]:
         parsed_line = json.loads(line)
-        message: str = parsed_line['Data']['Text']
-        if len(message) == current_length:
-            output = ChatCompletionStreamOutput(
+        reply: str = parsed_line['Data']['Text']
+        extra = {
+            'thoughts': parsed_line['Data']['Thoughts'],
+            'doc_references': parsed_line['Data']['DocReferences'],
+            'request_id': parsed_line['RequestId'],
+            'response_id': parsed_line['Data']['ResponseId'],
+        }
+        if len(reply) == len(message.content):
+            return ChatCompletionStreamOutput(
                 model_info=self.model_info,
-                extra={
-                    'thoughts': parsed_line['Data']['Thoughts'],
-                    'doc_references': parsed_line['Data']['DocReferences'],
-                    'request_id': parsed_line['RequestId'],
-                    'response_id': parsed_line['Data']['ResponseId'],
-                },
+                messages=[message],
+                extra=extra,
+                finish_reason='stop',
                 stream=Stream(delta='', control='finish'),
             )
-            return output, len(message)
 
-        delta = message[current_length:]
-        output = ChatCompletionStreamOutput(
+        delta = reply[len(message.content) :]
+        message.content = reply
+        return ChatCompletionStreamOutput(
             model_info=self.model_info,
-            stream=Stream(delta=delta, control='continue'),
+            messages=[message],
+            extra=extra,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
-        return output, len(message)
 
     @property
     @override

@@ -46,11 +46,14 @@ def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameters: dict[
 )
 def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> None:
     prompt = '这是测试，只回复你好'
-    sync_output = list(chat_completion_model.stream_generate(prompt))[-1]
+    outputs = list(chat_completion_model.stream_generate(prompt))
     async_output = asyncio.run(async_stream_helper(chat_completion_model, prompt))
 
-    assert sync_output.stream.control == 'finish'
-    assert sync_output.reply != ''
+    assert outputs[-1].stream.control == 'finish'
+    for output in outputs[1:-1]:
+        assert output.stream.control == 'continue'
+    assert outputs[0].stream.control == 'start'
+    assert outputs[-1].reply != ''
     assert async_output.reply != ''
 
 

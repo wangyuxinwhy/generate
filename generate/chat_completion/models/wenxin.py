@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
+from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional, Union
 
 from pydantic import Field, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
@@ -29,6 +29,8 @@ from generate.http import (
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 from generate.types import JsonSchema, Probability, Temperature
+
+WenxinAssistantMessage = Union[FunctionCallMessage, AssistantMessage]
 
 
 class WenxinMessage(TypedDict):
@@ -77,7 +79,7 @@ def convert_to_wenxin_message(message: Message) -> WenxinMessage:
         }
     if isinstance(message, FunctionMessage):
         return {
-            'role': message.role,
+            'role': 'function',
             'name': message.name,
             'content': message.content,
         }
@@ -151,7 +153,9 @@ class WenxinChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+    def generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> ChatCompletionOutput[WenxinAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -159,18 +163,20 @@ class WenxinChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> ChatCompletionOutput[WenxinAssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[WenxinAssistantMessage]:
         if response.get('error_msg'):
             raise UnexpectedResponseError(response)
         if response.get('function_call'):
-            messages = [
+            messages: list[WenxinAssistantMessage] = [
                 FunctionCallMessage(
                     content=FunctionCall(
                         name=response['function_call']['name'],
@@ -181,7 +187,7 @@ class WenxinChat(ChatCompletionModel):
             ]
         else:
             messages = [AssistantMessage(content=response['result'])]
-        return ChatCompletionOutput(
+        return ChatCompletionOutput[WenxinAssistantMessage](
             model_info=self.model_info,
             messages=messages,
             cost=self.calculate_cost(response['usage']),
@@ -200,49 +206,43 @@ class WenxinChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    ) -> Iterator[ChatCompletionStreamOutput[WenxinAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
+        if parameters.functions:
+            raise ValueError('stream_generate does not support functions')
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput[WenxinAssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
+        if parameters.functions:
+            raise ValueError('stream_generate does not support functions')
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
-    def _parse_stream_line(self, line: str) -> ChatCompletionStreamOutput:
+    def _parse_stream_line(
+        self, line: str, message: AssistantMessage, is_start: bool
+    ) -> ChatCompletionStreamOutput[WenxinAssistantMessage]:
         parsed_line = json.loads(line)
+        delta = parsed_line['result']
+        message.content += delta
         if parsed_line['is_end']:
-            return ChatCompletionStreamOutput(
+            return ChatCompletionStreamOutput[WenxinAssistantMessage](
                 model_info=self.model_info,
                 cost=self.calculate_cost(parsed_line['usage']),
                 extra={
@@ -250,11 +250,15 @@ class WenxinChat(ChatCompletionModel):
                     'need_clear_history': parsed_line['need_clear_history'],
                     'usage': parsed_line['usage'],
                 },
-                stream=Stream(delta=parsed_line['result'], control='finish'),
+                messages=[message],
+                finish_reason='stop',
+                stream=Stream(delta=delta, control='finish'),
             )
-        return ChatCompletionStreamOutput(
+        return ChatCompletionStreamOutput[WenxinAssistantMessage](
             model_info=self.model_info,
-            stream=Stream(delta=parsed_line['result'], control='continue'),
+            messages=[message],
+            finish_reason=None,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
 
     def calculate_cost(self, usage: dict[str, Any]) -> float | None:

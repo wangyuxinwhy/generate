@@ -91,7 +91,7 @@ class HunyuanChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -99,14 +99,16 @@ class HunyuanChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(
+        self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
+    ) -> ChatCompletionOutput[AssistantMessage]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if response.get('error'):
             raise UnexpectedResponseError(response)
         messages = [AssistantMessage(content=response['choices'][0]['messages']['content'])]
@@ -135,58 +137,52 @@ class HunyuanChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        yield ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            stream=Stream(delta='', control='start'),
-        )
-        reply = ''
+        message = AssistantMessage(content='')
+        is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line)
-            reply += output.stream.delta
-            if output.is_finish:
-                output.messages = [AssistantMessage(content=reply)]
+            output = self._parse_stream_line(line, message, is_start)
+            is_start = False
             yield output
-            if output.is_finish:
-                break
 
-    def _parse_stream_line(self, line: str) -> ChatCompletionStreamOutput:
+    def _parse_stream_line(
+        self, line: str, message: AssistantMessage, is_start: bool
+    ) -> ChatCompletionStreamOutput[AssistantMessage]:
         parsed_line = json.loads(line)
-        message = parsed_line['choices'][0]
-        if message['finish_reason']:
+        message_dict = parsed_line['choices'][0]
+        delta = message_dict['delta']['content']
+        message.content += delta
+        if message_dict['finish_reason']:
             return ChatCompletionStreamOutput(
                 model_info=self.model_info,
-                finish_reason=message['finish_reason'],
+                messages=[message],
+                finish_reason=message_dict['finish_reason'],
                 cost=self.calculate_cost(parsed_line['usage']),
+                stream=Stream(delta=delta, control='finish'),
                 extra={'usage': parsed_line['usage']},
-                stream=Stream(delta=message['delta']['content'], control='finish'),
             )
         return ChatCompletionStreamOutput(
-            model_info=self.model_info, stream=Stream(delta=message['delta']['content'], control='continue')
+            model_info=self.model_info,
+            messages=[message],
+            finish_reason=None,
+            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
 
     def generate_json_dict(
