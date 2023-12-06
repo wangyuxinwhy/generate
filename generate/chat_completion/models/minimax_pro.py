@@ -18,6 +18,7 @@ from generate.chat_completion.message import (
     MessageTypeError,
     MessageValueError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -132,7 +133,7 @@ class MinimaxProChatParametersDict(ModelParametersDict, total=False):
     plugins: Optional[List[str]]
 
 
-def convert_to_minimax_pro_message(
+def _convert_to_minimax_pro_message(
     message: Message, default_bot_name: str | None = None, default_user_name: str = '用户'
 ) -> MinimaxProMessage:
     if isinstance(message, UserMessage):
@@ -190,8 +191,13 @@ class MinimaxProChat(ChatCompletionModel):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
+        if isinstance(messages[0], SystemMessage):
+            system_message = messages[0]
+            parameters.set_system_prompt(system_message.content)
+            messages = messages[1:]
+
         minimax_pro_messages = [
-            convert_to_minimax_pro_message(
+            _convert_to_minimax_pro_message(
                 message, default_bot_name=parameters.bot_name, default_user_name=self.default_user_name
             )
             for message in messages

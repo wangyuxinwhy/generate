@@ -1,32 +1,23 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 from pydantic import BaseModel, TypeAdapter
 
 
-class Role(str, Enum):
-    user = 'user'
-    assistant = 'assistant'
-    system = 'system'
-    function = 'function'
-    tool = 'tool'
-
-
 class Message(BaseModel):
-    role: Role
+    role: str
     name: Optional[str] = None
     content: Any
 
 
 class SystemMessage(Message):
-    role: Literal[Role.system] = Role.system
+    role: Literal['system'] = 'system'
     content: str
 
 
 class UserMessage(Message):
-    role: Literal[Role.user] = Role.user
+    role: Literal['user'] = 'user'
     content: str
 
 
@@ -44,24 +35,24 @@ class ImageUrlPart(BaseModel):
 
 
 class UserMultiPartMessage(Message):
-    role: Literal[Role.user] = Role.user
+    role: Literal['user'] = 'user'
     content: List[Union[TextPart, ImageUrlPart]]
 
 
 class FunctionMessage(Message):
-    role: Role = Role.function
+    role: Literal['function'] = 'function'
     name: str
     content: str
 
 
 class ToolMessage(Message):
-    role: Literal[Role.tool] = Role.tool
+    role: Literal['tool'] = 'tool'
     tool_call_id: str
     content: Optional[str] = None
 
 
 class AssistantMessage(Message):
-    role: Literal[Role.assistant] = Role.assistant
+    role: Literal['assistant'] = 'assistant'
     content: str
 
 
@@ -72,7 +63,7 @@ class FunctionCall(BaseModel):
 
 
 class FunctionCallMessage(Message):
-    role: Literal[Role.assistant] = Role.assistant
+    role: Literal['assistant'] = 'assistant'
     content: FunctionCall
 
 
@@ -83,7 +74,7 @@ class ToolCall(BaseModel):
 
 
 class ToolCallsMessage(Message):
-    role: Literal[Role.assistant] = Role.assistant
+    role: Literal['assistant'] = 'assistant'
     name: Optional[str] = None
     content: List[ToolCall]
 
@@ -92,7 +83,7 @@ UnionAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMe
 UnionUserMessage = Union[UserMessage, UserMultiPartMessage]
 UnionUserPart = Union[TextPart, ImageUrlPart]
 UnionMessage = Union[SystemMessage, FunctionMessage, ToolMessage, UnionAssistantMessage, UnionUserMessage]
-Messages = Sequence[UnionMessage]
+Messages = List[UnionMessage]
 MessageDict = Dict[str, Any]
 MessageDicts = Sequence[MessageDict]
 Prompt = Union[str, UnionMessage, Messages, MessageDict, MessageDicts]

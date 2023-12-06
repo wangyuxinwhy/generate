@@ -16,6 +16,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -54,7 +55,7 @@ class WenxinFunction(TypedDict):
     examples: NotRequired[List[WenxinMessage]]
 
 
-def convert_to_wenxin_message(message: Message) -> WenxinMessage:
+def _convert_to_wenxin_message(message: Message) -> WenxinMessage:
     if isinstance(message, UserMessage):
         return {
             'role': 'user',
@@ -85,6 +86,13 @@ def convert_to_wenxin_message(message: Message) -> WenxinMessage:
         }
 
     raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage, FunctionCallMessage))
+
+
+def _convert_messages(messages: Messages) -> list[WenxinMessage]:
+    if isinstance(system_message := messages[0], SystemMessage):
+        prepend_messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')]
+        messages = prepend_messages + messages[1:]
+    return [_convert_to_wenxin_message(message) for message in messages]
 
 
 class WenxinChatParameters(ModelParameters):
@@ -139,7 +147,7 @@ class WenxinChat(ChatCompletionModel):
         self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
-        wenxin_messages: list[WenxinMessage] = [convert_to_wenxin_message(message) for message in messages]
+        wenxin_messages: list[WenxinMessage] = _convert_messages(messages)
         parameters_dict = parameters.custom_model_dump()
         if 'temperature' in parameters_dict:
             parameters_dict['temperature'] = max(0.01, parameters_dict['temperature'])

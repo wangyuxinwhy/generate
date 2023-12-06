@@ -8,7 +8,7 @@ from generate.http import HttpClient
 class BailianSettings(BaseSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='bailian_', env_file='.env')
 
-    app_id: str
+    default_app_id: str
     access_key_id: SecretStr
     access_key_secret: SecretStr
     agent_key: str
