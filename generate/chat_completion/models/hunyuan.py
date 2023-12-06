@@ -17,6 +17,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -47,20 +48,19 @@ class HunyuanChatParametersDict(ModelParametersDict, total=False):
     top_p: Optional[Probability]
 
 
-def convert_to_hunyuan_message(message: Message) -> HunyuanMessage:
+def _convert_message_to_hunyuan_message(message: Message) -> HunyuanMessage:
     if isinstance(message, UserMessage):
-        return {
-            'role': 'user',
-            'content': message.content,
-        }
-
+        return {'role': 'user', 'content': message.content}
     if isinstance(message, AssistantMessage):
-        return {
-            'role': 'assistant',
-            'content': message.content,
-        }
-
+        return {'role': 'assistant', 'content': message.content}
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
+
+
+def _convert_messages(messages: Messages) -> list[HunyuanMessage]:
+    if isinstance(system_message := messages[0], SystemMessage):
+        prepend_messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')]
+        messages = prepend_messages + messages[1:]
+    return [_convert_message_to_hunyuan_message(message) for message in messages]
 
 
 class HunyuanChat(ChatCompletionModel):
@@ -77,7 +77,7 @@ class HunyuanChat(ChatCompletionModel):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
-        hunyuan_messages = [convert_to_hunyuan_message(message) for message in messages]
+        hunyuan_messages = _convert_messages(messages)
         json_dict = self.generate_json_dict(hunyuan_messages, parameters)
         signature = self.generate_signature(self.generate_sign_parameters(json_dict))
         headers = {
@@ -121,7 +121,7 @@ class HunyuanChat(ChatCompletionModel):
         )
 
     def _get_stream_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
-        hunyuan_messages = [convert_to_hunyuan_message(message) for message in messages]
+        hunyuan_messages = _convert_messages(messages)
         json_dict = self.generate_json_dict(hunyuan_messages, parameters, stream=True)
         signature = self.generate_signature(self.generate_sign_parameters(json_dict))
         headers = {

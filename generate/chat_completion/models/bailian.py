@@ -13,6 +13,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -44,8 +45,12 @@ def generate_default_request_id() -> str:
     return str(uuid_obj).replace('-', '')
 
 
-def convert_to_bailian_chat_qa_pair(messages: Messages) -> list[BailianChatQAPair]:
+def _convert_to_bailian_chat_qa_pair(messages: Messages) -> list[BailianChatQAPair]:
     pairs: list[BailianChatQAPair] = []
+    if isinstance(messages[0], SystemMessage):
+        pairs.append({'User': messages[0].content, 'Bot': '好的'})
+        messages = messages[1:]
+
     for user_message, assistant_message in zip(messages[::2], messages[1::2]):
         if not isinstance(user_message, UserMessage):
             raise MessageTypeError(user_message, allowed_message_type=(UserMessage,))
@@ -97,35 +102,23 @@ class BailianChat(ChatCompletionModel):
 
     def __init__(
         self,
+        app_id: str | None = None,
         parameters: BailianChatParameters | None = None,
         settings: BailianSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
         self.parameters = parameters or BailianChatParameters()
-        self._token = None
         self.settings = settings or BailianSettings()  # type: ignore
+        self.app_id = app_id or self.settings.default_app_id
         self.http_client = http_client or HttpClient()
         self.token_manager = BailianTokenManager(self.settings, self.http_client)
-
-    def _get_token(self) -> str:
-        try:
-            import broadscope_bailian
-        except ImportError as e:
-            raise ImportError('Please install broadscope_bailian first: pip install broadscope_bailian') from e
-
-        client = broadscope_bailian.AccessTokenClient(
-            access_key_id=self.settings.access_key_id.get_secret_value(),
-            access_key_secret=self.settings.access_key_secret.get_secret_value(),
-            agent_key=self.settings.agent_key,
-        )
-        return client.get_token()
 
     def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
         if not isinstance(messages[-1], UserMessage):
             raise MessageTypeError(messages[-1], allowed_message_type=(UserMessage,))
 
         prompt = messages[-1].content
-        history = convert_to_bailian_chat_qa_pair(messages[:-1])
+        history = _convert_to_bailian_chat_qa_pair(messages[:-1])
 
         json_dict = parameters.custom_model_dump()
         headers = {
@@ -133,7 +126,7 @@ class BailianChat(ChatCompletionModel):
             'Authorization': f'Bearer {self.token_manager.token}',
         }
         json_dict['Prompt'] = prompt
-        json_dict['AppId'] = self.settings.app_id
+        json_dict['AppId'] = self.app_id
         json_dict['History'] = history
         return {
             'url': self.settings.completion_api,
@@ -245,7 +238,7 @@ class BailianChat(ChatCompletionModel):
     @property
     @override
     def name(self) -> str:
-        return self.settings.app_id
+        return self.app_id
 
     @classmethod
     @override

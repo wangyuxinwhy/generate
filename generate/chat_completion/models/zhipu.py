@@ -14,6 +14,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -141,7 +142,7 @@ class BaseZhipuChat(ChatCompletionModel):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
-        zhipu_messages = [convert_to_zhipu_message(message) for message in messages]
+        zhipu_messages = self._convert_messages(messages)
         headers = {
             'Authorization': generate_token(self.settings.api_key.get_secret_value()),
         }
@@ -151,6 +152,9 @@ class BaseZhipuChat(ChatCompletionModel):
             'headers': headers,
             'json': params,
         }
+
+    def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
+        return [convert_to_zhipu_message(message) for message in messages]
 
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if response['success']:
@@ -190,6 +194,12 @@ class ZhipuChat(BaseZhipuChat):
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
         super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+
+    @override
+    def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
+        if isinstance(system_message := messages[0], SystemMessage):
+            messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')] + messages[1:]
+        return super()._convert_messages(messages)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:

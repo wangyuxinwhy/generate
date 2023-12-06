@@ -17,6 +17,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -51,7 +52,7 @@ class BaichuanChatParametersDict(ModelParametersDict, total=False):
     search: Optional[bool]
 
 
-def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
+def _convert_to_baichuan_messages(message: Message) -> BaichuanMessage:
     if isinstance(message, UserMessage):
         return {
             'role': 'user',
@@ -63,8 +64,14 @@ def convert_to_baichuan_message(message: Message) -> BaichuanMessage:
             'role': 'assistant',
             'content': message.content,
         }
-
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
+
+
+def _convert_messages(messages: Messages) -> list[BaichuanMessage]:
+    if isinstance(system_message := messages[0], SystemMessage):
+        prepend_messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')]
+        messages = prepend_messages + messages[1:]
+    return [_convert_to_baichuan_messages(message) for message in messages]
 
 
 class BaichuanChat(ChatCompletionModel):
@@ -84,7 +91,7 @@ class BaichuanChat(ChatCompletionModel):
         self.http_client.stream_strategy = 'basic'
 
     def _get_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
-        baichuan_messages: list[BaichuanMessage] = [convert_to_baichuan_message(message) for message in messages]
+        baichuan_messages: list[BaichuanMessage] = _convert_messages(messages)
         data = {
             'model': self.model,
             'messages': baichuan_messages,

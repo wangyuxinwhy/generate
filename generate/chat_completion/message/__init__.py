@@ -9,7 +9,6 @@ from generate.chat_completion.message.core import (
     Messages,
     Prompt,
     Prompts,
-    Role,
     SystemMessage,
     TextPart,
     ToolCall,
@@ -30,7 +29,6 @@ from generate.chat_completion.message.exception import (
 from generate.chat_completion.message.utils import ensure_messages
 
 __all__ = [
-    'Role',
     'UnionAssistantMessage',
     'UnionUserMessage',
     'UnionMessage',

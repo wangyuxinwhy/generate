@@ -13,6 +13,7 @@ from generate.chat_completion.message import (
     Messages,
     MessageTypeError,
     Prompt,
+    SystemMessage,
     UserMessage,
     ensure_messages,
 )
@@ -71,20 +72,25 @@ class MinimaxChatParametersDict(ModelParametersDict, total=False):
     continue_last_message: Optional[bool]
 
 
-def convert_to_minimax_message(message: Message) -> MinimaxMessage:
+def _convert_message_to_minimax_message(message: Message) -> MinimaxMessage:
     if isinstance(message, UserMessage):
         return {
             'sender_type': 'USER',
             'text': message.content,
         }
-
     if isinstance(message, AssistantMessage):
         return {
             'sender_type': 'BOT',
             'text': message.content,
         }
-
     raise MessageTypeError(message, (UserMessage, AssistantMessage))
+
+
+def _convert_messages(messages: Messages) -> list[MinimaxMessage]:
+    if isinstance(system_message := messages[0], SystemMessage):
+        prepend_messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')]
+        messages = prepend_messages + messages[1:]
+    return [_convert_message_to_minimax_message(message) for message in messages]
 
 
 class MinimaxChat(ChatCompletionModel):
@@ -103,7 +109,7 @@ class MinimaxChat(ChatCompletionModel):
         self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxChatParameters) -> HttpxPostKwargs:
-        minimax_messages = [convert_to_minimax_message(message) for message in messages]
+        minimax_messages = _convert_messages(messages)
         parameters_dict = parameters.custom_model_dump()
         json_data = {
             'model': self.model,
