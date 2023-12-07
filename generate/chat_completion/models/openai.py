@@ -291,7 +291,7 @@ class _StreamResponseProcessor:
             finish_reason=finish_reason,
             cost=cost,
             extra=extra,
-            stream=Stream(delta=delta_dict.get('content', ''), control=stream_control),
+            stream=Stream(delta=delta_dict.get('content') or '', control=stream_control),
         )
 
     def process_initial_message(self, delta_dict: dict[str, Any]) -> OpenAIAssistantMessage | None:
