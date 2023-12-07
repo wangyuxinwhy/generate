@@ -259,7 +259,7 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[
 
     return ChatCompletionOutput[OpenAIAssistantMessage](
         model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
-        messages=[message],
+        message=message,
         finish_reason=finish_reason or '',
         cost=calculate_cost(response['model'], response['usage']['prompt_tokens'], response['usage']['completion_tokens']),
         extra=extra,
@@ -272,7 +272,6 @@ class _StreamResponseProcessor:
         self.is_start = True
 
     def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[OpenAIAssistantMessage] | None:
-        delta, extra = '', {}
         delta_dict = response['choices'][0]['delta']
 
         if self.message is None:
@@ -288,11 +287,11 @@ class _StreamResponseProcessor:
         self.is_start = False
         return ChatCompletionStreamOutput[OpenAIAssistantMessage](
             model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
-            messages=[self.message],
+            message=self.message,
             finish_reason=finish_reason,
             cost=cost,
             extra=extra,
-            stream=Stream(delta=delta, control=stream_control),
+            stream=Stream(delta=delta_dict.get('content', ''), control=stream_control),
         )
 
     def process_initial_message(self, delta_dict: dict[str, Any]) -> OpenAIAssistantMessage | None:

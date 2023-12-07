@@ -1,4 +1,5 @@
 from generate.chat_completion.message.core import (
+    AssistantGroupMessage,
     AssistantMessage,
     FunctionCall,
     FunctionCallMessage,
@@ -34,6 +35,7 @@ __all__ = [
     'UnionMessage',
     'FunctionCallMessage',
     'AssistantMessage',
+    'AssistantGroupMessage',
     'ToolCallsMessage',
     'ensure_messages',
     'FunctionCall',

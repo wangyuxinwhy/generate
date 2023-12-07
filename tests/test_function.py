@@ -87,7 +87,9 @@ def google(keyword: str) -> str:
 
 def test_openai_function() -> None:
     model = OpenAIChat(parameters=OpenAIChatParameters(functions=[get_weather.json_schema, google.json_schema], temperature=0))
-    engine = ChatEngine(model, functions=[get_weather, google], stream=False, call_raise_error=True)
+    engine = ChatEngine(
+        model, functions={f.name: f for f in [get_weather, google]}, stream=False, function_call_raise_error=True
+    )
     reply = engine.chat('今天北京天气怎么样？')
     assert '27' in reply
 
@@ -101,6 +103,8 @@ def test_openai_tool() -> None:
             ]
         )
     )
-    engine = ChatEngine(model, functions=[get_weather, google], stream=False, call_raise_error=True)
+    engine = ChatEngine(
+        model, functions={f.name: f for f in [get_weather, google]}, stream=False, function_call_raise_error=True
+    )
     reply = engine.chat('今天北京天气怎么样？')
     assert '27' in reply

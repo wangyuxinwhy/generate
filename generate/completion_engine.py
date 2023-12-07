@@ -15,7 +15,7 @@ import tqdm
 from typing_extensions import Self, TypedDict, Unpack
 
 from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
-from generate.chat_completion.message import Prompt, Prompts, ensure_messages
+from generate.chat_completion.message import AssistantMessage, Prompt, Prompts, ensure_messages
 from generate.utils import load_chat_model
 
 
@@ -88,7 +88,9 @@ class CompletionEngine:
             if self.error_mode == 'raise':
                 raise
             if self.error_mode == 'ignore':
-                return ChatCompletionOutput(model_info=self.chat_model.model_info, extra={'error': str(e)})
+                return ChatCompletionOutput(
+                    model_info=self.chat_model.model_info, message=AssistantMessage(content=''), extra={'error': str(e)}
+                )
             raise ValueError(f'Unknown error mode: {self.error_mode}') from e
         else:
             progress_bar.update(1)
@@ -138,7 +140,9 @@ class CompletionEngine:
                 if self.error_mode == 'raise':
                     raise
                 if self.error_mode == 'ignore':
-                    return ChatCompletionOutput(model_info=self.chat_model.model_info, extra={'error': str(e)})
+                    return ChatCompletionOutput(
+                        model_info=self.chat_model.model_info, message=AssistantMessage(content=''), extra={'error': str(e)}
+                    )
 
                 raise ValueError(f'Unknown error mode: {self.error_mode}') from e
             else:

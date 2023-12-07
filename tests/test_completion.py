@@ -35,13 +35,13 @@ class FakeChat(ChatCompletionModel):
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
-        return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
+        return ChatCompletionOutput(model_info=self.model_info, message=AssistantMessage(content=content))
 
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
-        return ChatCompletionOutput(model_info=self.model_info, messages=[AssistantMessage(content=content)])
+        return ChatCompletionOutput(model_info=self.model_info, message=AssistantMessage(content=content))
 
     def stream_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
@@ -49,11 +49,12 @@ class FakeChat(ChatCompletionModel):
         content = f'{parameters.prefix}{messages[-1].content}'
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
+            message=AssistantMessage(content=''),
             stream=Stream(delta='', control='start'),
         )
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
-            messages=[AssistantMessage(content=content)],
+            message=AssistantMessage(content=content),
             stream=Stream(delta=content, control='finish'),
         )
 
@@ -65,11 +66,12 @@ class FakeChat(ChatCompletionModel):
         content = f'{parameters.prefix}{messages[-1].content}'
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
+            message=AssistantMessage(content=''),
             stream=Stream(delta='', control='start'),
         )
         yield ChatCompletionStreamOutput(
             model_info=self.model_info,
-            messages=[AssistantMessage(content=content)],
+            message=AssistantMessage(content=content),
             stream=Stream(delta=content, control='finish'),
         )
 

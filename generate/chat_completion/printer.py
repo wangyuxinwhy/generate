@@ -22,6 +22,18 @@ class MessagePrinter(Protocol):
         ...
 
 
+class SilentMessagePrinter(MessagePrinter):
+    """
+    A printer that does nothing.
+    """
+
+    def print_message(self, message: Message) -> None:
+        pass
+
+    def print_stream(self, stream: Stream) -> None:
+        pass
+
+
 class SimpleMessagePrinter(MessagePrinter):
     """
     A simple printer that prints messages and streams to the console.

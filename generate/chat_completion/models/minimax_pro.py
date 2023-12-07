@@ -9,6 +9,7 @@ from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, o
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
+    AssistantGroupMessage,
     AssistantMessage,
     FunctionCall,
     FunctionCallMessage,
@@ -29,11 +30,11 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
-MinimaxProAssistantMessage = Union[FunctionCallMessage, AssistantMessage, UserMessage, FunctionMessage]
+MinimaxProAssistantMessage = Union[AssistantMessage, FunctionCallMessage, AssistantGroupMessage]
 
 
 class BotSettingDict(TypedDict):
@@ -174,6 +175,91 @@ def _convert_to_minimax_pro_message(
     raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage, FunctionCallMessage))
 
 
+def _convert_to_message(message: MinimaxProMessage) -> FunctionCallMessage | AssistantMessage | FunctionMessage:
+    if 'function_call' in message:
+        return FunctionCallMessage(
+            name=message['sender_name'],
+            content=FunctionCall(name=message['function_call']['name'], arguments=message['function_call']['arguments']),
+        )
+    if message['sender_type'] == 'BOT':
+        return AssistantMessage(
+            name=message['sender_name'],
+            content=message['text'],
+        )
+    if message['sender_type'] == 'FUNCTION':
+        return FunctionMessage(
+            name=message['sender_name'],
+            content=message['text'],
+        )
+    raise ValueError(f'unknown sender_type: {message["sender_type"]}')
+
+
+class _StreamResponseProcessor:
+    def __init__(self, model_info: ModelInfo) -> None:
+        self.message: MinimaxProAssistantMessage | None = None
+        self.model_info = model_info
+
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[MinimaxProAssistantMessage]:
+        if response.get('usage'):
+            return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
+                model_info=self.model_info,
+                message=self.message,
+                finish_reason=response['choices'][0]['finish_reason'],
+                cost=calculate_cost(response['usage']),
+                extra={
+                    'input_sensitive': response['input_sensitive'],
+                    'output_sensitive': response['output_sensitive'],
+                    'usage': response['usage'],
+                },
+                stream=Stream(delta='', control='finish'),
+            )
+
+        if self.message is None:
+            self.message = self.initial_message(response)
+            delta = self.message.content if isinstance(self.message, AssistantMessage) else ''
+            control = 'start'
+        else:
+            delta = self.update_existing_message(response)
+            control = 'continue'
+
+        return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
+            model_info=self.model_info,
+            message=self.message,
+            finish_reason=None,
+            stream=Stream(delta=delta, control=control),
+        )
+
+    def initial_message(self, response: ResponseValue) -> MinimaxProAssistantMessage:
+        output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
+        message = output_messages[0] if len(output_messages) == 1 else AssistantGroupMessage(content=output_messages)
+        return cast(MinimaxProAssistantMessage, message)
+
+    def update_existing_message(self, response: ResponseValue) -> str:
+        output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
+        if len(output_messages) > 1 and not isinstance(self.message, AssistantGroupMessage):
+            self.message = AssistantGroupMessage(content=[self.message])  # type: ignore
+        messages = self.message.content if isinstance(self.message, AssistantGroupMessage) else [self.message]
+        delta = ''
+        for index, output_message in enumerate(output_messages, start=1):
+            if index > len(messages):
+                messages.append(output_message)  # type: ignore
+                if isinstance(output_message, AssistantMessage):
+                    delta = output_message.content
+            elif isinstance(output_message, FunctionCallMessage):
+                messages[index - 1] = output_message
+            elif isinstance(output_message, AssistantMessage):
+                message = cast(AssistantMessage, messages[index - 1])
+                delta = output_message.content
+                message.content += output_message.content
+            else:
+                raise ValueError(f'unknown message type: {output_message}')
+        return delta
+
+
+def calculate_cost(usage: dict[str, int], num_web_search: int = 0) -> float:
+    return 0.015 * (usage['total_tokens'] / 1000) + (0.03 * num_web_search)
+
+
 class MinimaxProChat(ChatCompletionModel):
     model_type: ClassVar[str] = 'minimax_pro'
 
@@ -236,17 +322,18 @@ class MinimaxProChat(ChatCompletionModel):
 
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
         try:
-            messages: list[FunctionCallMessage | UserMessage | AssistantMessage | FunctionMessage] = [
-                self._convert_to_message(i) for i in response['choices'][0]['messages']
+            messages: list[FunctionCallMessage | AssistantMessage | FunctionMessage] = [
+                _convert_to_message(i) for i in response['choices'][0]['messages']
             ]
+            message = messages[0] if len(messages) == 1 else AssistantGroupMessage(content=messages)
+            message = cast(MinimaxProAssistantMessage, message)
             finish_reason = response['choices'][0]['finish_reason']
-            num_web_search = sum([i for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
-
+            num_web_search = sum([1 for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
             return ChatCompletionOutput[MinimaxProAssistantMessage](
                 model_info=self.model_info,
-                messages=messages,
+                message=message,
                 finish_reason=finish_reason,
-                cost=self.calculate_cost(response['usage'], num_web_search),
+                cost=calculate_cost(response['usage'], num_web_search),
                 extra={
                     'input_sensitive': response['input_sensitive'],
                     'output_sensitive': response['output_sensitive'],
@@ -268,12 +355,9 @@ class MinimaxProChat(ChatCompletionModel):
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = []
-        is_start = True
+        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
+            yield stream_processor.process(json.loads(line))
 
     @override
     async def async_stream_generate(
@@ -282,82 +366,9 @@ class MinimaxProChat(ChatCompletionModel):
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = []
-        is_start = True
+        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
-
-    def _parse_stream_line(
-        self, line: str, messages: Messages, is_start: bool
-    ) -> ChatCompletionStreamOutput[MinimaxProAssistantMessage]:
-        messages = list(messages)
-        parsed_line = json.loads(line)
-        output_messages = [self._convert_to_message(i) for i in parsed_line['choices'][0]['messages']]
-        delta = ''
-        for index, output_message in enumerate(output_messages, start=1):
-            if index > len(messages):
-                messages.append(output_message)
-                if isinstance(output_message, AssistantMessage):
-                    delta = output_message.content
-            elif isinstance(output_message, FunctionCallMessage):
-                messages[index - 1] = output_message
-            elif isinstance(output_message, AssistantMessage):
-                message = cast(AssistantMessage, messages[index - 1])
-                delta = output_message.content
-                message.content += output_message.content
-            else:
-                raise ValueError(f'unknown message type: {output_message}')
-
-        if parsed_line.get('usage'):
-            return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
-                model_info=self.model_info,
-                messages=messages,
-                finish_reason=parsed_line['choices'][0]['finish_reason'],
-                cost=self.calculate_cost(parsed_line['usage']),
-                extra={
-                    'input_sensitive': parsed_line['input_sensitive'],
-                    'output_sensitive': parsed_line['output_sensitive'],
-                    'usage': parsed_line['usage'],
-                },
-                stream=Stream(delta=delta, control='finish'),
-            )
-        return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
-            model_info=self.model_info,
-            messages=messages,
-            finish_reason=None,
-            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
-        )
-
-    @staticmethod
-    def _convert_to_message(
-        message: MinimaxProMessage
-    ) -> FunctionCallMessage | UserMessage | AssistantMessage | FunctionMessage:
-        if 'function_call' in message:
-            return FunctionCallMessage(
-                name=message['sender_name'],
-                content=FunctionCall(name=message['function_call']['name'], arguments=message['function_call']['arguments']),
-            )
-        if message['sender_type'] == 'USER':
-            return UserMessage(
-                name=message['sender_name'],
-                content=message['text'],
-            )
-        if message['sender_type'] == 'BOT':
-            return AssistantMessage(
-                name=message['sender_name'],
-                content=message['text'],
-            )
-        if message['sender_type'] == 'FUNCTION':
-            return FunctionMessage(
-                name=message['sender_name'],
-                content=message['text'],
-            )
-        raise ValueError(f'unknown sender_type: {message["sender_type"]}')
-
-    def calculate_cost(self, usage: dict[str, int], num_web_search: int = 0) -> float:
-        return 0.015 * (usage['total_tokens'] / 1000) + (0.03 * num_web_search)
+            yield stream_processor.process(json.loads(line))
 
     @property
     @override

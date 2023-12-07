@@ -47,7 +47,7 @@ def generate_default_request_id() -> str:
 
 def _convert_to_bailian_chat_qa_pair(messages: Messages) -> list[BailianChatQAPair]:
     pairs: list[BailianChatQAPair] = []
-    if isinstance(messages[0], SystemMessage):
+    if messages and isinstance(messages[0], SystemMessage):
         pairs.append({'User': messages[0].content, 'Bot': '好的'})
         messages = messages[1:]
 
@@ -155,10 +155,9 @@ class BailianChat(ChatCompletionModel):
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if not response['Success']:
             raise UnexpectedResponseError(response)
-        messages = [AssistantMessage(content=response['Data']['Text'])]
         return ChatCompletionOutput(
             model_info=self.model_info,
-            messages=messages,
+            message=AssistantMessage(content=response['Data']['Text']),
             extra={
                 'thoughts': response['Data']['Thoughts'],
                 'doc_references': response['Data']['DocReferences'],
@@ -220,7 +219,7 @@ class BailianChat(ChatCompletionModel):
         if len(reply) == len(message.content):
             return ChatCompletionStreamOutput(
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 extra=extra,
                 finish_reason='stop',
                 stream=Stream(delta='', control='finish'),
@@ -230,7 +229,7 @@ class BailianChat(ChatCompletionModel):
         message.content = reply
         return ChatCompletionStreamOutput(
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             extra=extra,
             stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
