@@ -266,8 +266,9 @@ class _StreamResponseProcessor:
             return delta
 
         delta = message.content
-        self.message.content += message.content # type: ignore
+        self.message.content += message.content  # type: ignore
         return delta
+
 
 def calculate_cost(usage: dict[str, int], num_web_search: int = 0) -> float:
     return 0.015 * (usage['total_tokens'] / 1000) + (0.03 * num_web_search)
