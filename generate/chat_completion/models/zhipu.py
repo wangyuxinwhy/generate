@@ -159,10 +159,9 @@ class BaseZhipuChat(ChatCompletionModel):
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if response['success']:
             text = response['data']['choices'][0]['content']
-            messages = [AssistantMessage(content=text)]
             return ChatCompletionOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=messages,
+                message=AssistantMessage(content=text),
                 cost=self.calculate_cost(response['data']['usage']),
                 extra={'usage': response['data']['usage']},
             )
@@ -232,13 +231,13 @@ class ZhipuChat(BaseZhipuChat):
             message.content += line
             yield ChatCompletionStreamOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
         yield ChatCompletionStreamOutput[AssistantMessage](
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason='stop',
             stream=Stream(delta='', control='finish'),
         )
@@ -256,13 +255,13 @@ class ZhipuChat(BaseZhipuChat):
             message.content += line
             yield ChatCompletionStreamOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
         yield ChatCompletionStreamOutput[AssistantMessage](
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason='stop',
             stream=Stream(delta='', control='finish'),
         )
@@ -324,13 +323,13 @@ class ZhipuCharacterChat(BaseZhipuChat):
             message.content += line
             yield ChatCompletionStreamOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
         yield ChatCompletionStreamOutput[AssistantMessage](
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason='stop',
             stream=Stream(delta='', control='finish'),
         )
@@ -348,13 +347,13 @@ class ZhipuCharacterChat(BaseZhipuChat):
             message.content += line
             yield ChatCompletionStreamOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
         yield ChatCompletionStreamOutput[AssistantMessage](
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason='stop',
             stream=Stream(delta='', control='finish'),
         )

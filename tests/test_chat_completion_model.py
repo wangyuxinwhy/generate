@@ -52,6 +52,8 @@ def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> N
     assert outputs[-1].stream.control == 'finish'
     for output in outputs[1:-1]:
         assert output.stream.control == 'continue'
+    text = ''.join(output.stream.delta for output in outputs)
+    assert text == outputs[-1].reply
     assert outputs[0].stream.control == 'start'
     assert outputs[-1].reply != ''
     assert async_output.reply != ''

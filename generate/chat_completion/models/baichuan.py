@@ -148,7 +148,7 @@ class BaichuanChat(ChatCompletionModel):
                 extra = {}
             return ChatCompletionOutput(
                 model_info=self.model_info,
-                messages=[AssistantMessage(content=text)],
+                message=AssistantMessage(content=text),
                 finish_reason=finish_reason,
                 cost=cost,
                 extra=extra,
@@ -199,10 +199,9 @@ class BaichuanChat(ChatCompletionModel):
         else:
             stream = Stream(delta=output_message.content, control='finish' if output.is_finish else 'continue')
         message.content += output_message.content
-        output.messages = [message]
         return ChatCompletionStreamOutput[AssistantMessage](
             model_info=output.model_info,
-            messages=output.messages,
+            message=message,
             finish_reason=output.finish_reason,
             cost=output.cost,
             extra=output.extra,

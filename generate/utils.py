@@ -13,11 +13,11 @@ def load_chat_model(model_id: str) -> ChatCompletionModel:
     return model_cls.from_name(name)
 
 
-def load_speech_model(speech_model_id: str) -> TextToSpeechModel:
-    if '/' not in speech_model_id:
-        model_type = speech_model_id
+def load_speech_model(model_id: str) -> TextToSpeechModel:
+    if '/' not in model_id:
+        model_type = model_id
         return SpeechModelRegistry[model_type][0]()
-    model_type, name = speech_model_id.split('/')
+    model_type, name = model_id.split('/')
     model_cls = SpeechModelRegistry[model_type][0]
     return model_cls.from_name(name)
 

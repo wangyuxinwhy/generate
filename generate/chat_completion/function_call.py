@@ -39,26 +39,21 @@ def get_json_schema(function: Callable[..., Any]) -> FunctionJsonSchema:
 
 
 class function(Generic[P, T]):  # noqa: N801
-    """
-    A decorator class that wraps a callable function and provides additional functionality.
-
-    Args:
-        function (Callable[P, T]): The function to be wrapped.
-
-    Attributes:
-        function (Callable[P, T]): The wrapped function.
-        name (str): The name of the wrapped function.
-        docstring (ParsedDocstring): The parsed docstring of the wrapped function.
-        json_schema (Function): The JSON schema of the wrapped function.
-
-    Methods:
-        __call__(self, *args: Any, **kwargs: Any) -> Any: Calls the wrapped function with the provided arguments.
-        call_with_message(self, message: Message) -> T: Calls the wrapped function with the arguments provided in the message.
-    """
-
     def __init__(self, function: Callable[P, T]) -> None:
         self.function: Callable[P, T] = validate_call(function)
-        self.json_schema = get_json_schema(function)
+        self.json_schema: FunctionJsonSchema = get_json_schema(function)
+
+    @property
+    def name(self) -> str:
+        return self.json_schema['name']
+
+    @property
+    def description(self) -> str:
+        return self.json_schema.get('description', '')
+
+    @property
+    def parameters(self) -> JsonSchema:
+        return self.json_schema['parameters']
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         return self.function(*args, **kwargs)

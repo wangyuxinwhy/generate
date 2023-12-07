@@ -1,24 +1,18 @@
 from __future__ import annotations
 
-from typing import Generic, List, Literal, Optional, TypeVar
+from typing import Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel
 
-from generate.chat_completion.message import AssistantMessage, UnionMessage
+from generate.chat_completion.message import AssistantMessage, UnionAssistantMessage
 from generate.model import ModelOutput
 
-M = TypeVar('M', bound=UnionMessage)
+M = TypeVar('M', bound=UnionAssistantMessage)
 
 
 class ChatCompletionOutput(ModelOutput, Generic[M]):
-    messages: List[M] = []
+    message: M
     finish_reason: Optional[str] = None
-
-    @property
-    def message(self) -> M:
-        if len(self.messages) != 1:
-            raise ValueError('Expected exactly one message')
-        return self.messages[0]
 
     @property
     def reply(self) -> str:

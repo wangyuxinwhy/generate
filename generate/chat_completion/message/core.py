@@ -79,7 +79,13 @@ class ToolCallsMessage(Message):
     content: List[ToolCall]
 
 
-UnionAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMessage]
+class AssistantGroupMessage(Message):
+    role: Literal['assistant'] = 'assistant'
+    name: Optional[str] = None
+    content: List[Union[AssistantMessage, FunctionMessage, FunctionCallMessage]]
+
+
+UnionAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMessage, AssistantGroupMessage]
 UnionUserMessage = Union[UserMessage, UserMultiPartMessage]
 UnionUserPart = Union[TextPart, ImageUrlPart]
 UnionMessage = Union[SystemMessage, FunctionMessage, ToolMessage, UnionAssistantMessage, UnionUserMessage]

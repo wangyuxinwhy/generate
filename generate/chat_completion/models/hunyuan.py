@@ -111,10 +111,9 @@ class HunyuanChat(ChatCompletionModel):
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         if response.get('error'):
             raise UnexpectedResponseError(response)
-        messages = [AssistantMessage(content=response['choices'][0]['messages']['content'])]
         return ChatCompletionOutput(
             model_info=self.model_info,
-            messages=messages,
+            message=AssistantMessage(content=response['choices'][0]['messages']['content']),
             finish_reason=response['choices'][0]['finish_reason'],
             cost=self.calculate_cost(response['usage']),
             extra={'usage': response['usage']},
@@ -172,7 +171,7 @@ class HunyuanChat(ChatCompletionModel):
         if message_dict['finish_reason']:
             return ChatCompletionStreamOutput(
                 model_info=self.model_info,
-                messages=[message],
+                message=message,
                 finish_reason=message_dict['finish_reason'],
                 cost=self.calculate_cost(parsed_line['usage']),
                 stream=Stream(delta=delta, control='finish'),
@@ -180,7 +179,7 @@ class HunyuanChat(ChatCompletionModel):
             )
         return ChatCompletionStreamOutput(
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason=None,
             stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )

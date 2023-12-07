@@ -145,12 +145,11 @@ class MinimaxChat(ChatCompletionModel):
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
         try:
-            messages = [AssistantMessage(content=response['choices'][0]['text'])]
-            return ChatCompletionOutput(
+            return ChatCompletionOutput[AssistantMessage](
                 model_info=self.model_info,
-                messages=messages,
+                message=AssistantMessage(content=response['choices'][0]['text']),
                 finish_reason=response['choices'][0]['finish_reason'],
                 cost=self.calculate_cost(response['usage']),
                 extra={
@@ -207,7 +206,7 @@ class MinimaxChat(ChatCompletionModel):
             return ChatCompletionStreamOutput[AssistantMessage](
                 model_info=self.model_info,
                 finish_reason=parsed_line['choices'][0]['finish_reason'],
-                messages=[message],
+                message=message,
                 cost=self.calculate_cost(parsed_line['usage']),
                 extra={
                     'logprobes': parsed_line['choices'][0]['logprobes'],
@@ -220,7 +219,7 @@ class MinimaxChat(ChatCompletionModel):
         return ChatCompletionStreamOutput[AssistantMessage](
             model_info=self.model_info,
             finish_reason=None,
-            messages=[message],
+            message=message,
             stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
 

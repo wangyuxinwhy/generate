@@ -184,20 +184,18 @@ class WenxinChat(ChatCompletionModel):
         if response.get('error_msg'):
             raise UnexpectedResponseError(response)
         if response.get('function_call'):
-            messages: list[WenxinAssistantMessage] = [
-                FunctionCallMessage(
-                    content=FunctionCall(
-                        name=response['function_call']['name'],
-                        arguments=response['function_call']['arguments'],
-                        thoughts=response['function_call']['thoughts'],
-                    ),
-                )
-            ]
+            message = FunctionCallMessage(
+                content=FunctionCall(
+                    name=response['function_call']['name'],
+                    arguments=response['function_call']['arguments'],
+                    thoughts=response['function_call']['thoughts'],
+                ),
+            )
         else:
-            messages = [AssistantMessage(content=response['result'])]
+            message = AssistantMessage(content=response['result'])
         return ChatCompletionOutput[WenxinAssistantMessage](
             model_info=self.model_info,
-            messages=messages,
+            message=message,
             cost=self.calculate_cost(response['usage']),
             extra={
                 'is_truncated': response['is_truncated'],
@@ -258,13 +256,13 @@ class WenxinChat(ChatCompletionModel):
                     'need_clear_history': parsed_line['need_clear_history'],
                     'usage': parsed_line['usage'],
                 },
-                messages=[message],
+                message=message,
                 finish_reason='stop',
                 stream=Stream(delta=delta, control='finish'),
             )
         return ChatCompletionStreamOutput[WenxinAssistantMessage](
             model_info=self.model_info,
-            messages=[message],
+            message=message,
             finish_reason=None,
             stream=Stream(delta=delta, control='start' if is_start else 'continue'),
         )
