@@ -405,13 +405,16 @@ class OpenAIChat(ChatCompletionModel):
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor()
+        is_finish = False
         for line in self.http_client.stream_post(request_parameters=request_parameters):
+            if is_finish:
+                continue
+
             output = stream_processor.process(json.loads(line))
             if output is None:
                 continue
+            is_finish = output.is_finish
             yield output
-            if output.is_finish:
-                break
 
     @override
     async def async_stream_generate(
@@ -421,13 +424,16 @@ class OpenAIChat(ChatCompletionModel):
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor()
+        is_finish = False
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
+            if is_finish:
+                continue
+
             output = stream_processor.process(json.loads(line))
             if output is None:
                 continue
+            is_finish = output.is_finish
             yield output
-            if output.is_finish:
-                break
 
     @property
     @override
