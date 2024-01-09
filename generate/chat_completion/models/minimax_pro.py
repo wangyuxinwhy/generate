@@ -236,9 +236,13 @@ class _StreamResponseProcessor:
 
     def update_existing_message(self, response: ResponseValue) -> str:
         output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
+        if len(output_messages) == 1 and not isinstance(self.message, AssistantGroupMessage):
+            return self.update_single_message(output_messages[0])  # type: ignore
+
         if len(output_messages) > 1 and not isinstance(self.message, AssistantGroupMessage):
             self.message = AssistantGroupMessage(content=[self.message])  # type: ignore
-        messages = self.message.content if isinstance(self.message, AssistantGroupMessage) else [self.message]
+        self.message = cast(AssistantGroupMessage, self.message)
+        messages = self.message.content
         delta = ''
         for index, output_message in enumerate(output_messages, start=1):
             if index > len(messages):
@@ -253,6 +257,16 @@ class _StreamResponseProcessor:
                 message.content += output_message.content
             else:
                 raise ValueError(f'unknown message type: {output_message}')
+        return delta
+
+    def update_single_message(self, message: FunctionCallMessage | AssistantMessage) -> str:
+        if isinstance(message, FunctionCallMessage):
+            delta = ''
+            self.message = message
+            return delta
+
+        delta = message.content
+        self.message.content += message.content  # type: ignore
         return delta
 
 

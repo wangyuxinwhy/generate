@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generic, Literal, Optional, TypeVar
+from typing import Generic, Literal, Optional, TypeVar, cast
 
 from pydantic import BaseModel
 
@@ -17,7 +17,8 @@ class ChatCompletionOutput(ModelOutput, Generic[M]):
     @property
     def reply(self) -> str:
         if self.message and isinstance(self.message, AssistantMessage):
-            return self.message.content
+            message = cast(AssistantMessage, self.message)
+            return message.content
         return ''
 
     @property

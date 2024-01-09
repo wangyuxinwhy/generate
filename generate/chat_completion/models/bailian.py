@@ -182,12 +182,15 @@ class BailianChat(ChatCompletionModel):
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True
+        is_finish = False
         for line in self.http_client.stream_post(request_parameters=request_parameters):
+            if is_finish:
+                continue
+
             output = self._parse_stream_line(line, message, is_start)
             is_start = False
+            is_finish = output.is_finish
             yield output
-            if output.is_finish:
-                break
 
     @override
     async def async_stream_generate(
@@ -198,12 +201,15 @@ class BailianChat(ChatCompletionModel):
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True
+        is_finish = False
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
+            if is_finish:
+                continue
+
             output = self._parse_stream_line(line, message, is_start)
             is_start = False
+            is_finish = output.is_finish
             yield output
-            if output.is_finish:
-                break
 
     def _parse_stream_line(
         self, line: str, message: AssistantMessage, is_start: bool
