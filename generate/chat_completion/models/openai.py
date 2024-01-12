@@ -235,7 +235,7 @@ def convert_openai_message_to_generate_message(message: dict[str, Any]) -> Assis
     return AssistantMessage(content=message.get('content') or '', function_call=function_call, tool_calls=tool_calls)
 
 
-def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
+def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
     message = convert_openai_message_to_generate_message(response['choices'][0]['message'])
     extra = {'usage': response['usage']}
     if system_fingerprint := response.get('system_fingerprint'):
@@ -245,7 +245,7 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[
     if (finish_reason := choice.get('finish_reason')) is None:
         finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
-    return ChatCompletionOutput[AssistantMessage](
+    return ChatCompletionOutput(
         model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
         message=message,
         finish_reason=finish_reason or '',
@@ -372,7 +372,7 @@ class OpenAIChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -382,7 +382,7 @@ class OpenAIChat(ChatCompletionModel):
     @override
     async def async_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> ChatCompletionOutput[AssistantMessage]:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)

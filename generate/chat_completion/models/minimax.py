@@ -128,7 +128,7 @@ class MinimaxChat(ChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -138,16 +138,16 @@ class MinimaxChat(ChatCompletionModel):
     @override
     async def async_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
-    ) -> ChatCompletionOutput[AssistantMessage]:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
-            return ChatCompletionOutput[AssistantMessage](
+            return ChatCompletionOutput(
                 model_info=self.model_info,
                 message=AssistantMessage(content=response['choices'][0]['text']),
                 finish_reason=response['choices'][0]['finish_reason'],

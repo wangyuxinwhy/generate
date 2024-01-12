@@ -156,10 +156,10 @@ class BaseZhipuChat(ChatCompletionModel):
     def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
         return [convert_to_zhipu_message(message) for message in messages]
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[AssistantMessage]:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response['success']:
             text = response['data']['choices'][0]['content']
-            return ChatCompletionOutput[AssistantMessage](
+            return ChatCompletionOutput(
                 model_info=self.model_info,
                 message=AssistantMessage(content=text),
                 cost=self.calculate_cost(response['data']['usage']),
@@ -201,7 +201,7 @@ class ZhipuChat(BaseZhipuChat):
         return super()._convert_messages(messages)
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput[AssistantMessage]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -211,7 +211,7 @@ class ZhipuChat(BaseZhipuChat):
     @override
     async def async_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
-    ) -> ChatCompletionOutput[AssistantMessage]:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -293,7 +293,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
     @override
     def generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> ChatCompletionOutput[AssistantMessage]:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -303,7 +303,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
     @override
     async def async_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> ChatCompletionOutput[AssistantMessage]:
+    ) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)

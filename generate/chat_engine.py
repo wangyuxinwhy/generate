@@ -89,7 +89,7 @@ class ChatEngine:
             if model_output.message.is_over:
                 return model_output.reply
 
-    def _handle_model_output(self, model_output: ChatCompletionOutput[AssistantMessage], **kwargs: Any) -> None:
+    def _handle_model_output(self, model_output: ChatCompletionOutput, **kwargs: Any) -> None:
         self.model_ouptuts.append(model_output)
         self.history.append(model_output.message)
 
