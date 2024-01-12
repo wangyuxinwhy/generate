@@ -192,10 +192,10 @@ class _StreamResponseProcessor:
         self.message: AssistantMessage | None = None
         self.model_info = model_info
 
-    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[AssistantMessage]:
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput:
         if response.get('usage'):
             assert self.message is not None
-            return ChatCompletionStreamOutput[AssistantMessage](
+            return ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=self.message,
                 finish_reason=response['choices'][0]['finish_reason'],
@@ -216,7 +216,7 @@ class _StreamResponseProcessor:
             delta = self.update_existing_message(response)
             control = 'continue'
 
-        return ChatCompletionStreamOutput[AssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=self.message,
             finish_reason=None,
@@ -231,11 +231,9 @@ class _StreamResponseProcessor:
     def update_existing_message(self, response: ResponseValue) -> str:
         output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
         message = output_messages[-1]
-        if isinstance(message, AssistantMessage) and message.is_over:
-            return self.update_single_message(message)
-        return ''
+        if not isinstance(message, AssistantMessage):
+            return ''
 
-    def update_single_message(self, message: AssistantMessage) -> str:
         if message.function_call is not None:
             delta = ''
             self.message = message
@@ -291,9 +289,7 @@ class MinimaxProChat(ChatCompletionModel):
         }
 
     @override
-    def generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -301,9 +297,7 @@ class MinimaxProChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -340,7 +334,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -351,7 +345,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)

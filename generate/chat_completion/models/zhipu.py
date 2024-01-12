@@ -209,9 +209,7 @@ class ZhipuChat(BaseZhipuChat):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -221,7 +219,7 @@ class ZhipuChat(BaseZhipuChat):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -229,13 +227,13 @@ class ZhipuChat(BaseZhipuChat):
         is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
             message.content += line
-            yield ChatCompletionStreamOutput[AssistantMessage](
+            yield ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
-        yield ChatCompletionStreamOutput[AssistantMessage](
+        yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=message,
             finish_reason='stop',
@@ -245,7 +243,7 @@ class ZhipuChat(BaseZhipuChat):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -253,13 +251,13 @@ class ZhipuChat(BaseZhipuChat):
         is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             message.content += line
-            yield ChatCompletionStreamOutput[AssistantMessage](
+            yield ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
-        yield ChatCompletionStreamOutput[AssistantMessage](
+        yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=message,
             finish_reason='stop',
@@ -291,9 +289,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
         super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
-    def generate(
-        self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -301,9 +297,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -313,7 +307,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -321,13 +315,13 @@ class ZhipuCharacterChat(BaseZhipuChat):
         is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
             message.content += line
-            yield ChatCompletionStreamOutput[AssistantMessage](
+            yield ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
-        yield ChatCompletionStreamOutput[AssistantMessage](
+        yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=message,
             finish_reason='stop',
@@ -337,7 +331,7 @@ class ZhipuCharacterChat(BaseZhipuChat):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -345,13 +339,13 @@ class ZhipuCharacterChat(BaseZhipuChat):
         is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             message.content += line
-            yield ChatCompletionStreamOutput[AssistantMessage](
+            yield ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=message,
                 stream=Stream(delta=line, control='start' if is_start else 'continue'),
             )
             is_start = False
-        yield ChatCompletionStreamOutput[AssistantMessage](
+        yield ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=message,
             finish_reason='stop',

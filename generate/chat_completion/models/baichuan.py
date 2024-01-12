@@ -125,9 +125,7 @@ class BaichuanChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -164,7 +162,7 @@ class BaichuanChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -178,7 +176,7 @@ class BaichuanChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BaichuanChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -189,9 +187,7 @@ class BaichuanChat(ChatCompletionModel):
             is_start = False
             yield output
 
-    def _parse_stream_line(
-        self, line: str, message: AssistantMessage, is_start: bool
-    ) -> ChatCompletionStreamOutput[AssistantMessage]:
+    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
         output = self._parse_reponse(json.loads(line))
         output_message = output.message
         if is_start:
@@ -199,7 +195,7 @@ class BaichuanChat(ChatCompletionModel):
         else:
             stream = Stream(delta=output_message.content, control='finish' if output.is_finish else 'continue')
         message.content += output_message.content
-        return ChatCompletionStreamOutput[AssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=output.model_info,
             message=message,
             finish_reason=output.finish_reason,

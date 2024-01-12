@@ -143,9 +143,7 @@ class BailianChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -176,7 +174,7 @@ class BailianChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -195,7 +193,7 @@ class BailianChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -211,9 +209,7 @@ class BailianChat(ChatCompletionModel):
             is_finish = output.is_finish
             yield output
 
-    def _parse_stream_line(
-        self, line: str, message: AssistantMessage, is_start: bool
-    ) -> ChatCompletionStreamOutput[AssistantMessage]:
+    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
         parsed_line = json.loads(line)
         reply: str = parsed_line['Data']['Text']
         extra = {

@@ -7,7 +7,6 @@ from typing_extensions import Self, Unpack
 
 from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
 from generate.chat_completion.message import (
-    AssistantMessage,
     FunctionCall,
     FunctionMessage,
     ToolCall,

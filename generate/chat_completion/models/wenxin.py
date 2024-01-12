@@ -166,9 +166,7 @@ class WenxinChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -206,7 +204,7 @@ class WenxinChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         if parameters.functions:
@@ -222,7 +220,7 @@ class WenxinChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         if parameters.functions:
@@ -235,14 +233,12 @@ class WenxinChat(ChatCompletionModel):
             is_start = False
             yield output
 
-    def _parse_stream_line(
-        self, line: str, message: AssistantMessage, is_start: bool
-    ) -> ChatCompletionStreamOutput[AssistantMessage]:
+    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
         parsed_line = json.loads(line)
         delta = parsed_line['result']
         message.content += delta
         if parsed_line['is_end']:
-            return ChatCompletionStreamOutput[AssistantMessage](
+            return ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 cost=self.calculate_cost(parsed_line['usage']),
                 extra={
@@ -254,7 +250,7 @@ class WenxinChat(ChatCompletionModel):
                 finish_reason='stop',
                 stream=Stream(delta=delta, control='finish'),
             )
-        return ChatCompletionStreamOutput[AssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=message,
             finish_reason=None,

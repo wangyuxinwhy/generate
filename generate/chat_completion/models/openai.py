@@ -259,7 +259,7 @@ class _StreamResponseProcessor:
         self.message: AssistantMessage | None = None
         self.is_start = True
 
-    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[AssistantMessage] | None:
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput | None:
         delta_dict = response['choices'][0]['delta']
 
         if self.message is None:
@@ -273,7 +273,7 @@ class _StreamResponseProcessor:
         finish_reason = self.determine_finish_reason(response)
         stream_control = 'finish' if finish_reason else 'start' if self.is_start else 'continue'
         self.is_start = False
-        return ChatCompletionStreamOutput[AssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
             message=self.message,
             finish_reason=finish_reason,
@@ -380,9 +380,7 @@ class OpenAIChat(ChatCompletionModel):
         return parse_openai_model_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -397,7 +395,7 @@ class OpenAIChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -416,7 +414,7 @@ class OpenAIChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[AssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)

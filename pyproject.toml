@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "generate-core"
-version = "0.2.3"
+version = "0.3.0"
 description = "文本生成，图像生成，语音生成"
 authors = ["wangyuxin <wangyuxin@mokahr.com>"]
 license = "MIT"
