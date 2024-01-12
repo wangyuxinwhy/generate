@@ -1,25 +1,20 @@
 from __future__ import annotations
 
-from typing import Generic, Literal, Optional, TypeVar, cast
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-from generate.chat_completion.message import AssistantMessage, UnionAssistantMessage
+from generate.chat_completion.message import AssistantMessage
 from generate.model import ModelOutput
 
-M = TypeVar('M', bound=UnionAssistantMessage)
 
-
-class ChatCompletionOutput(ModelOutput, Generic[M]):
-    message: M
+class ChatCompletionOutput(ModelOutput, AssistantMessage):
+    message: AssistantMessage
     finish_reason: Optional[str] = None
 
     @property
     def reply(self) -> str:
-        if self.message and isinstance(self.message, AssistantMessage):
-            message = cast(AssistantMessage, self.message)
-            return message.content
-        return ''
+        return self.message.content
 
     @property
     def is_finish(self) -> bool:
@@ -31,5 +26,5 @@ class Stream(BaseModel):
     control: Literal['start', 'continue', 'finish']
 
 
-class ChatCompletionStreamOutput(ChatCompletionOutput, Generic[M]):
+class ChatCompletionStreamOutput(ChatCompletionOutput):
     stream: Stream

@@ -1,7 +1,6 @@
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
-    FunctionCallMessage,
     UserMessage,
     ensure_messages,
 )
@@ -18,8 +17,8 @@ def test_ensure_messages_with_dict() -> None:
     expected_messages = [UserMessage(content='Hello, how can I help you?')]
     assert ensure_messages(prompt) == expected_messages
 
-    prompt = {'role': 'assistant', 'name': 'bot', 'content': {'name': 'test', 'arguments': 'test'}}
-    expected_messages = [FunctionCallMessage(name='bot', content=FunctionCall(name='test', arguments='test'))]
+    prompt = {'role': 'assistant', 'name': 'bot', 'function_call': {'name': 'test', 'arguments': 'test'}}
+    expected_messages = [AssistantMessage(name='bot', function_call=FunctionCall(name='test', arguments='test'))]
     assert ensure_messages(prompt) == expected_messages
 
     prompt = {'role': 'assistant', 'name': 'bot', 'content': 'test'}

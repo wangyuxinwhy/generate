@@ -4,10 +4,8 @@ from typing import Protocol
 
 from generate.chat_completion.message import (
     AssistantMessage,
-    FunctionCallMessage,
     FunctionMessage,
     Message,
-    ToolCallsMessage,
     ToolMessage,
     UserMessage,
 )
@@ -48,15 +46,18 @@ class SimpleMessagePrinter(MessagePrinter):
         self.interval = interval
 
     def print_message(self, message: Message) -> None:
-        if isinstance(message, (UserMessage, AssistantMessage, FunctionMessage, ToolMessage)):
+        if isinstance(message, (UserMessage, FunctionMessage, ToolMessage)):
             print(f'{message.role}: {message.content}')
-        elif isinstance(message, FunctionCallMessage):
-            print(f'Function call: {message.content.name}\nArguments: {message.content.arguments}')
-        elif isinstance(message, ToolCallsMessage):
-            for tool_call in message.content:
-                print(
-                    f'Tool call: {tool_call.id}\nFunction: {tool_call.function.name}\nArguments: {tool_call.function.arguments}'
-                )
+        elif isinstance(message, AssistantMessage):
+            if message.content:
+                print(f'assistant: {message.content}')
+            if message.function_call:
+                print(f'Function call: {message.function_call.name}\nArguments: {message.function_call.arguments}')
+            if message.tool_calls:
+                for tool_call in message.tool_calls:
+                    print(
+                        f'Tool call: {tool_call.id}\nFunction: {tool_call.function.name}\nArguments: {tool_call.function.arguments}'
+                    )
         else:
             raise TypeError(f'Invalid message type: {type(message)}')
 
