@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union, cast
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, cast
 
 from pydantic import Field, PositiveInt, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
@@ -9,10 +9,8 @@ from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, o
 from generate.chat_completion.base import ChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
-    AssistantGroupMessage,
     AssistantMessage,
     FunctionCall,
-    FunctionCallMessage,
     FunctionMessage,
     Message,
     Messages,
@@ -33,8 +31,6 @@ from generate.http import (
 from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
-
-MinimaxProAssistantMessage = Union[AssistantMessage, FunctionCallMessage, AssistantGroupMessage]
 
 
 class BotSettingDict(TypedDict):
@@ -145,23 +141,19 @@ def _convert_to_minimax_pro_message(
         sender_name = message.name or default_bot_name
         if sender_name is None:
             raise MessageValueError(message, 'bot name is required')
+        if message.function_call is None:
+            return {
+                'sender_type': 'BOT',
+                'sender_name': sender_name,
+                'text': message.content,
+            }
         return {
             'sender_type': 'BOT',
             'sender_name': sender_name,
             'text': message.content,
-        }
-
-    if isinstance(message, FunctionCallMessage):
-        sender_name = message.name or default_bot_name
-        if sender_name is None:
-            raise MessageValueError(message, 'bot name is required')
-        return {
-            'sender_type': 'BOT',
-            'sender_name': sender_name,
-            'text': '',
             'function_call': {
-                'name': message.content.name,
-                'arguments': message.content.arguments,
+                'name': message.function_call.name,
+                'arguments': message.function_call.arguments,
             },
         }
 
@@ -172,14 +164,15 @@ def _convert_to_minimax_pro_message(
             'text': message.content,
         }
 
-    raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage, FunctionCallMessage))
+    raise MessageTypeError(message, allowed_message_type=(UserMessage, AssistantMessage, FunctionMessage))
 
 
-def _convert_to_message(message: MinimaxProMessage) -> FunctionCallMessage | AssistantMessage | FunctionMessage:
+def _convert_to_message(message: MinimaxProMessage) -> AssistantMessage | FunctionMessage:
     if 'function_call' in message:
-        return FunctionCallMessage(
+        return AssistantMessage(
             name=message['sender_name'],
-            content=FunctionCall(name=message['function_call']['name'], arguments=message['function_call']['arguments']),
+            content=message['text'],
+            function_call=FunctionCall(name=message['function_call']['name'], arguments=message['function_call']['arguments']),
         )
     if message['sender_type'] == 'BOT':
         return AssistantMessage(
@@ -196,12 +189,13 @@ def _convert_to_message(message: MinimaxProMessage) -> FunctionCallMessage | Ass
 
 class _StreamResponseProcessor:
     def __init__(self, model_info: ModelInfo) -> None:
-        self.message: MinimaxProAssistantMessage | None = None
+        self.message: AssistantMessage | None = None
         self.model_info = model_info
 
-    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[MinimaxProAssistantMessage]:
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput:
         if response.get('usage'):
-            return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
+            assert self.message is not None
+            return ChatCompletionStreamOutput(
                 model_info=self.model_info,
                 message=self.message,
                 finish_reason=response['choices'][0]['finish_reason'],
@@ -222,45 +216,25 @@ class _StreamResponseProcessor:
             delta = self.update_existing_message(response)
             control = 'continue'
 
-        return ChatCompletionStreamOutput[MinimaxProAssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=self.model_info,
             message=self.message,
             finish_reason=None,
             stream=Stream(delta=delta, control=control),
         )
 
-    def initial_message(self, response: ResponseValue) -> MinimaxProAssistantMessage:
+    def initial_message(self, response: ResponseValue) -> AssistantMessage:
         output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
-        message = output_messages[0] if len(output_messages) == 1 else AssistantGroupMessage(content=output_messages)
-        return cast(MinimaxProAssistantMessage, message)
+        message = output_messages[-1]
+        return cast(AssistantMessage, message)
 
     def update_existing_message(self, response: ResponseValue) -> str:
         output_messages = [_convert_to_message(i) for i in response['choices'][0]['messages']]
-        if len(output_messages) == 1 and not isinstance(self.message, AssistantGroupMessage):
-            return self.update_single_message(output_messages[0])  # type: ignore
+        message = output_messages[-1]
+        if not isinstance(message, AssistantMessage):
+            return ''
 
-        if len(output_messages) > 1 and not isinstance(self.message, AssistantGroupMessage):
-            self.message = AssistantGroupMessage(content=[self.message])  # type: ignore
-        self.message = cast(AssistantGroupMessage, self.message)
-        messages = self.message.content
-        delta = ''
-        for index, output_message in enumerate(output_messages, start=1):
-            if index > len(messages):
-                messages.append(output_message)  # type: ignore
-                if isinstance(output_message, AssistantMessage):
-                    delta = output_message.content
-            elif isinstance(output_message, FunctionCallMessage):
-                messages[index - 1] = output_message
-            elif isinstance(output_message, AssistantMessage):
-                message = cast(AssistantMessage, messages[index - 1])
-                delta = output_message.content
-                message.content += output_message.content
-            else:
-                raise ValueError(f'unknown message type: {output_message}')
-        return delta
-
-    def update_single_message(self, message: FunctionCallMessage | AssistantMessage) -> str:
-        if isinstance(message, FunctionCallMessage):
+        if message.function_call is not None:
             delta = ''
             self.message = message
             return delta
@@ -315,9 +289,7 @@ class MinimaxProChat(ChatCompletionModel):
         }
 
     @override
-    def generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -325,25 +297,22 @@ class MinimaxProChat(ChatCompletionModel):
         return self._parse_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput[MinimaxProAssistantMessage]:
+    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         try:
-            messages: list[FunctionCallMessage | AssistantMessage | FunctionMessage] = [
+            messages: list[AssistantMessage | FunctionMessage] = [
                 _convert_to_message(i) for i in response['choices'][0]['messages']
             ]
-            message = messages[0] if len(messages) == 1 else AssistantGroupMessage(content=messages)
-            message = cast(MinimaxProAssistantMessage, message)
+            message = cast(AssistantMessage, messages[-1])
             finish_reason = response['choices'][0]['finish_reason']
             num_web_search = sum([1 for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
-            return ChatCompletionOutput[MinimaxProAssistantMessage](
+            return ChatCompletionOutput(
                 model_info=self.model_info,
                 message=message,
                 finish_reason=finish_reason,
@@ -365,7 +334,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[MinimaxProAssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -376,7 +345,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[MinimaxProAssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)

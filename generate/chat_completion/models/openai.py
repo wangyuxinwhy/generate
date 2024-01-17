@@ -12,7 +12,6 @@ from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
-    FunctionCallMessage,
     FunctionMessage,
     Message,
     Messages,
@@ -21,7 +20,6 @@ from generate.chat_completion.message import (
     SystemMessage,
     TextPart,
     ToolCall,
-    ToolCallsMessage,
     ToolMessage,
     UserMessage,
     UserMultiPartMessage,
@@ -36,8 +34,6 @@ from generate.http import (
 from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
 from generate.types import Probability, Temperature
-
-OpenAIAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMessage]
 
 
 class FunctionCallName(TypedDict):
@@ -150,11 +146,13 @@ def _to_tool_message_dict(message: ToolMessage) -> OpenAIMessage:
     }
 
 
-def _to_tool_calls_message_dict(message: ToolCallsMessage) -> OpenAIMessage:
-    return {
+def _to_asssistant_message_dict(message: AssistantMessage) -> OpenAIMessage:
+    base_dict = {
         'role': 'assistant',
-        'content': None,
-        'tool_calls': [
+        'content': message.content or None,
+    }
+    if message.tool_calls:
+        tool_calls = [
             {
                 'id': tool_call.id,
                 'type': 'function',
@@ -163,9 +161,15 @@ def _to_tool_calls_message_dict(message: ToolCallsMessage) -> OpenAIMessage:
                     'arguments': tool_call.function.arguments,
                 },
             }
-            for tool_call in message.content
-        ],
-    }
+            for tool_call in message.tool_calls
+        ]
+        base_dict['tool_calls'] = tool_calls
+    if message.function_call:
+        base_dict['function_call'] = {
+            'name': message.function_call.name,
+            'arguments': message.function_call.arguments,
+        }
+    return cast(OpenAIMessage, base_dict)
 
 
 def _to_function_message_dict(message: FunctionMessage) -> OpenAIMessage:
@@ -176,27 +180,14 @@ def _to_function_message_dict(message: FunctionMessage) -> OpenAIMessage:
     }
 
 
-def _to_function_call_message_dict(message: FunctionCallMessage) -> OpenAIMessage:
-    return {
-        'role': 'assistant',
-        'function_call': {
-            'name': message.content.name,
-            'arguments': message.content.arguments,
-        },
-        'content': None,
-    }
-
-
 def convert_to_openai_message(message: Message) -> OpenAIMessage:
     to_function_map: dict[Type[Message], Callable[[Any], OpenAIMessage]] = {
         SystemMessage: partial(_to_text_message_dict, 'system'),
         UserMessage: partial(_to_text_message_dict, 'user'),
-        AssistantMessage: partial(_to_text_message_dict, 'assistant'),
+        AssistantMessage: partial(_to_asssistant_message_dict),
         UserMultiPartMessage: _to_user_multipart_message_dict,
         ToolMessage: _to_tool_message_dict,
-        ToolCallsMessage: _to_tool_calls_message_dict,
         FunctionMessage: _to_function_message_dict,
-        FunctionCallMessage: _to_function_call_message_dict,
     }
     if to_function := to_function_map.get(type(message)):
         return to_function(message)
@@ -219,35 +210,32 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     return None
 
 
-def convert_openai_message_to_generate_message(
-    message: dict[str, Any]
-) -> FunctionCallMessage | ToolCallsMessage | AssistantMessage:
-    if function_call := message.get('function_call'):
-        function_call = cast(OpenAIFunctionCall, function_call)
-        return FunctionCallMessage(
-            content=FunctionCall(
-                name=function_call.get('name') or '',
-                arguments=function_call['arguments'],
-            ),
+def convert_openai_message_to_generate_message(message: dict[str, Any]) -> AssistantMessage:
+    if function_call_dict := message.get('function_call'):
+        function_call = FunctionCall(
+            name=function_call_dict.get('name') or '',
+            arguments=function_call_dict['arguments'],
         )
-    if tool_calls := message.get('tool_calls'):
-        tool_calls = cast(List[OpenAIToolCall], tool_calls)
-        return ToolCallsMessage(
-            content=[
-                ToolCall(
-                    id=tool_call['id'],
-                    function=FunctionCall(
-                        name=tool_call['function'].get('name') or '',
-                        arguments=tool_call['function']['arguments'],
-                    ),
-                )
-                for tool_call in tool_calls
-            ],
-        )
-    return AssistantMessage(content=message['content'] or '')
+    else:
+        function_call = None
+
+    if tool_calls_dict := message.get('tool_calls'):
+        tool_calls = [
+            ToolCall(
+                id=tool_call['id'],
+                function=FunctionCall(
+                    name=tool_call['function'].get('name') or '',
+                    arguments=tool_call['function']['arguments'],
+                ),
+            )
+            for tool_call in tool_calls_dict
+        ]
+    else:
+        tool_calls = None
+    return AssistantMessage(content=message.get('content') or '', function_call=function_call, tool_calls=tool_calls)
 
 
-def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[OpenAIAssistantMessage]:
+def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
     message = convert_openai_message_to_generate_message(response['choices'][0]['message'])
     extra = {'usage': response['usage']}
     if system_fingerprint := response.get('system_fingerprint'):
@@ -257,7 +245,7 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[
     if (finish_reason := choice.get('finish_reason')) is None:
         finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
-    return ChatCompletionOutput[OpenAIAssistantMessage](
+    return ChatCompletionOutput(
         model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
         message=message,
         finish_reason=finish_reason or '',
@@ -268,10 +256,10 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput[
 
 class _StreamResponseProcessor:
     def __init__(self) -> None:
-        self.message: OpenAIAssistantMessage | None = None
+        self.message: AssistantMessage | None = None
         self.is_start = True
 
-    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput[OpenAIAssistantMessage] | None:
+    def process(self, response: ResponseValue) -> ChatCompletionStreamOutput | None:
         delta_dict = response['choices'][0]['delta']
 
         if self.message is None:
@@ -285,7 +273,7 @@ class _StreamResponseProcessor:
         finish_reason = self.determine_finish_reason(response)
         stream_control = 'finish' if finish_reason else 'start' if self.is_start else 'continue'
         self.is_start = False
-        return ChatCompletionStreamOutput[OpenAIAssistantMessage](
+        return ChatCompletionStreamOutput(
             model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
             message=self.message,
             finish_reason=finish_reason,
@@ -294,7 +282,7 @@ class _StreamResponseProcessor:
             stream=Stream(delta=delta_dict.get('content') or '', control=stream_control),
         )
 
-    def process_initial_message(self, delta_dict: dict[str, Any]) -> OpenAIAssistantMessage | None:
+    def process_initial_message(self, delta_dict: dict[str, Any]) -> AssistantMessage | None:
         if (
             delta_dict.get('content') is None
             and delta_dict.get('tool_calls') is None
@@ -306,19 +294,30 @@ class _StreamResponseProcessor:
     def update_existing_message(self, delta_dict: dict[str, Any]) -> None:
         if not delta_dict:
             return
+        assert self.message is not None
 
-        if isinstance(self.message, AssistantMessage):
-            delta = delta_dict['content']
-            self.message.content += delta
-        elif isinstance(self.message, FunctionCallMessage):
-            self.message.content.arguments += delta_dict['function_call']['arguments']
-        elif isinstance(self.message, ToolCallsMessage):
+        delta_content = delta_dict.get('content', '')
+        self.message.content += delta_content
+
+        if delta_dict.get('tool_calls'):
             index = delta_dict['tool_calls'][0]['index']
-            if index >= len(self.message.content):
-                new_tool_calls_message = cast(ToolCallsMessage, convert_openai_message_to_generate_message(delta_dict))
-                self.message.content.append(new_tool_calls_message.content[0])
+            if index >= len(self.message.tool_calls or []):
+                new_tool_calls_message = convert_openai_message_to_generate_message(delta_dict).tool_calls
+                assert new_tool_calls_message is not None
+                if self.message.tool_calls is None:
+                    self.message.tool_calls = []
+                self.message.tool_calls.append(new_tool_calls_message[0])
             else:
-                self.message.content[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
+                assert self.message.tool_calls is not None
+                self.message.tool_calls[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
+
+        if delta_dict.get('function_call'):
+            if self.message.function_call is None:
+                self.message.function_call = FunctionCall(name='', arguments='')
+            function_name = delta_dict['function_call'].get('name', '')
+            self.message.function_call.name = function_name
+            arguments = delta_dict['function_call'].get('arguments', '')
+            self.message.function_call.arguments += arguments
 
     def extract_extra_info(self, response: ResponseValue) -> dict[str, Any]:
         extra = {}
@@ -373,9 +372,7 @@ class OpenAIChat(ChatCompletionModel):
         }
 
     @override
-    def generate(
-        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> ChatCompletionOutput[OpenAIAssistantMessage]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -383,9 +380,7 @@ class OpenAIChat(ChatCompletionModel):
         return parse_openai_model_reponse(response.json())
 
     @override
-    async def async_generate(
-        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> ChatCompletionOutput[OpenAIAssistantMessage]:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
@@ -400,7 +395,7 @@ class OpenAIChat(ChatCompletionModel):
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput[OpenAIAssistantMessage]]:
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
@@ -419,7 +414,7 @@ class OpenAIChat(ChatCompletionModel):
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput[OpenAIAssistantMessage]]:
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.update_with_validate(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)

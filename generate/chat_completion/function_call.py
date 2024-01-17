@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import Any, Callable, Generic, TypeVar
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
 from typing_extensions import NotRequired, ParamSpec, TypedDict
 
-from generate.chat_completion.message import FunctionCallMessage, Message
 from generate.types import JsonSchema
 
 P = ParamSpec('P')
@@ -57,13 +55,6 @@ class function(Generic[P, T]):  # noqa: N801
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         return self.function(*args, **kwargs)
-
-    def call_with_message(self, message: Message) -> T:
-        if isinstance(message, FunctionCallMessage):
-            function_call = message.content
-            arguments = json.loads(function_call.arguments, strict=False)
-            return self.function(**arguments)  # type: ignore
-        raise ValueError(f'message is not a function call: {message}')
 
 
 def recusive_remove(obj: Any, remove_key: str) -> None:

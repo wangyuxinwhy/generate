@@ -51,20 +51,10 @@ class ToolMessage(Message):
     content: Optional[str] = None
 
 
-class AssistantMessage(Message):
-    role: Literal['assistant'] = 'assistant'
-    content: str
-
-
 class FunctionCall(BaseModel):
     name: str
     arguments: str
     thoughts: Optional[str] = None
-
-
-class FunctionCallMessage(Message):
-    role: Literal['assistant'] = 'assistant'
-    content: FunctionCall
 
 
 class ToolCall(BaseModel):
@@ -73,22 +63,20 @@ class ToolCall(BaseModel):
     function: FunctionCall
 
 
-class ToolCallsMessage(Message):
+class AssistantMessage(Message):
     role: Literal['assistant'] = 'assistant'
-    name: Optional[str] = None
-    content: List[ToolCall]
+    content: str = ''
+    function_call: Optional[FunctionCall] = None
+    tool_calls: Optional[List[ToolCall]] = None
+
+    @property
+    def is_over(self) -> bool:
+        return self.function_call is None and self.tool_calls is None
 
 
-class AssistantGroupMessage(Message):
-    role: Literal['assistant'] = 'assistant'
-    name: Optional[str] = None
-    content: List[Union[AssistantMessage, FunctionMessage, FunctionCallMessage]]
-
-
-UnionAssistantMessage = Union[AssistantMessage, FunctionCallMessage, ToolCallsMessage, AssistantGroupMessage]
 UnionUserMessage = Union[UserMessage, UserMultiPartMessage]
 UnionUserPart = Union[TextPart, ImageUrlPart]
-UnionMessage = Union[SystemMessage, FunctionMessage, ToolMessage, UnionAssistantMessage, UnionUserMessage]
+UnionMessage = Union[SystemMessage, FunctionMessage, ToolMessage, AssistantMessage, UnionUserMessage]
 Messages = List[UnionMessage]
 MessageDict = Dict[str, Any]
 MessageDicts = Sequence[MessageDict]

@@ -7,12 +7,9 @@ from typing_extensions import Self, Unpack
 
 from generate.chat_completion import ChatCompletionModel, ChatCompletionOutput
 from generate.chat_completion.message import (
-    AssistantMessage,
     FunctionCall,
-    FunctionCallMessage,
     FunctionMessage,
     ToolCall,
-    ToolCallsMessage,
     ToolMessage,
     UnionMessage,
     UserMessage,
@@ -88,26 +85,24 @@ class ChatEngine:
                 model_output = self._chat_model.generate(self.history, **kwargs)
                 self.printer.print_message(model_output.message)
             self._handle_model_output(model_output)
-            if isinstance(model_output.message, AssistantMessage):
+            if model_output.message.is_over:
                 return model_output.reply
 
     def _handle_model_output(self, model_output: ChatCompletionOutput, **kwargs: Any) -> None:
         self.model_ouptuts.append(model_output)
         self.history.append(model_output.message)
 
-        if isinstance(model_output.message, FunctionCallMessage):
+        if model_output.message.function_call:
             self._call_count += 1
             if self._call_count > self.max_calls_per_turn:
                 raise RuntimeError('Maximum number of function calls reached.')
-            function_call = model_output.message.content
-            self._handle_function_call(function_call)
+            self._handle_function_call(model_output.message.function_call)
 
-        if isinstance(model_output.message, ToolCallsMessage):
+        if model_output.message.tool_calls:
             self._call_count += 1
             if self._call_count > self.max_calls_per_turn:
                 raise RuntimeError('Maximum number of tool calls reached.')
-            tool_calls = model_output.message.content
-            self._handle_tool_calls(tool_calls, **kwargs)
+            self._handle_tool_calls(model_output.message.tool_calls, **kwargs)
 
     def _handle_function_call(self, function_call: FunctionCall) -> None:
         function_output = self._run_function_call(function_call)
