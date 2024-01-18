@@ -29,6 +29,7 @@ from generate.image_generation import (
     OpenAIImageGenerationParameters,
     QianfanImageGeneration,
     QianfanImageGenerationParameters,
+    ZhipuImageGeneration,
 )
 from generate.text_to_speech import (
     MinimaxProSpeech,
@@ -82,6 +83,7 @@ __all__ = [
     'BaiduImageGenerationParameters',
     'QianfanImageGeneration',
     'QianfanImageGenerationParameters',
+    'ZhipuImageGeneration',
     'function',
     'load_chat_model',
     'load_speech_model',

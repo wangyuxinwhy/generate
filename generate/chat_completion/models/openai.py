@@ -210,7 +210,7 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     return None
 
 
-def convert_openai_message_to_generate_message(message: dict[str, Any]) -> AssistantMessage:
+def _convert_to_assistant_message(message: dict[str, Any]) -> AssistantMessage:
     if function_call_dict := message.get('function_call'):
         function_call = FunctionCall(
             name=function_call_dict.get('name') or '',
@@ -236,7 +236,7 @@ def convert_openai_message_to_generate_message(message: dict[str, Any]) -> Assis
 
 
 def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
-    message = convert_openai_message_to_generate_message(response['choices'][0]['message'])
+    message = _convert_to_assistant_message(response['choices'][0]['message'])
     extra = {'usage': response['usage']}
     if system_fingerprint := response.get('system_fingerprint'):
         extra['system_fingerprint'] = system_fingerprint
@@ -263,11 +263,11 @@ class _StreamResponseProcessor:
         delta_dict = response['choices'][0]['delta']
 
         if self.message is None:
-            self.message = self.process_initial_message(delta_dict)
-            if self.message is None:
-                return None
-        else:
-            self.update_existing_message(delta_dict)
+            if self._is_contains_content(delta_dict):
+                self.message = self.process_initial_message(delta_dict)
+            return None
+
+        self.update_existing_message(delta_dict)
         extra = self.extract_extra_info(response)
         cost = cost = self.calculate_response_cost(response)
         finish_reason = self.determine_finish_reason(response)
@@ -282,14 +282,15 @@ class _StreamResponseProcessor:
             stream=Stream(delta=delta_dict.get('content') or '', control=stream_control),
         )
 
-    def process_initial_message(self, delta_dict: dict[str, Any]) -> AssistantMessage | None:
-        if (
+    def _is_contains_content(self, delta_dict: dict[str, Any]) -> bool:
+        return not (
             delta_dict.get('content') is None
             and delta_dict.get('tool_calls') is None
             and delta_dict.get('function_call') is None
-        ):
-            return None
-        return convert_openai_message_to_generate_message(delta_dict)
+        )
+
+    def process_initial_message(self, delta_dict: dict[str, Any]) -> AssistantMessage:
+        return _convert_to_assistant_message(delta_dict)
 
     def update_existing_message(self, delta_dict: dict[str, Any]) -> None:
         if not delta_dict:
@@ -302,7 +303,7 @@ class _StreamResponseProcessor:
         if delta_dict.get('tool_calls'):
             index = delta_dict['tool_calls'][0]['index']
             if index >= len(self.message.tool_calls or []):
-                new_tool_calls_message = convert_openai_message_to_generate_message(delta_dict).tool_calls
+                new_tool_calls_message = _convert_to_assistant_message(delta_dict).tool_calls
                 assert new_tool_calls_message is not None
                 if self.message.tool_calls is None:
                     self.message.tool_calls = []
