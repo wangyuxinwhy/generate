@@ -8,7 +8,7 @@ from generate.chat_completion.message import AssistantMessage
 from generate.model import ModelOutput
 
 
-class ChatCompletionOutput(ModelOutput, AssistantMessage):
+class ChatCompletionOutput(ModelOutput):
     message: AssistantMessage
     finish_reason: Optional[str] = None
 
