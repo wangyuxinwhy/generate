@@ -419,11 +419,11 @@ class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
 
 
 class ZhipuCharacterChat(ChatCompletionModel):
-    model_type: ClassVar[str] = 'zhipu-character'
+    model_type: ClassVar[str] = 'zhipu_character'
 
     def __init__(
         self,
-        model: str = 'characterglm',
+        model: str = 'charglm-3',
         parameters: ZhipuCharacterChatParameters | None = None,
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
