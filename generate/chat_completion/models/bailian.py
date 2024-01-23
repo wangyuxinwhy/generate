@@ -137,7 +137,7 @@ class BailianChat(ChatCompletionModel):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -145,7 +145,7 @@ class BailianChat(ChatCompletionModel):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -176,7 +176,7 @@ class BailianChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True
@@ -195,7 +195,7 @@ class BailianChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True

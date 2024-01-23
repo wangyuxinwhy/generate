@@ -8,11 +8,17 @@ from typing_extensions import Self, TypedDict, Unpack
 
 
 class ModelParameters(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
     def custom_model_dump(self) -> dict[str, Any]:
         return {**self.model_dump(exclude_none=True, by_alias=True), **self.model_dump(exclude_unset=True, by_alias=True)}
 
-    def update_with_validate(self, **kwargs: Any) -> Self:
-        return self.__class__.model_validate({**self.model_dump(exclude_unset=True), **kwargs})  # type: ignore
+    def clone_with_changes(self, **changes: Any) -> Self:
+        return self.__class__.model_validate({**self.model_dump(exclude_unset=True), **changes})  # type: ignore
+
+    def model_update(self, **kwargs: Any) -> None:
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class ModelParametersDict(TypedDict, total=False):

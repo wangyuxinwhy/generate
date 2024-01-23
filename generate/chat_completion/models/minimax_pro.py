@@ -199,7 +199,7 @@ class _StreamResponseProcessor:
                 model_info=self.model_info,
                 message=self.message,
                 finish_reason=response['choices'][0]['finish_reason'],
-                cost=calculate_cost(model_name=self.model_info.name , usage=response['usage']),
+                cost=calculate_cost(model_name=self.model_info.name, usage=response['usage']),
                 extra={
                     'input_sensitive': response['input_sensitive'],
                     'output_sensitive': response['output_sensitive'],
@@ -299,7 +299,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -307,7 +307,7 @@ class MinimaxProChat(ChatCompletionModel):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -344,7 +344,7 @@ class MinimaxProChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor(model_info=self.model_info)
         for line in self.http_client.stream_post(request_parameters=request_parameters):
@@ -355,7 +355,7 @@ class MinimaxProChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor(model_info=self.model_info)
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):

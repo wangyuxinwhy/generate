@@ -81,7 +81,7 @@ class MinimaxSpeech(TextToSpeechModel):
         }
 
     def generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -92,7 +92,7 @@ class MinimaxSpeech(TextToSpeechModel):
         )
 
     async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -152,7 +152,7 @@ class MinimaxProSpeech(TextToSpeechModel):
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         response_data = response.json()
@@ -171,7 +171,7 @@ class MinimaxProSpeech(TextToSpeechModel):
 
     @override
     async def async_generate(self, prompt: str, **kwargs: Unpack[MinimaxProSpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         response_data = response.json()
