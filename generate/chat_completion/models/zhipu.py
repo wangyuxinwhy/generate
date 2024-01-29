@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional, Union
 
+from pydantic import field_validator
 from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import ChatCompletionModel
@@ -74,6 +75,13 @@ class ZhipuChatParameters(ModelParameters):
     stop: Optional[List[str]] = None
     tools: Optional[List[ZhipuTool]] = None
     tool_choice: Optional[str] = None
+
+    @field_validator('temperature')
+    @classmethod
+    def can_not_equal_zero(cls, v: Optional[Temperature]) -> Optional[Temperature]:
+        if v == 0:
+            return 0.01
+        return v
 
 
 class ZhipuChatParametersDict(ModelParametersDict, total=False):
@@ -331,7 +339,7 @@ class ZhipuChat(ChatCompletionModel):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -339,7 +347,7 @@ class ZhipuChat(ChatCompletionModel):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -349,7 +357,7 @@ class ZhipuChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor()
         is_finish = False
@@ -367,7 +375,7 @@ class ZhipuChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         stream_processor = _StreamResponseProcessor()
         is_finish = False
@@ -468,7 +476,7 @@ class ZhipuCharacterChat(ChatCompletionModel):
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -476,7 +484,7 @@ class ZhipuCharacterChat(ChatCompletionModel):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._parse_reponse(response.json())
@@ -486,7 +494,7 @@ class ZhipuCharacterChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True
@@ -510,7 +518,7 @@ class ZhipuCharacterChat(ChatCompletionModel):
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_stream_request_parameters(messages, parameters)
         message = AssistantMessage(content='')
         is_start = True

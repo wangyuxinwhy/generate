@@ -56,7 +56,7 @@ class OpenAISpeech(TextToSpeechModel):
 
     @override
     def generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = self.http_client.post(request_parameters=request_parameters)
         return TextToSpeechOutput(
@@ -68,7 +68,7 @@ class OpenAISpeech(TextToSpeechModel):
 
     @override
     async def async_generate(self, prompt: str, **kwargs: Unpack[OpenAISpeechParametersDict]) -> TextToSpeechOutput:
-        parameters = self.parameters.update_with_validate(**kwargs)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(prompt, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return TextToSpeechOutput(
