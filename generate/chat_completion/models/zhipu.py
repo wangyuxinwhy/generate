@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional, Union
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union
 
 from pydantic import field_validator
 from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
@@ -17,9 +17,10 @@ from generate.chat_completion.message import (
     SystemMessage,
     ToolCall,
     UserMessage,
+    UserMultiPartMessage,
     ensure_messages,
 )
-from generate.chat_completion.message.core import ToolMessage
+from generate.chat_completion.message.core import ImageUrlPart, TextPart, ToolMessage
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
@@ -108,7 +109,7 @@ class ZhipuFunctionCall(TypedDict):
 
 class ZhipuMessage(TypedDict):
     role: Literal['user', 'assistant', 'system', 'tool']
-    content: NotRequired[str]
+    content: NotRequired[Union[str, List[Dict[str, str]]]]
     tool_calls: NotRequired[list[ZhipuToolCall]]
     tool_call_id: NotRequired[str]
 
@@ -119,6 +120,27 @@ def convert_to_zhipu_message(message: Message) -> ZhipuMessage:
             'role': 'user',
             'content': message.content,
         }
+
+    if isinstance(message, UserMultiPartMessage):
+        content = []
+        for part in message.content:
+            if isinstance(part, TextPart):
+                content.append(
+                    {
+                        'type': 'text',
+                        'text': part.text,
+                    }
+                )
+            elif isinstance(part, ImageUrlPart):
+                content.append(
+                    {
+                        'type': 'image_url',
+                        'image_url': {
+                            'url': part.image_url.url,
+                        },
+                    }
+                )
+        return {'role': 'user', 'content': content}
 
     if isinstance(message, AssistantMessage):
         if message.tool_calls is not None:

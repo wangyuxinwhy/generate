@@ -51,14 +51,13 @@ ChatCompletionOutput(
     model_info=ModelInfo(task='chat_completion', type='openai', name='gpt-3.5-turbo-0613'),
     cost=0.000343,
     extra={'usage': {'prompt_tokens': 13, 'completion_tokens': 18, 'total_tokens': 31}},
-    messages=[
-        AssistantMessage(
-            content='你好！有什么我可以帮助你的吗？',
-            role='assistant',
-            name=None,
-            content_type='text'
-        )
-    ],
+    message=AssistantMessage(
+        role='assistant',
+        name=None,
+        content='你好！有什么我可以帮助你的吗？',
+        function_call=None,
+        tool_calls=None
+    ),
     finish_reason='stop'
 )
 ```
