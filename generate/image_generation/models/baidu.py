@@ -8,7 +8,11 @@ from pydantic import Base64Str, Field, HttpUrl
 from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
-from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
+from generate.image_generation.base import (
+    GeneratedImage,
+    ImageGenerationOutput,
+    RemoteImageGenerationModel,
+)
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import BaiduCreationSettings, BaiduCreationTokenManager
 
@@ -55,8 +59,11 @@ class BaiduImageGenerationParametersDict(ModelParametersDict, total=False):
     change_degree: Optional[int]
 
 
-class BaiduImageGeneration(ImageGenerationModel):
+class BaiduImageGeneration(RemoteImageGenerationModel):
     model_type = 'baidu'
+
+    parameters: BaiduImageGenerationParameters
+    settings: BaiduCreationSettings
 
     def __init__(
         self,
@@ -65,9 +72,11 @@ class BaiduImageGeneration(ImageGenerationModel):
         http_client: HttpClient | None = None,
         task_timeout: int = 60,
     ) -> None:
-        self.parameters = parameters or BaiduImageGenerationParameters()
-        self.settings = settings or BaiduCreationSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
+        parameters = parameters or BaiduImageGenerationParameters()
+        settings = settings or BaiduCreationSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.token_manager = BaiduCreationTokenManager(self.settings, self.http_client)
         self.task_timeout = task_timeout
 

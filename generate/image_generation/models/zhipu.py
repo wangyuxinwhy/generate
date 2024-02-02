@@ -4,12 +4,20 @@ from httpx import Response
 from typing_extensions import Self, override
 
 from generate.http import HttpClient, HttpxPostKwargs
-from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
+from generate.image_generation.base import GeneratedImage, ImageGenerationOutput, RemoteImageGenerationModel
+from generate.model import ModelParameters
 from generate.platforms.zhipu import ZhipuSettings, generate_zhipu_token
 
 
-class ZhipuImageGeneration(ImageGenerationModel):
+class ZhipuImageGenerationParameters(ModelParameters):
+    pass
+
+
+class ZhipuImageGeneration(RemoteImageGenerationModel):
     model_type = 'zhipu'
+
+    parameters: ZhipuImageGenerationParameters
+    settings: ZhipuSettings
 
     def __init__(
         self,
@@ -17,9 +25,12 @@ class ZhipuImageGeneration(ImageGenerationModel):
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = ZhipuImageGenerationParameters()
+        settings = settings or ZhipuSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.settings = settings or ZhipuSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, prompt: str) -> HttpxPostKwargs:
         headers = {

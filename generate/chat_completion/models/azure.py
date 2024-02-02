@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import os
 from typing import AsyncIterator, ClassVar, Iterator
 
 from typing_extensions import Self, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import Messages, Prompt, ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai import (
@@ -18,20 +17,25 @@ from generate.http import HttpClient, HttpxPostKwargs
 from generate.platforms.azure import AzureSettings
 
 
-class AzureChat(ChatCompletionModel):
+class AzureChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'azure'
+
+    parameters: OpenAIChatParameters
+    settings: AzureSettings
 
     def __init__(
         self,
-        model: str | None = None,
+        model: str,
         parameters: OpenAIChatParameters | None = None,
         settings: AzureSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.model = model or os.environ['AZURE_CHAT_API_ENGINE']
-        self.parameters = parameters or OpenAIChatParameters()
-        self.settings = settings or AzureSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
+        parameters = parameters or OpenAIChatParameters()
+        settings = settings or AzureSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
+        self.model = model
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]

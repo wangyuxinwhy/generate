@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Option
 from pydantic import Field, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -122,13 +122,16 @@ class WenxinChatParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class WenxinChat(ChatCompletionModel):
+class WenxinChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
     }
+
+    parameters: WenxinChatParameters
+    settings: QianfanSettings
 
     def __init__(
         self,
@@ -137,10 +140,12 @@ class WenxinChat(ChatCompletionModel):
         settings: QianfanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or WenxinChatParameters()
+        settings = settings or QianfanSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or WenxinChatParameters()
-        self.settings = settings or QianfanSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
         self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
     def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:

@@ -7,7 +7,7 @@ from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs, ResponseValue
-from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
+from generate.image_generation.base import GeneratedImage, ImageGenerationOutput, RemoteImageGenerationModel
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 
@@ -39,8 +39,11 @@ class QianfanImageGenerationParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class QianfanImageGeneration(ImageGenerationModel):
+class QianfanImageGeneration(RemoteImageGenerationModel):
     model_type = 'qianfan'
+
+    parameters: QianfanImageGenerationParameters
+    settings: QianfanSettings
 
     def __init__(
         self,
@@ -49,10 +52,12 @@ class QianfanImageGeneration(ImageGenerationModel):
         settings: QianfanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or QianfanImageGenerationParameters()
+        settings = settings or QianfanSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or QianfanImageGenerationParameters()
-        self.settings = settings or QianfanSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
         self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
     @override

@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, 
 from pydantic import Field, PositiveInt, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
     AssistantMessage,
@@ -256,8 +256,11 @@ def calculate_cost(model_name: str, usage: dict[str, int], num_web_search: int =
     return model_cost + (0.03 * num_web_search)
 
 
-class MinimaxProChat(ChatCompletionModel):
+class MinimaxProChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'minimax_pro'
+
+    parameters: MinimaxProChatParameters
+    settings: MinimaxSettings
 
     def __init__(
         self,
@@ -266,11 +269,13 @@ class MinimaxProChat(ChatCompletionModel):
         settings: MinimaxSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or MinimaxProChatParameters()
+        settings = settings or MinimaxSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or MinimaxProChatParameters()
         self.default_user_name = '用户'
-        self.settings = settings or MinimaxSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
         if isinstance(messages[0], SystemMessage):

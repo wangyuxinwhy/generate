@@ -10,7 +10,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 
 from typing_extensions import Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Message,
@@ -63,8 +63,11 @@ def _convert_messages(messages: Messages) -> list[HunyuanMessage]:
     return [_convert_message_to_hunyuan_message(message) for message in messages]
 
 
-class HunyuanChat(ChatCompletionModel):
+class HunyuanChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'hunyuan'
+
+    parameters: HunyuanChatParameters
+    settings: HunyuanSettings
 
     def __init__(
         self,
@@ -72,9 +75,10 @@ class HunyuanChat(ChatCompletionModel):
         settings: HunyuanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or HunyuanChatParameters()
-        self.settings = settings or HunyuanSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
+        parameters = parameters or HunyuanChatParameters()
+        settings = settings or HunyuanSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
 
     def _get_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
         hunyuan_messages = _convert_messages(messages)
