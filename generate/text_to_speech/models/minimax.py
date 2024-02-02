@@ -8,7 +8,7 @@ from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 from generate.http import HttpClient, HttpxPostKwargs, UnexpectedResponseError
 from generate.model import ModelParameters
 from generate.platforms.minimax import MinimaxSettings
-from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
+from generate.text_to_speech.base import RemoteTextToSpeechModel, TextToSpeechOutput
 
 
 class TimeberWeight(TypedDict):
@@ -48,8 +48,11 @@ class MinimaxProSpeechParametersDict(MinimaxSpeechParametersDict, total=False):
     bitrate: Optional[Literal[32000, 64000, 128000]]
 
 
-class MinimaxSpeech(TextToSpeechModel):
+class MinimaxSpeech(RemoteTextToSpeechModel):
     model_type = 'minimax'
+
+    parameters: MinimaxSpeechParameters
+    settings: MinimaxSettings
 
     def __init__(
         self,
@@ -58,10 +61,12 @@ class MinimaxSpeech(TextToSpeechModel):
         parameters: MinimaxSpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or MinimaxSpeechParameters()
+        settings = settings or MinimaxSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or MinimaxSpeechParameters()
-        self.settings = settings or MinimaxSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxSpeechParameters) -> HttpxPostKwargs:
         json_data = {
@@ -118,8 +123,11 @@ class MinimaxSpeech(TextToSpeechModel):
         return character_count / 1000
 
 
-class MinimaxProSpeech(TextToSpeechModel):
+class MinimaxProSpeech(RemoteTextToSpeechModel):
     model_type = 'minimax_pro'
+
+    parameters: MinimaxProSpeechParameters
+    settings: MinimaxSettings
 
     def __init__(
         self,
@@ -128,10 +136,12 @@ class MinimaxProSpeech(TextToSpeechModel):
         settings: MinimaxSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or MinimaxProSpeechParameters()
+        parameters = parameters or MinimaxProSpeechParameters()
+        settings = settings or MinimaxSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.settings = settings or MinimaxSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: MinimaxProSpeechParameters) -> HttpxPostKwargs:
         json_data = {

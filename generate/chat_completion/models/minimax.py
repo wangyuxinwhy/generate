@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
-from generate.chat_completion import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Message,
@@ -93,8 +93,11 @@ def _convert_messages(messages: Messages) -> list[MinimaxMessage]:
     return [_convert_message_to_minimax_message(message) for message in messages]
 
 
-class MinimaxChat(ChatCompletionModel):
+class MinimaxChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'minimax'
+
+    parameters: MinimaxChatParameters
+    settings: MinimaxSettings
 
     def __init__(
         self,
@@ -103,10 +106,12 @@ class MinimaxChat(ChatCompletionModel):
         parameters: MinimaxChatParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or MinimaxChatParameters()
+        settings = settings or MinimaxSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or MinimaxChatParameters()
-        self.settings = settings or MinimaxSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: MinimaxChatParameters) -> HttpxPostKwargs:
         minimax_messages = _convert_messages(messages)

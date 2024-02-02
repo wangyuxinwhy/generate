@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, 
 from pydantic import field_validator
 from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -314,8 +314,11 @@ class _StreamResponseProcessor:
         return response['choices'][0].get('finish_reason')
 
 
-class ZhipuChat(ChatCompletionModel):
+class ZhipuChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu'
+
+    parameters: ZhipuChatParameters
+    settings: ZhipuSettings
 
     def __init__(
         self,
@@ -324,10 +327,12 @@ class ZhipuChat(ChatCompletionModel):
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or ZhipuChatParameters()
+        settings = settings or ZhipuSettings()  # type: ignore
+        http_client = http_client or HttpClient(stream_strategy='basic')
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or ZhipuChatParameters()
-        self.settings = settings or ZhipuSettings()  # type: ignore
-        self.http_client = http_client or HttpClient(stream_strategy='basic')
 
     def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
         zhipu_messages = self._convert_messages(messages)
@@ -448,8 +453,11 @@ class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
     request_id: Optional[str]
 
 
-class ZhipuCharacterChat(ChatCompletionModel):
+class ZhipuCharacterChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu_character'
+
+    parameters: ZhipuCharacterChatParameters
+    settings: ZhipuSettings
 
     def __init__(
         self,
@@ -458,10 +466,12 @@ class ZhipuCharacterChat(ChatCompletionModel):
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or ZhipuCharacterChatParameters()
+        settings = settings or ZhipuSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or ZhipuCharacterChatParameters()
-        self.settings = settings or ZhipuSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
         zhipu_messages = self._convert_messages(messages)

@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Option
 from pydantic import Field
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Messages,
@@ -97,8 +97,11 @@ class BailianChatParametersDict(ModelParametersDict, total=False):
     doc_tag_ids: Optional[List[int]]
 
 
-class BailianChat(ChatCompletionModel):
+class BailianChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'bailian'
+
+    parameters: BailianChatParameters
+    settings: BailianSettings
 
     def __init__(
         self,
@@ -107,10 +110,12 @@ class BailianChat(ChatCompletionModel):
         settings: BailianSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or BailianChatParameters()
-        self.settings = settings or BailianSettings()  # type: ignore
+        parameters = parameters or BailianChatParameters()
+        settings = settings or BailianSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.app_id = app_id or self.settings.default_app_id
-        self.http_client = http_client or HttpClient()
         self.token_manager = BailianTokenManager(self.settings, self.http_client)
 
     def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:

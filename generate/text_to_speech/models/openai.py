@@ -8,7 +8,7 @@ from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters
 from generate.platforms.openai import OpenAISettings
-from generate.text_to_speech.base import TextToSpeechModel, TextToSpeechOutput
+from generate.text_to_speech.base import RemoteTextToSpeechModel, TextToSpeechOutput
 
 
 class OpenAISpeechParameters(ModelParameters):
@@ -23,8 +23,11 @@ class OpenAISpeechParametersDict(TypedDict, total=False):
     speed: Optional[float]
 
 
-class OpenAISpeech(TextToSpeechModel):
+class OpenAISpeech(RemoteTextToSpeechModel):
     model_type = 'openai'
+
+    parameters: OpenAISpeechParameters
+    settings: OpenAISettings
 
     def __init__(
         self,
@@ -33,10 +36,12 @@ class OpenAISpeech(TextToSpeechModel):
         parameters: OpenAISpeechParameters | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or OpenAISpeechParameters()
+        settings = settings or OpenAISettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or OpenAISpeechParameters()
-        self.settings = settings or OpenAISettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, text: str, parameters: OpenAISpeechParameters) -> HttpxPostKwargs:
         json_data = {

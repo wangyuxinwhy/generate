@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator, Callable, ClassVar, Dict, Iterator, List,
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
     AssistantMessage,
@@ -341,8 +341,11 @@ class _StreamResponseProcessor:
         return finish_reason
 
 
-class OpenAIChat(ChatCompletionModel):
+class OpenAIChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'openai'
+
+    parameters: OpenAIChatParameters
+    settings: OpenAISettings
 
     def __init__(
         self,
@@ -351,10 +354,12 @@ class OpenAIChat(ChatCompletionModel):
         settings: OpenAISettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or OpenAIChatParameters()
+        settings = settings or OpenAISettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or OpenAIChatParameters()
-        self.settings = settings or OpenAISettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
 
     def _get_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         openai_messages = [convert_to_openai_message(message) for message in messages]

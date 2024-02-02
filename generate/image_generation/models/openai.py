@@ -8,7 +8,7 @@ from pydantic import Field
 from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs
-from generate.image_generation.base import GeneratedImage, ImageGenerationModel, ImageGenerationOutput
+from generate.image_generation.base import GeneratedImage, ImageGenerationOutput, RemoteImageGenerationModel
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
 
@@ -55,8 +55,11 @@ class OpenAIImageGenerationParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class OpenAIImageGeneration(ImageGenerationModel):
+class OpenAIImageGeneration(RemoteImageGenerationModel):
     model_type = 'openai'
+
+    parameters: OpenAIImageGenerationParameters
+    settings: OpenAISettings
 
     def __init__(
         self,
@@ -65,10 +68,12 @@ class OpenAIImageGeneration(ImageGenerationModel):
         settings: OpenAISettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or OpenAIImageGenerationParameters()
+        settings = settings or OpenAISettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or OpenAIImageGenerationParameters()
-        self.settings = settings or OpenAISettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
         self._check_parameters()
 
     def _check_parameters(self) -> None:

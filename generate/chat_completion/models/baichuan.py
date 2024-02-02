@@ -10,7 +10,7 @@ from typing import AsyncIterator, ClassVar, Iterator, Literal, Optional
 from pydantic import Field
 from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Message,
@@ -74,8 +74,11 @@ def _convert_messages(messages: Messages) -> list[BaichuanMessage]:
     return [_convert_to_baichuan_messages(message) for message in messages]
 
 
-class BaichuanChat(ChatCompletionModel):
+class BaichuanChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'baichuan'
+
+    parameters: BaichuanChatParameters
+    settings: BaichuanSettings
 
     def __init__(
         self,
@@ -84,11 +87,13 @@ class BaichuanChat(ChatCompletionModel):
         settings: BaichuanSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
+        parameters = parameters or BaichuanChatParameters()
+        settings = settings or BaichuanSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        http_client.stream_strategy = 'basic'
+        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+
         self.model = model
-        self.parameters = parameters or BaichuanChatParameters()
-        self.settings = settings or BaichuanSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
-        self.http_client.stream_strategy = 'basic'
 
     def _get_request_parameters(self, messages: Messages, parameters: BaichuanChatParameters) -> HttpxPostKwargs:
         baichuan_messages: list[BaichuanMessage] = _convert_messages(messages)
