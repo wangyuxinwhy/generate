@@ -4,12 +4,13 @@ import json
 import uuid
 from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
-from pydantic import Field
-from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
+from pydantic import Field, PositiveInt
+from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
+    Message,
     Messages,
     MessageTypeError,
     Prompt,
@@ -29,47 +30,34 @@ from generate.platforms.bailian import BailianSettings, BailianTokenManager
 from generate.types import Probability
 
 
-class BailianChatQAPair(TypedDict):
-    User: str
-    Bot: str
-
-
-class BailianParameter(TypedDict):
-    TokK: NotRequired[int]
-    Seed: NotRequired[int]
-    UseRawPrompt: NotRequired[bool]
-
-
 def generate_default_request_id() -> str:
     uuid_obj = uuid.uuid4()
     return str(uuid_obj).replace('-', '')
 
 
-def _convert_to_bailian_chat_qa_pair(messages: Messages) -> list[BailianChatQAPair]:
-    pairs: list[BailianChatQAPair] = []
-    if messages and isinstance(messages[0], SystemMessage):
-        pairs.append({'User': messages[0].content, 'Bot': '好的'})
-        messages = messages[1:]
+class HunyuanMessage(TypedDict):
+    Role: Literal['user', 'assistant', 'system']
+    Content: str
 
-    for user_message, assistant_message in zip(messages[::2], messages[1::2]):
-        if not isinstance(user_message, UserMessage):
-            raise MessageTypeError(user_message, allowed_message_type=(UserMessage,))
-        if not isinstance(assistant_message, AssistantMessage):
-            raise MessageTypeError(assistant_message, allowed_message_type=(AssistantMessage,))
-        pairs.append({'User': user_message.content, 'Bot': assistant_message.content})
-    return pairs
+
+def _convert_message_to_bailian_message(message: Message) -> HunyuanMessage:
+    if isinstance(message, UserMessage):
+        return {'Role': 'user', 'Content': message.content}
+    if isinstance(message, AssistantMessage):
+        return {'Role': 'assistant', 'Content': message.content}
+    if isinstance(message, SystemMessage):
+        return {'Role': 'system', 'Content': message.content}
+    raise MessageTypeError(message, (UserMessage, AssistantMessage, SystemMessage))
 
 
 class BailianChatParameters(ModelParameters):
     request_id: str = Field(default_factory=generate_default_request_id, alias='RequestId')
-    session_id: Optional[str] = Field(default=None, alias='SessionId')
     top_p: Optional[Probability] = Field(default=None, alias='TopP')
-    has_thoughts: Optional[bool] = Field(default=None, alias='HasThoughts')
-    doc_reference_type: Literal['indexed', 'simpole'] = Field(default=None, alias='DocReferenceType')
     top_k: Optional[Annotated[int, Field(ge=0)]] = None
     seed: Optional[int] = None
-    use_raw_prompt: Optional[bool] = None
-    doc_tag_ids: Optional[List[int]] = Field(default=None, alias='DocTagIds')
+    temperature: Optional[Annotated[float, Field(ge=0, le=2)]] = None
+    max_tokens: Optional[PositiveInt] = None
+    stop: Optional[List[str]] = None
 
     def custom_model_dump(self) -> dict[str, Any]:
         output = super().custom_model_dump()
@@ -78,8 +66,12 @@ class BailianChatParameters(ModelParameters):
             parameters['TopK'] = output.pop('top_k')
         if 'seed' in output:
             parameters['Seed'] = output.pop('seed')
-        if 'use_raw_prompt' in output:
-            parameters['UseRawPrompt'] = output.pop('use_raw_prompt')
+        if 'temperature' in output:
+            parameters['Temperature'] = output.pop('temperature')
+        if 'max_tokens' in output:
+            parameters['MaxTokens'] = output.pop('max_tokens')
+        if 'stop' in output:
+            parameters['Stop'] = output.pop('stop')
         if parameters:
             output['Parameters'] = parameters
         return output
@@ -87,14 +79,22 @@ class BailianChatParameters(ModelParameters):
 
 class BailianChatParametersDict(ModelParametersDict, total=False):
     request_id: str
-    session_id: Optional[str]
-    top_p: Optional[Probability]
-    has_thoughts: Optional[bool]
-    doc_reference_type: Optional[Literal['indexed', 'simpole']]
-    top_k: Optional[int]
-    seed: Optional[int]
-    use_raw_prompt: Optional[bool]
-    doc_tag_ids: Optional[List[int]]
+    top_p: Probability
+    top_k: int
+    seed: int
+    temperature: float
+    max_tokens: PositiveInt
+    stop: List[str]
+
+
+def calculate_bailian_cost(model_id: str, total_tokens: int) -> float | None:
+    if model_id == 'qwen-turbo':
+        return 0.008 * total_tokens / 1000
+    if model_id == 'qwen-plus':
+        return 0.012 * total_tokens / 1000
+    if model_id == 'qwen-max':
+        return 0.12 * total_tokens / 1000
+    return None
 
 
 class BailianChat(RemoteChatCompletionModel):
@@ -122,17 +122,13 @@ class BailianChat(RemoteChatCompletionModel):
         if not isinstance(messages[-1], UserMessage):
             raise MessageTypeError(messages[-1], allowed_message_type=(UserMessage,))
 
-        prompt = messages[-1].content
-        history = _convert_to_bailian_chat_qa_pair(messages[:-1])
-
         json_dict = parameters.custom_model_dump()
         headers = {
             'Content-Type': 'application/json;charset=UTF-8',
             'Authorization': f'Bearer {self.token_manager.token}',
         }
-        json_dict['Prompt'] = prompt
         json_dict['AppId'] = self.app_id
-        json_dict['History'] = history
+        json_dict['Messages'] = [_convert_message_to_bailian_message(i) for i in messages]
         return {
             'url': self.settings.completion_api,
             'headers': headers,
@@ -158,15 +154,20 @@ class BailianChat(RemoteChatCompletionModel):
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if not response['Success']:
             raise UnexpectedResponseError(response)
+        response_data = response['Data']
+        total_tokens = response_data['Usage'][0]['InputTokens'] + response_data['Usage'][0]['OutputTokens']
+        model_id = response_data['Usage'][0]['ModelId']
         return ChatCompletionOutput(
             model_info=self.model_info,
-            message=AssistantMessage(content=response['Data']['Text']),
+            cost=calculate_bailian_cost(model_id=model_id, total_tokens=total_tokens),
+            finish_reason=response_data.get('FinishReason'),
+            message=AssistantMessage(content=response_data['Text']),
             extra={
-                'thoughts': response['Data']['Thoughts'],
-                'doc_references': response['Data']['DocReferences'],
+                'thoughts': response_data.get('Thoughts'),
+                'doc_references': response_data.get('DocReferences'),
                 'request_id': response['RequestId'],
-                'response_id': response['Data']['ResponseId'],
-                'sesstion_id': response['Data']['SessionId'],
+                'response_id': response_data.get('ResponseId'),
+                'usage': response_data['Usage'][0],
             },
         )
 
@@ -216,16 +217,21 @@ class BailianChat(RemoteChatCompletionModel):
 
     def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
         parsed_line = json.loads(line)
-        reply: str = parsed_line['Data']['Text']
+        response_data = parsed_line['Data']
+        reply: str = response_data['Text']
         extra = {
-            'thoughts': parsed_line['Data']['Thoughts'],
-            'doc_references': parsed_line['Data']['DocReferences'],
-            'request_id': parsed_line['RequestId'],
-            'response_id': parsed_line['Data']['ResponseId'],
+            'thoughts': response_data.get('Thoughts'),
+            'doc_references': response_data.get('DocReferences'),
+            'response_id': response_data.get('ResponseId'),
         }
         if len(reply) == len(message.content):
+            total_tokens = response_data['Usage'][0]['InputTokens'] + response_data['Usage'][0]['OutputTokens']
+            model_id = response_data['Usage'][0]['ModelId']
+            extra['usage'] = response_data['Usage'][0]
+            extra['response_id'] = response_data.get('ResponseId')
             return ChatCompletionStreamOutput(
                 model_info=self.model_info,
+                cost=calculate_bailian_cost(model_id=model_id, total_tokens=total_tokens),
                 message=message,
                 extra=extra,
                 finish_reason='stop',
