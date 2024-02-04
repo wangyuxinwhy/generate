@@ -63,6 +63,28 @@ def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> N
     assert async_output.reply != ''
 
 
+@pytest.mark.parametrize(
+    ('model_cls'),
+    get_pytest_params(
+        'test_multimodel_chat_completion',
+        ChatModelRegistry,
+        types='model_cls',
+        include=['dashscope_multimodal', 'zhipu', 'openai'],
+    ),
+)
+def test_multimodel_chat_completion(model_cls: Type[ChatCompletionModel]) -> None:
+    user_message = {
+        'role': 'user',
+        'content': [
+            {'text': '这个图片是哪里？'},
+            {'image_url': {'url': 'https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg'}},
+        ],
+    }
+    model = model_cls(model='gpt-4-vision-preview') if model_cls.model_type == 'openai' else model_cls()
+    output = model.generate(user_message)
+    assert output.reply != ''
+
+
 async def async_stream_helper(model: ChatCompletionModel, prompt: Prompt) -> ChatCompletionStreamOutput:
     async for output in model.async_stream_generate(prompt):
         if output.stream.control == 'finish':

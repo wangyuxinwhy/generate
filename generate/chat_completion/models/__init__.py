@@ -4,6 +4,12 @@ from generate.chat_completion.models.bailian import (
     BailianChat,
     BailianChatParameters,
 )
+from generate.chat_completion.models.dashscope import (
+    DashScopeChat,
+    DashScopeChatParameters,
+    DashScopeMultiModalChat,
+    DashScopeMultiModalChatParameters,
+)
 from generate.chat_completion.models.hunyuan import HunyuanChat, HunyuanChatParameters
 from generate.chat_completion.models.minimax import MinimaxChat, MinimaxChatParameters
 from generate.chat_completion.models.minimax_pro import MinimaxProChat, MinimaxProChatParameters
@@ -36,4 +42,8 @@ __all__ = [
     'ZhipuChatParameters',
     'ZhipuCharacterChat',
     'ZhipuCharacterChatParameters',
+    'DashScopeChat',
+    'DashScopeChatParameters',
+    'DashScopeMultiModalChat',
+    'DashScopeMultiModalChatParameters',
 ]

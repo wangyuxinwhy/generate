@@ -14,14 +14,18 @@ def get_pytest_params(
     model_registry: Mapping[str, tuple[Any, Type[ModelParameters]]],
     types: Sequence[param_type] | param_type,
     exclude: Sequence[str] | None = None,
+    include: Sequence[str] | None = None,
 ) -> list[Any]:
     exclude = exclude or []
+    include = include or []
     if isinstance(types, str):
         types = [types]
 
     pytest_params: list[Any] = []
     for model_name, (model_cls, paramter_cls) in model_registry.items():
         if model_name in exclude:
+            continue
+        if model_name not in include:
             continue
         values: list[Any] = []
         for t in types:
