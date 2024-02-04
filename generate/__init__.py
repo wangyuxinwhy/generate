@@ -4,6 +4,7 @@ from generate.chat_completion import (
     BaichuanChatParameters,
     BailianChat,
     BailianChatParameters,
+    ChatCompletionModel,
     HunyuanChat,
     HunyuanChatParameters,
     MinimaxChat,
@@ -12,6 +13,7 @@ from generate.chat_completion import (
     MinimaxProChatParameters,
     OpenAIChat,
     OpenAIChatParameters,
+    RemoteChatCompletionModel,
     WenxinChat,
     WenxinChatParameters,
     ZhipuCharacterChat,
@@ -50,8 +52,10 @@ from generate.utils import (
 from generate.version import __version__
 
 __all__ = [
-    'CompletionEngine',
+    'ChatCompletionModel',
+    'RemoteChatCompletionModel',
     'ChatEngine',
+    'CompletionEngine',
     'AzureChat',
     'OpenAIChat',
     'OpenAIChatParameters',

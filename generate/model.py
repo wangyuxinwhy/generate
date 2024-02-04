@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Generic, Optional, TypeVar
+from typing import Any, AsyncGenerator, Dict, Generator, Generic, Iterable, Optional, TypeVar
 
+import anyio
+import asyncer
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self, TypedDict, Unpack
 
@@ -43,13 +45,13 @@ class ModelOutput(BaseModel):
     extra: Dict[str, Any] = {}
 
 
-I = TypeVar('I', bound=Any)  # noqa: E741
+I = TypeVar('I')  # noqa: E741
 O = TypeVar('O', bound=ModelOutput)  # noqa: E741
 
 
 class GenerateModel(Generic[I, O], ABC):
-    model_task: ClassVar[str]
-    model_type: ClassVar[str]
+    model_task: str
+    model_type: str
 
     @property
     @abstractmethod
@@ -68,6 +70,23 @@ class GenerateModel(Generic[I, O], ABC):
     @abstractmethod
     async def async_generate(self, prompt: I, **kwargs: Unpack[ModelParametersDict]) -> O:
         ...
+
+    def batch_generate(self, prompts: Iterable[I], **kwargs: Unpack[ModelParametersDict]) -> Generator[O, None, None]:
+        for prompt in prompts:
+            yield self.generate(prompt, **kwargs)
+
+    async def async_batch_generate(
+        self, prompts: Iterable[I], **kwargs: Unpack[ModelParametersDict]
+    ) -> AsyncGenerator[O, None]:
+        async with asyncer.create_task_group() as task_group:
+            soon_values: list[asyncer.SoonValue[O]] = []
+            for prompt in prompts:
+                soon_value = task_group.soonify(self.async_generate)(prompt, **kwargs)
+                soon_values.append(soon_value)
+            for soon_value in soon_values:
+                while not soon_value.ready:
+                    await anyio.sleep(0.01)
+                yield soon_value.value
 
     @property
     def model_info(self) -> ModelInfo:
