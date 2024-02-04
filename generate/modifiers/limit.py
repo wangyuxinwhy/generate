@@ -27,12 +27,12 @@ class Limit(GenerateModel[I, O]):
         self,
         model: GenerateModel[I, O],
         async_capacity: int = 3,
-        max_requests_per_time_window: int = 20,
+        max_generates_per_time_window: int = 20,
         num_seconds_in_time_window: int = 60,
     ) -> None:
         self.model: GenerateModel[I, O] = model
         self.async_capacity = async_capacity
-        self.max_requests_per_time_window = max_requests_per_time_window
+        self.max_generates_per_time_window = max_generates_per_time_window
         self.num_seconds_in_time_window = num_seconds_in_time_window
         assert self.num_seconds_in_time_window >= 1
 
@@ -100,7 +100,7 @@ class Limit(GenerateModel[I, O]):
                 break
         self._task_created_time_list = self._task_created_time_list[idx:]
 
-        if len(self._task_created_time_list) < self.max_requests_per_time_window:
+        if len(self._task_created_time_list) < self.max_generates_per_time_window:
             return 0
 
         return max(self.num_seconds_in_time_window - int(current_time - self._task_created_time_list[0]) + 1, 0)

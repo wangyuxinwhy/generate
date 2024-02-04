@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Dict, Generator, Generic, Iterable, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Generator, Generic, Iterable, Optional, TypeVar
 
 import anyio
 import asyncer
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self, TypedDict, Unpack
+
+if TYPE_CHECKING:
+    from generate.modifiers.limit import Limit
 
 
 class ModelParameters(BaseModel):
@@ -95,3 +98,15 @@ class GenerateModel(Generic[I, O], ABC):
     @property
     def model_id(self) -> str:
         return self.model_info.model_id
+
+    def limit(
+        self, async_capacity: int = 3, max_generates_per_time_window: int = 20, num_seconds_in_time_window: int = 60
+    ) -> Limit[I, O]:
+        from generate.modifiers.limit import Limit
+
+        return Limit(
+            self,
+            async_capacity=async_capacity,
+            max_generates_per_time_window=max_generates_per_time_window,
+            num_seconds_in_time_window=num_seconds_in_time_window,
+        )
