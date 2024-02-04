@@ -11,6 +11,10 @@ from generate.chat_completion.models import (
     BaichuanChatParameters,
     BailianChat,
     BailianChatParameters,
+    DashScopeChat,
+    DashScopeChatParameters,
+    DashScopeMultiModalChat,
+    DashScopeMultiModalChatParameters,
     HunyuanChat,
     HunyuanChatParameters,
     MinimaxChat,
@@ -40,6 +44,8 @@ ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (HunyuanChat, HunyuanChatParameters),
     (BaichuanChat, BaichuanChatParameters),
     (BailianChat, BailianChatParameters),
+    (DashScopeChat, DashScopeChatParameters),
+    (DashScopeMultiModalChat, DashScopeMultiModalChatParameters),
 ]
 
 ChatModelRegistry: dict[str, tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = {
@@ -72,6 +78,8 @@ __all__ = [
     'BaichuanChatParameters',
     'BailianChat',
     'BailianChatParameters',
+    'DashScopeChat',
+    'DashScopeChatParameters',
     'MessagePrinter',
     'SimpleMessagePrinter',
     'get_json_schema',

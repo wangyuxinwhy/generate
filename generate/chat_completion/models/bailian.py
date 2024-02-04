@@ -35,12 +35,12 @@ def generate_default_request_id() -> str:
     return str(uuid_obj).replace('-', '')
 
 
-class HunyuanMessage(TypedDict):
+class BailianMessage(TypedDict):
     Role: Literal['user', 'assistant', 'system']
     Content: str
 
 
-def _convert_message_to_bailian_message(message: Message) -> HunyuanMessage:
+def _convert_message_to_bailian_message(message: Message) -> BailianMessage:
     if isinstance(message, UserMessage):
         return {'Role': 'user', 'Content': message.content}
     if isinstance(message, AssistantMessage):

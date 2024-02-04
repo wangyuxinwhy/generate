@@ -334,7 +334,7 @@ class ZhipuChat(RemoteChatCompletionModel):
 
         self.model = model
 
-    def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
+    def _get_request_parameters(self, messages: Messages, parameters: ZhipuChatParameters) -> HttpxPostKwargs:
         zhipu_messages = self._convert_messages(messages)
         headers = {
             'Authorization': generate_zhipu_token(self.settings.api_key.get_secret_value()),
@@ -355,7 +355,7 @@ class ZhipuChat(RemoteChatCompletionModel):
             extra={'usage': response['usage']},
         )
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
+    def _get_stream_request_parameters(self, messages: Messages, parameters: ZhipuChatParameters) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)
         http_parameters['json']['stream'] = True
         return http_parameters
