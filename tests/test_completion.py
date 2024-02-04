@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import AsyncIterator, Iterator
 
+import anyio
 from typing_extensions import Self, Unpack
 
 from generate.chat_completion import (
@@ -11,9 +11,9 @@ from generate.chat_completion import (
     ChatCompletionOutput,
     ChatCompletionStreamOutput,
 )
-from generate.chat_completion.message import AssistantMessage, Prompt, Prompts, UserMessage, ensure_messages
+from generate.chat_completion.message import AssistantMessage, Prompt, UserMessage, ensure_messages
 from generate.chat_completion.model_output import Stream
-from generate.completion_engine import CompletionEngine
+from generate.limit import Limit
 from generate.model import ModelParameters, ModelParametersDict
 
 
@@ -86,12 +86,11 @@ class FakeChat(ChatCompletionModel):
 
 def test_sync_completion() -> None:
     completion_model = FakeChat()
-    client = CompletionEngine(completion_model)
     prompts = [
         'Hello, my name is',
         UserMessage(content='hello, who are you?'),
     ]
-    results = list(client.run(prompts))
+    results = list(completion_model.batch_generate(prompts))
 
     assert isinstance(results[0].reply, str)
     assert results[0].reply == 'Completed:Hello, my name is'
@@ -99,21 +98,23 @@ def test_sync_completion() -> None:
     assert len(results) == len(prompts)
 
 
-async def async_helper(client: CompletionEngine, prompts: Prompts) -> list[ChatCompletionOutput]:
-    return [result async for result in client.async_run(prompts)]
-
-
 def test_async_completion() -> None:
     completion_model = FakeChat()
-    client = CompletionEngine(completion_model, async_capacity=2, max_requests_per_minute=5)
-    CompletionEngine.NUM_SECONDS_PER_MINUTE = 2
+    limited_model = Limit(completion_model, async_capacity=2, max_requests_per_time_window=5, num_seconds_in_time_window=2)
 
     start_time = time.perf_counter()
     messages = [{'role': 'user', 'content': 'hello, who are you?'}]
     prompts = ['Hello, my name is', 'I am a student', messages] * 4
-    results = asyncio.run(async_helper(client, prompts))
+
+    async def main() -> list[ChatCompletionOutput]:
+        results = []
+        async for i in limited_model.async_batch_generate(prompts):
+            results.append(i) # noqa
+        return results
+
+    results = anyio.run(main)
     elapsed_time = time.perf_counter() - start_time
 
     assert results[0].reply == 'Completed:Hello, my name is'
     assert len(results) == len(prompts)
-    assert elapsed_time > (2 * CompletionEngine.NUM_SECONDS_PER_MINUTE)
+    assert elapsed_time > (2 * limited_model.num_seconds_in_time_window)

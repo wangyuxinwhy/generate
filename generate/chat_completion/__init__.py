@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Type
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import ChatCompletionModel, RemoteChatCompletionModel
 from generate.chat_completion.function_call import function, get_json_schema
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models import (
@@ -49,6 +49,7 @@ ChatModelRegistry: dict[str, tuple[Type[ChatCompletionModel], Type[ModelParamete
 
 __all__ = [
     'ChatCompletionModel',
+    'RemoteChatCompletionModel',
     'ChatCompletionOutput',
     'ChatCompletionStreamOutput',
     'ModelParameters',
