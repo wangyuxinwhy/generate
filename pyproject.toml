@@ -10,7 +10,7 @@ repository = "https://github.com/wangyuxinwhy/generate"
 keywords = ["openai", "text generation", "image generation", "text to speech"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.8.1"
 asyncer = "0.0.2"
 typing-extensions = "^4.6.2"
 httpx = "^0.24.1"
@@ -74,6 +74,11 @@ coverage = "^7.3.2"
 
 [tool.poetry.group.bailian.dependencies]
 broadscope-bailian = "^1.1.8"
+
+
+[tool.poetry.group.ui.dependencies]
+chainlit = "^1.0.200"
+typer = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -263,18 +263,12 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
 
 class _StreamResponseProcessor:
     def __init__(self) -> None:
-        self.message: AssistantMessage | None = None
+        self.message: AssistantMessage = AssistantMessage()
         self.is_start = True
 
     def process(self, response: ResponseValue) -> ChatCompletionStreamOutput | None:
         delta_dict = response['choices'][0]['delta']
-
-        if self.message is None:
-            if self._is_contains_content(delta_dict):
-                self.message = self.process_initial_message(delta_dict)
-            return None
-
-        self.update_existing_message(delta_dict)
+        self.update_message(delta_dict)
         extra = self.extract_extra_info(response)
         cost = cost = self.calculate_response_cost(response)
         finish_reason = self.determine_finish_reason(response)
@@ -296,15 +290,11 @@ class _StreamResponseProcessor:
             and delta_dict.get('function_call') is None
         )
 
-    def process_initial_message(self, delta_dict: dict[str, Any]) -> AssistantMessage:
-        return _convert_to_assistant_message(delta_dict)
-
-    def update_existing_message(self, delta_dict: dict[str, Any]) -> None:
+    def update_message(self, delta_dict: dict[str, Any]) -> None:
         if not delta_dict:
             return
-        assert self.message is not None
 
-        delta_content = delta_dict.get('content', '')
+        delta_content: str = delta_dict.get('content') or ''
         self.message.content += delta_content
 
         if delta_dict.get('tool_calls'):
@@ -323,7 +313,7 @@ class _StreamResponseProcessor:
             if self.message.function_call is None:
                 self.message.function_call = FunctionCall(name='', arguments='')
             function_name = delta_dict['function_call'].get('name', '')
-            self.message.function_call.name = function_name
+            self.message.function_call.name += function_name
             arguments = delta_dict['function_call'].get('arguments', '')
             self.message.function_call.arguments += arguments
 

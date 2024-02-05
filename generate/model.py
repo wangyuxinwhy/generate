@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Generator, Generic,
 import anyio
 import asyncer
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Self, TypedDict, Unpack
+from typing_extensions import Self, TypedDict
 
 if TYPE_CHECKING:
     from generate.modifiers.limit import Limit
@@ -67,20 +67,18 @@ class GenerateModel(Generic[I, O], ABC):
         ...
 
     @abstractmethod
-    def generate(self, prompt: I, **kwargs: Unpack[ModelParametersDict]) -> O:
+    def generate(self, prompt: I, **kwargs: Any) -> O:
         ...
 
     @abstractmethod
-    async def async_generate(self, prompt: I, **kwargs: Unpack[ModelParametersDict]) -> O:
+    async def async_generate(self, prompt: I, **kwargs: Any) -> O:
         ...
 
-    def batch_generate(self, prompts: Iterable[I], **kwargs: Unpack[ModelParametersDict]) -> Generator[O, None, None]:
+    def batch_generate(self, prompts: Iterable[I], **kwargs: Any) -> Generator[O, None, None]:
         for prompt in prompts:
             yield self.generate(prompt, **kwargs)
 
-    async def async_batch_generate(
-        self, prompts: Iterable[I], **kwargs: Unpack[ModelParametersDict]
-    ) -> AsyncGenerator[O, None]:
+    async def async_batch_generate(self, prompts: Iterable[I], **kwargs: Any) -> AsyncGenerator[O, None]:
         async with asyncer.create_task_group() as task_group:
             soon_values: list[asyncer.SoonValue[O]] = []
             for prompt in prompts:
