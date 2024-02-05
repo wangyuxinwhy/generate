@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, AsyncIterator, ClassVar, Iterator, Type, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, Type, TypeVar
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -11,7 +11,7 @@ from typing_extensions import Unpack
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.http import HttpClient
-from generate.model import GenerateModel, ModelParameters, ModelParametersDict
+from generate.model import GenerateModel, ModelParameters
 
 O = TypeVar('O', bound=BaseModel)  # noqa: E741
 
@@ -27,13 +27,11 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
     model_type: ClassVar[str]
 
     @abstractmethod
-    def stream_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(self, prompt: Prompt, **kwargs: Any) -> Iterator[ChatCompletionStreamOutput]:
         ...
 
     @abstractmethod
-    def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
         ...
 
     def structure(self, instruction: str, output_structure_type: Type[O], **kwargs: Unpack['StructureKwargs']) -> Structure[O]:
