@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from io import BytesIO
 from typing import AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt
@@ -9,19 +11,22 @@ from typing_extensions import Annotated, Self, TypedDict, Unpack, override
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
+    ImagePart,
+    ImageUrlPart,
     Message,
     Messages,
     MessageTypeError,
     Prompt,
     SystemMessage,
+    TextPart,
     UserMessage,
     UserMultiPartMessage,
     ensure_messages,
 )
-from generate.chat_completion.message.core import ImageUrlPart, TextPart
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
+    HttpGetKwargs,
     HttpxPostKwargs,
     ResponseValue,
 )
@@ -100,7 +105,7 @@ class DashScopeChat(RemoteChatCompletionModel):
             'parameters': parameters.custom_model_dump(),
         }
         return {
-            'url': f'{self.settings.api_base}/text-generation/generation',
+            'url': f'{self.settings.api_base}/services/aigc/text-generation/generation',
             'headers': headers,
             'json': params,
         }
@@ -226,27 +231,6 @@ class DashScopeMultiModalMessage(TypedDict):
     content: list[dict[Literal['image', 'text'], str]]
 
 
-def _convert_message_to_multimodal_chat_message(message: Message) -> DashScopeMultiModalMessage:
-    if isinstance(message, UserMessage):
-        return {'role': 'user', 'content': [{'text': message.content}]}
-    if isinstance(message, AssistantMessage):
-        return {'role': 'assistant', 'content': [{'text': message.content}]}
-    if isinstance(message, SystemMessage):
-        return {'role': 'system', 'content': [{'text': message.content}]}
-    if isinstance(message, UserMultiPartMessage):
-        content = []
-        for part in message.content:
-            if isinstance(part, TextPart):
-                content.append({'text': part.text})
-            elif isinstance(part, ImageUrlPart):
-                content.append({'image': part.image_url.url})
-            else:
-                raise TypeError(f'Unsupported part type: {part}')
-        return {'role': 'user', 'content': content}
-    allowed_message_type = (UserMessage, AssistantMessage, SystemMessage, UserMultiPartMessage)
-    raise MessageTypeError(message, allowed_message_type=allowed_message_type)
-
-
 class DashScopeMultiModalChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'dashscope_multimodal'
 
@@ -268,23 +252,84 @@ class DashScopeMultiModalChat(RemoteChatCompletionModel):
         self.model = model
 
     def _get_request_parameters(self, messages: Messages, parameters: DashScopeMultiModalChatParameters) -> HttpxPostKwargs:
-        zhipu_messages = [_convert_message_to_multimodal_chat_message(message) for message in messages]
+        dashscope_messages = [self.convert_message_to_multimodal_chat_message(message) for message in messages]
         headers = {
             'Authorization': self.settings.api_key.get_secret_value(),
             'Content-Type': 'application/json',
         }
+        if any(self.has_oss_file(message) for message in dashscope_messages):
+            headers['X-DashScope-OssResourceResolve'] = 'enable'
         params = {
             'input': {
-                'messages': zhipu_messages,
+                'messages': dashscope_messages,
             },
             'model': self.model,
             'parameters': parameters.custom_model_dump(),
         }
         return {
-            'url': f'{self.settings.api_base}/multimodal-generation/generation',
+            'url': f'{self.settings.api_base}/services/aigc/multimodal-generation/generation',
             'headers': headers,
             'json': params,
         }
+
+    def has_oss_file(self, message: DashScopeMultiModalMessage) -> bool:
+        for part in message['content']:
+            for k, v in part.items():
+                if k == 'image' and v.startswith('oss://'):
+                    return True
+        return False
+
+    def convert_message_to_multimodal_chat_message(self, message: Message) -> DashScopeMultiModalMessage:
+        if isinstance(message, UserMessage):
+            return {'role': 'user', 'content': [{'text': message.content}]}
+        if isinstance(message, AssistantMessage):
+            return {'role': 'assistant', 'content': [{'text': message.content}]}
+        if isinstance(message, SystemMessage):
+            return {'role': 'system', 'content': [{'text': message.content}]}
+        if isinstance(message, UserMultiPartMessage):
+            content = []
+            for part in message.content:
+                if isinstance(part, TextPart):
+                    content.append({'text': part.text})
+                elif isinstance(part, ImageUrlPart):
+                    content.append({'image': part.image_url.url})
+                elif isinstance(part, ImagePart):
+                    image_url = self.upload_image(part.image, part.image_format or 'png')
+                    content.append({'image': image_url})
+                else:
+                    raise TypeError(f'Unsupported part type: {part}')
+            return {'role': 'user', 'content': content}
+        allowed_message_type = (UserMessage, AssistantMessage, SystemMessage, UserMultiPartMessage)
+        raise MessageTypeError(message, allowed_message_type=allowed_message_type)
+
+    def upload_image(self, image: bytes, image_format: str) -> str:
+        get_kwargs = HttpGetKwargs(
+            url=f'{self.settings.api_base}/uploads',
+            params={'action': 'getPolicy', 'model': self.model},
+            headers={'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}'},
+        )
+        response_data = self.http_client.get(get_kwargs)
+        upload_info = response_data.json()['data']
+
+        form_data = {}
+        form_data['OSSAccessKeyId'] = upload_info['oss_access_key_id']
+        form_data['Signature'] = upload_info['signature']
+        form_data['policy'] = upload_info['policy']
+        hash_code = hashlib.md5(image).hexdigest()
+        form_data['key'] = upload_info['upload_dir'] + '/' + f'{hash_code}.{image_format}'
+        form_data['x-oss-object-acl'] = upload_info['x_oss_object_acl']
+        form_data['x-oss-forbid-overwrite'] = upload_info['x_oss_forbid_overwrite']
+        form_data['success_action_status'] = '200'
+        form_data['x-oss-content-type'] = f'image/{image_format}'
+        url = upload_info['upload_host']
+        files = {'file': BytesIO(image)}
+        response = self.http_client.client.post(
+            url,
+            data=form_data,
+            files=files,
+        )
+        response.raise_for_status()
+        return 'oss://' + form_data['key']
 
     def _get_stream_request_parameters(
         self, messages: Messages, parameters: DashScopeMultiModalChatParameters

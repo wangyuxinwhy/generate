@@ -4,6 +4,8 @@ from typing import Any, List, Optional, cast
 
 from pydantic import BaseModel
 
+from generate.chat_completion.models.dashscope import DashScopeMultiModalChat
+
 try:
     import chainlit as cl
     import typer
@@ -48,9 +50,11 @@ def get_avatars() -> List[Avatar]:
         'openai': 'https://mrvian.com/wp-content/uploads/2023/02/logo-open-ai.png',
         'wenxin': 'https://nlp-eb.cdn.bcebos.com/static/eb/asset/robin.e9dc83e5.png',
         'bailian': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
+        'dashscope_multimodal': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
         'dashscope': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
         'hunyuan': 'https://cdn-portal.hunyuan.tencent.com/public/static/logo/logo.png',
         'minimax': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/lvMJ2T.png',
+        'minimax_pro': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/lvMJ2T.png',
         'zhipu': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/HIntEu.png',
         'baichuan': 'https://ai.tboxn.com/wp-content/uploads/2023/08/%E7%99%BE%E5%B7%9D%E5%A4%A7%E6%A8%A1%E5%9E%8B.png',
     }
@@ -64,12 +68,13 @@ def get_generate_settings() -> List[Any]:
         values=[
             'openai',
             'openai/gpt-4-vision-preview',
+            'dashscope',
+            'dashscope_multimodal',
+            'zhipu',
+            'zhipu/glm-4v',
             'wenxin',
             'baichuan',
             'minimax_pro',
-            'dashscopre',
-            'zhipu',
-            'zhipu/glm-4v',
         ],
     )
     model_id = TextInput(
@@ -123,10 +128,15 @@ async def main(message: cl.Message) -> None:
                 if element.path is not None:
                     with open(element.path, 'rb') as image_file:
                         image_content = image_file.read()
-                    image_part = ImagePart(
-                        image=image_content,
-                        image_format=image_format,
-                    )
+                    if isinstance(state.chat_model, DashScopeMultiModalChat):
+                        url = state.chat_model.upload_image(image_content, image_format)
+                        image_url = ImageUrl(url=url)
+                        image_part = ImageUrlPart(image_url=image_url)
+                    else:
+                        image_part = ImagePart(
+                            image=image_content,
+                            image_format=image_format,
+                        )
                     image_parts.append(image_part)
                 elif element.url is not None:
                     image_url = ImageUrl(url=element.url)
@@ -142,8 +152,8 @@ async def main(message: cl.Message) -> None:
         state._chat_history.append(user_message)
         async for chunk in state.chat_model.async_stream_generate(
             prompt=state.chat_history,
-            temperature=state.temperature,
-            max_tokens=state.max_tokens,
+            temperature=state.temperature,  # type: ignore
+            max_tokens=state.max_tokens,  # type: ignore
         ):
             for token in chunk.stream.delta:
                 await assistant_message.stream_token(token)
