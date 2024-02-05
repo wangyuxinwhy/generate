@@ -19,11 +19,11 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 
 ## Features
 
-* **多模态**，支持文本生成，图像生成以及语音生成
-* **跨平台**，完整支持 OpenAI，Azure，Minimax 在内的国内外多家平台
-* **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析
+* **多模态**，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...
+* **跨平台**，完整支持 OpenAI，Azure，Minimax，智谱，文心一言 在内的国内外多家平台
+* **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
 * **异步和流式**，提供流式调用，非流式调用，同步调用，异步调用，异步批量调用，适配不同的应用场景
-* **自带电池**，提供输入检查，参数检查，计费，*ChatEngine*, *Limit*, *Structure*, *function* 等功能
+* **自带电池**，提供输入检查，参数检查，计费，速率控制，*ChatEngine*, *function call* 等功能
 * **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
 
 > 完整支持是指，只要是平台提供的功能和参数，`generate` 包都原生支持，不打折扣！比如，OpenAI 的 Function Call, Tool Calls，MinimaxPro 的 Plugins 等

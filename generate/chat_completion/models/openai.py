@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from functools import partial
 from typing import Any, AsyncIterator, Callable, ClassVar, Dict, Iterator, List, Literal, Optional, Type, Union, cast
@@ -13,6 +14,7 @@ from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
     FunctionMessage,
+    ImagePart,
     Message,
     Messages,
     MessageTypeError,
@@ -123,14 +125,19 @@ def _to_user_multipart_message_dict(message: UserMultiPartMessage) -> OpenAIMess
         if isinstance(part, TextPart):
             content.append({'type': 'text', 'text': part.text})
         else:
+            if isinstance(part, ImagePart):
+                image_format = part.image_format or 'png'
+                url: str = f'data:image/{image_format};base64,{base64.b64encode(part.image).decode()}'
+                image_url_dict = {'url': url}
+            else:
+                image_url_dict = {}
+                image_url_dict['url'] = part.image_url.url
+                if part.image_url.detail:
+                    image_url_dict['detail'] = part.image_url.detail
             image_url_part_dict: dict[str, Any] = {
                 'type': 'image_url',
-                'image_url': {
-                    'url': part.image_url.url,
-                },
+                'image_url': image_url_dict,
             }
-            if part.image_url.detail:
-                image_url_part_dict['image_url']['detail'] = part.image_url.detail
             content.append(image_url_part_dict)
     return {
         'role': 'user',

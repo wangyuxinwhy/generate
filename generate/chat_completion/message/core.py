@@ -34,9 +34,14 @@ class ImageUrlPart(BaseModel):
     image_url: ImageUrl
 
 
+class ImagePart(BaseModel):
+    image: bytes
+    image_format: Optional[str] = None
+
+
 class UserMultiPartMessage(Message):
     role: Literal['user'] = 'user'
-    content: List[Union[TextPart, ImageUrlPart]]
+    content: List[Union[TextPart, ImageUrlPart, ImagePart]]
 
 
 class FunctionMessage(Message):
