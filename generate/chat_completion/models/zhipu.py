@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union
 
@@ -10,17 +11,20 @@ from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
+    ImagePart,
+    ImageUrlPart,
     Message,
     Messages,
     MessageTypeError,
     Prompt,
     SystemMessage,
+    TextPart,
     ToolCall,
+    ToolMessage,
     UserMessage,
     UserMultiPartMessage,
     ensure_messages,
 )
-from generate.chat_completion.message.core import ImageUrlPart, TextPart, ToolMessage
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
 from generate.http import (
     HttpClient,
@@ -137,6 +141,15 @@ def convert_to_zhipu_message(message: Message) -> ZhipuMessage:
                         'type': 'image_url',
                         'image_url': {
                             'url': part.image_url.url,
+                        },
+                    }
+                )
+            elif isinstance(part, ImagePart):
+                content.append(
+                    {
+                        'type': 'image_url',
+                        'image_url': {
+                            'url': base64.b64encode(part.image).decode(),
                         },
                     }
                 )

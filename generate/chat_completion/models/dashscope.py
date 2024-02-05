@@ -241,7 +241,7 @@ def _convert_message_to_multimodal_chat_message(message: Message) -> DashScopeMu
             elif isinstance(part, ImageUrlPart):
                 content.append({'image': part.image_url.url})
             else:
-                raise TypeError(f'Unknown part type: {part}')
+                raise TypeError(f'Unsupported part type: {part}')
         return {'role': 'user', 'content': content}
     allowed_message_type = (UserMessage, AssistantMessage, SystemMessage, UserMultiPartMessage)
     raise MessageTypeError(message, allowed_message_type=allowed_message_type)

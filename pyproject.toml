@@ -55,6 +55,7 @@ ignore = [
     "PLR0913", # Too many arguments in function definition
     "TRY003", # Avoid specifying long messages outside the exception class
     "PLC0414", # reimport
+    'PLR0912', # too many branches
 ]
 exclude = ["playground", "api_docs"]
 target-version = "py38"
