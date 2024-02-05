@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, Type, 
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-from typing_extensions import Unpack
+from typing_extensions import Self, Unpack
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
@@ -34,7 +34,9 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
     def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
         ...
 
-    def structure(self, instruction: str, output_structure_type: Type[O], **kwargs: Unpack['StructureKwargs']) -> Structure[O]:
+    def structure(
+        self, instruction: str, output_structure_type: Type[O], **kwargs: Unpack['StructureKwargs']
+    ) -> Structure[Self, O]:
         from generate.modifiers.structure import Structure
 
         return Structure(
