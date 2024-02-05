@@ -1,13 +1,16 @@
-from typing import Any, List, cast
+from __future__ import annotations
+
+from typing import Any, List, Optional, cast
 
 from pydantic import BaseModel
 
 try:
     import chainlit as cl
+    import typer
     from chainlit.element import Avatar
     from chainlit.input_widget import Select, Slider, TextInput
 except ImportError as e:
-    raise ImportError('Please install chainlit with "pip install chainlit"') from e
+    raise ImportError('Please install chainlit with "pip install chainlit typer"') from e
 
 from generate import ChatCompletionModel, load_chat_model
 from generate.chat_completion.message import (
@@ -152,7 +155,19 @@ async def main(message: cl.Message) -> None:
     await assistant_message.update()
 
 
-if __name__ == '__main__':
+def chainlit_start(host: Optional[str] = None, port: Optional[int] = None) -> None:
+    import os
+
     from chainlit.cli import run_chainlit
+    from chainlit.config import DEFAULT_HOST, DEFAULT_PORT, config
+
+    os.environ['CHAINLIT_HOST'] = host or DEFAULT_HOST
+    os.environ['CHAINLIT_PORT'] = str(port or DEFAULT_PORT)
+    config.project.enable_telemetry = False
+    config.run.watch = False
 
     run_chainlit(__file__)
+
+
+if __name__ == '__main__':
+    typer.run(chainlit_start)
