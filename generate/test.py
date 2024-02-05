@@ -17,7 +17,7 @@ def get_pytest_params(
     include: Sequence[str] | None = None,
 ) -> list[Any]:
     exclude = exclude or []
-    include = include or []
+    include = include
     if isinstance(types, str):
         types = [types]
 
@@ -25,7 +25,7 @@ def get_pytest_params(
     for model_name, (model_cls, paramter_cls) in model_registry.items():
         if model_name in exclude:
             continue
-        if model_name not in include:
+        if include and model_name not in include:
             continue
         values: list[Any] = []
         for t in types:

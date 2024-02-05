@@ -86,6 +86,8 @@ class ZhipuChatParameters(ModelParameters):
     def can_not_equal_zero(cls, v: Optional[Temperature]) -> Optional[Temperature]:
         if v == 0:
             return 0.01
+        if v == 1:
+            return 0.99
         return v
 
 
