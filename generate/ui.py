@@ -28,10 +28,10 @@ from generate.chat_completion.message import (
 
 
 class UserState(BaseModel):
-    chat_model_id: str = 'openai/gpt-3.5-turbo'
+    chat_model_id: str = 'openai'
     temperature: float = 1.0
     system_message: str = ''
-    max_tokens: int = 4000
+    max_tokens: Optional[int] = None
     _chat_history: Messages = []
 
     @property
@@ -89,7 +89,7 @@ def get_generate_settings() -> List[Any]:
         initial='',
     )
     temperature_slider = Slider(id='Temperature', label='Temperature', min=0, max=1.0, step=0.1, initial=1)
-    max_tokens = Slider(id='MaxTokens', label='Max Tokens', min=1, max=5000, step=100, initial=4000)
+    max_tokens = Slider(id='MaxTokens', label='Max Tokens', min=1, max=5000, step=100, initial=0)
     return [model_select, model_id, system_message_input, temperature_slider, max_tokens]
 
 
@@ -111,7 +111,8 @@ async def settings_update(settings: dict) -> None:
         state.chat_model_id = settings['Model']
     state.temperature = settings['Temperature']
     state.system_message = settings['SystemMessage']
-    state.max_tokens = settings['MaxTokens']
+    if settings['MaxTokens']:
+        state.max_tokens = settings['MaxTokens']
 
 
 @cl.on_message

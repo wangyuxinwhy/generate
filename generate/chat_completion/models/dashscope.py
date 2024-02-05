@@ -46,7 +46,7 @@ class DashScopeChatParameters(ModelParameters):
     enable_search: Optional[bool] = None
 
 
-class DashScopeChatParametersDict(ModelParametersDict):
+class DashScopeChatParametersDict(ModelParametersDict, total=False):
     seed: int
     max_tokens: int
     top_p: float
