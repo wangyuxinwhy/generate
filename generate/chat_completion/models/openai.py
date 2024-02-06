@@ -214,6 +214,13 @@ def calculate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
         return (0.03 * dollar_to_yuan) * (input_tokens / 1000) + (0.06 * dollar_to_yuan) * (output_tokens / 1000)
     if 'gpt-3.5-turbo' in model_name:
         return (0.001 * dollar_to_yuan) * (input_tokens / 1000) + (0.002 * dollar_to_yuan) * (output_tokens / 1000)
+    if 'moonshot' in model_name:
+        if '8k' in model_name:
+            return 0.012 * (input_tokens / 1000) + 0.012 * (output_tokens / 1000)
+        if '32k' in model_name:
+            return 0.024 * (input_tokens / 1000) + 0.024 * (output_tokens / 1000)
+        if '128k' in model_name:
+            return 0.06 * (input_tokens / 1000) + 0.06 * (output_tokens / 1000)
     return None
 
 
@@ -242,7 +249,7 @@ def _convert_to_assistant_message(message: dict[str, Any]) -> AssistantMessage:
     return AssistantMessage(content=message.get('content') or '', function_call=function_call, tool_calls=tool_calls)
 
 
-def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
+def parse_openai_model_reponse(response: ResponseValue, model_type: str) -> ChatCompletionOutput:
     message = _convert_to_assistant_message(response['choices'][0]['message'])
     extra = {'usage': response['usage']}
     if system_fingerprint := response.get('system_fingerprint'):
@@ -253,7 +260,7 @@ def parse_openai_model_reponse(response: ResponseValue) -> ChatCompletionOutput:
         finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
     return ChatCompletionOutput(
-        model_info=ModelInfo(task='chat_completion', type='openai', name=response['model']),
+        model_info=ModelInfo(task='chat_completion', type=model_type, name=response['model']),
         message=message,
         finish_reason=finish_reason or '',
         cost=calculate_cost(response['model'], response['usage']['prompt_tokens'], response['usage']['completion_tokens']),
@@ -380,7 +387,7 @@ class OpenAIChat(RemoteChatCompletionModel):
         parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
-        return parse_openai_model_reponse(response.json())
+        return parse_openai_model_reponse(response.json(), model_type=self.model_type)
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
@@ -388,7 +395,7 @@ class OpenAIChat(RemoteChatCompletionModel):
         parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
-        return parse_openai_model_reponse(response.json())
+        return parse_openai_model_reponse(response.json(), model_type=self.model_type)
 
     def _get_stream_request_parameters(self, messages: Messages, parameters: OpenAIChatParameters) -> HttpxPostKwargs:
         http_parameters = self._get_request_parameters(messages, parameters)

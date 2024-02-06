@@ -60,7 +60,7 @@ class AzureChat(RemoteChatCompletionModel):
         parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = self.http_client.post(request_parameters)
-        output = parse_openai_model_reponse(response.json())
+        output = parse_openai_model_reponse(response.json(), model_type=self.model_type)
         output.model_info.type = self.model_type
         return output
 
@@ -70,7 +70,7 @@ class AzureChat(RemoteChatCompletionModel):
         parameters = self.parameters.clone_with_changes(**kwargs)
         request_parameters = self._get_request_parameters(messages, parameters)
         response = await self.http_client.async_post(request_parameters=request_parameters)
-        output = parse_openai_model_reponse(response.json())
+        output = parse_openai_model_reponse(response.json(), model_type=self.model_type)
         output.model_info.type = self.model_type
         return output
 
