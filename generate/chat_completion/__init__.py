@@ -15,6 +15,8 @@ from generate.chat_completion.models import (
     DashScopeChatParameters,
     DashScopeMultiModalChat,
     DashScopeMultiModalChatParameters,
+    DeepSeekChat,
+    DeepSeekChatParameters,
     HunyuanChat,
     HunyuanChatParameters,
     MinimaxChat,
@@ -22,7 +24,7 @@ from generate.chat_completion.models import (
     MinimaxProChat,
     MinimaxProChatParameters,
     MoonshotChat,
-    MoonshotParameters,
+    MoonshotChatParameters,
     OpenAIChat,
     OpenAIChatParameters,
     WenxinChat,
@@ -48,7 +50,8 @@ ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (BailianChat, BailianChatParameters),
     (DashScopeChat, DashScopeChatParameters),
     (DashScopeMultiModalChat, DashScopeMultiModalChatParameters),
-    (MoonshotChat, MoonshotParameters),
+    (MoonshotChat, MoonshotChatParameters),
+    (DeepSeekChat, DashScopeChatParameters),
 ]
 
 ChatModelRegistry: dict[str, tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = {
@@ -86,7 +89,9 @@ __all__ = [
     'DashScopeMultiModalChat',
     'DashScopeMultiModalChatParameters',
     'MoonshotChat',
-    'MoonshotParameters',
+    'MoonshotChatParameters',
+    'DeepSeekChat',
+    'DeepSeekChatParameters',
     'MessagePrinter',
     'SimpleMessagePrinter',
     'get_json_schema',

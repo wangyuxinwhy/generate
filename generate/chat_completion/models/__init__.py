@@ -10,10 +10,11 @@ from generate.chat_completion.models.dashscope import (
     DashScopeMultiModalChat,
     DashScopeMultiModalChatParameters,
 )
+from generate.chat_completion.models.deepseek import DeepSeekChat, DeepSeekChatParameters
 from generate.chat_completion.models.hunyuan import HunyuanChat, HunyuanChatParameters
 from generate.chat_completion.models.minimax import MinimaxChat, MinimaxChatParameters
 from generate.chat_completion.models.minimax_pro import MinimaxProChat, MinimaxProChatParameters
-from generate.chat_completion.models.moonshot import MoonshotChat, MoonshotParameters
+from generate.chat_completion.models.moonshot import MoonshotChat, MoonshotChatParameters
 from generate.chat_completion.models.openai import OpenAIChat, OpenAIChatParameters
 from generate.chat_completion.models.wenxin import WenxinChat, WenxinChatParameters
 from generate.chat_completion.models.zhipu import (
@@ -48,5 +49,7 @@ __all__ = [
     'DashScopeMultiModalChat',
     'DashScopeMultiModalChatParameters',
     'MoonshotChat',
-    'MoonshotParameters',
+    'MoonshotChatParameters',
+    'DeepSeekChat',
+    'DeepSeekChatParameters',
 ]

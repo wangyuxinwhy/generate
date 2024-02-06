@@ -58,6 +58,7 @@ def get_avatars() -> List[Avatar]:
         'zhipu': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/HIntEu.png',
         'baichuan': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/fODcq1.png',
         'moonshot': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/hc2Ygt.png',
+        'deepseek': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/SgdohV.png',
     }
     return [Avatar(name=k, url=v) for k, v in avatar_map.items()]
 
@@ -77,6 +78,7 @@ def get_generate_settings() -> List[Any]:
             'baichuan',
             'minimax_pro',
             'moonshot',
+            'deepseek',
         ],
     )
     model_id = TextInput(

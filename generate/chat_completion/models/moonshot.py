@@ -14,7 +14,7 @@ from generate.platforms import MoonshotSettings
 from generate.types import Probability, Temperature
 
 
-class MoonshotParameters(ModelParameters):
+class MoonshotChatParameters(ModelParameters):
     temperature: Optional[Temperature] = None
     top_p: Optional[Probability] = None
     max_tokens: Optional[PositiveInt] = None
@@ -29,17 +29,17 @@ class MoonshotParametersDict(ModelParametersDict, total=False):
 class MoonshotChat(OpenAIChat):
     model_type: ClassVar[str] = 'moonshot'
 
-    parameters: MoonshotParameters
+    parameters: MoonshotChatParameters
     settings: MoonshotSettings
 
     def __init__(
         self,
         model: str = 'moonshot-v1-8k',
-        parameters: MoonshotParameters | None = None,
+        parameters: MoonshotChatParameters | None = None,
         settings: MoonshotSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or MoonshotParameters()
+        self.parameters = parameters or MoonshotChatParameters()
         self.settings = settings or MoonshotSettings()  # type: ignore
         self.http_client = http_client or HttpClient()
         self.model = model
