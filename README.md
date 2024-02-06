@@ -15,12 +15,13 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 * [Minimax](https://api.minimax.chat/document/guides/chat)
 * [百度智能云](https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t)
 * [智谱](https://open.bigmodel.cn/dev/api)
+* [月之暗面](https://platform.moonshot.cn/docs)
 * ...
 
 ## Features
 
 * **多模态**，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...
-* **跨平台**，完整支持 OpenAI，Azure，Minimax，智谱，文心一言 在内的国内外多家平台
+* **跨平台**，完整支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外多家平台
 * **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
 * **异步和流式**，提供流式调用，非流式调用，同步调用，异步调用，异步批量调用，适配不同的应用场景
 * **自带电池**，提供 UI，输入检查，参数检查，计费，速率控制，*ChatEngine*, *function call* 等功能
