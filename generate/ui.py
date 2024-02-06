@@ -48,7 +48,7 @@ class UserState(BaseModel):
 def get_avatars() -> List[Avatar]:
     avatar_map = {
         'openai': 'https://mrvian.com/wp-content/uploads/2023/02/logo-open-ai.png',
-        'wenxin': 'https://nlp-eb.cdn.bcebos.com/static/eb/asset/robin.e9dc83e5.png',
+        'wenxin': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/wzkPgl.png',
         'bailian': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
         'dashscope_multimodal': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
         'dashscope': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/kHZBrw.png',
@@ -56,7 +56,8 @@ def get_avatars() -> List[Avatar]:
         'minimax': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/lvMJ2T.png',
         'minimax_pro': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/lvMJ2T.png',
         'zhipu': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/HIntEu.png',
-        'baichuan': 'https://ai.tboxn.com/wp-content/uploads/2023/08/%E7%99%BE%E5%B7%9D%E5%A4%A7%E6%A8%A1%E5%9E%8B.png',
+        'baichuan': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/fODcq1.png',
+        'moonshot': 'https://yuxin-wang.oss-cn-beijing.aliyuncs.com/uPic/hc2Ygt.png',
     }
     return [Avatar(name=k, url=v) for k, v in avatar_map.items()]
 
@@ -75,6 +76,7 @@ def get_generate_settings() -> List[Any]:
             'wenxin',
             'baichuan',
             'minimax_pro',
+            'moonshot',
         ],
     )
     model_id = TextInput(
