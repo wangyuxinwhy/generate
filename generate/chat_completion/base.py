@@ -35,7 +35,7 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
         ...
 
     def structure(
-        self, instruction: str, output_structure_type: Type[O], **kwargs: Unpack['StructureKwargs']
+        self, output_structure_type: Type[O], instruction: str | None = None, **kwargs: Unpack['StructureKwargs']
     ) -> Structure[Self, O]:
         from generate.modifiers.structure import Structure
 
