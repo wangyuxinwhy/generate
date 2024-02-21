@@ -340,11 +340,21 @@ class DashScopeMultiModalChat(RemoteChatCompletionModel):
 
     def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         choice = response['output']['choices'][0]
+        content_list = choice['message']['content']
+        text = ''
+        result_images = []
+        for content in content_list:
+            for k, v in content.items():
+                if k != 'result_image':
+                    text += v
+                else:
+                    result_images.append(v)
         return ChatCompletionOutput(
             model_info=self.model_info,
-            message=AssistantMessage(content=choice['message']['content'][0]['text']),
+            finish_reason=choice.get('finish_reason'),
+            message=AssistantMessage(content=text),
             cost=None,
-            extra={'usage': response['usage'], 'request_id': response['request_id']},
+            extra={'usage': response['usage'], 'request_id': response['request_id'], 'content': content_list, 'result_images': result_images},
         )
 
     @override

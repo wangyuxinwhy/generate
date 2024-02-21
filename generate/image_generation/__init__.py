@@ -11,6 +11,7 @@ from generate.image_generation.models import (
     QianfanImageGeneration,
     QianfanImageGenerationParameters,
     ZhipuImageGeneration,
+    ZhipuImageGenerationParameters,
 )
 from generate.model import ModelParameters
 
@@ -18,6 +19,9 @@ P = TypeVar('P', bound=ModelParameters)
 
 ImageGenerationModels: list[tuple[Type[ImageGenerationModel], Type[ModelParameters]]] = [
     (OpenAIImageGeneration, OpenAIImageGenerationParameters),
+    (BaiduImageGeneration, BaiduImageGenerationParameters),
+    (QianfanImageGeneration, QianfanImageGenerationParameters),
+    (ZhipuImageGeneration, ZhipuImageGenerationParameters),
 ]
 
 ImageGenerationModelRegistry: dict[str, tuple[Type[ImageGenerationModel], Type[ModelParameters]]] = {
@@ -35,4 +39,5 @@ __all__ = [
     'QianfanImageGeneration',
     'QianfanImageGenerationParameters',
     'ZhipuImageGeneration',
+    'ZhipuImageGenerationParameters',
 ]
