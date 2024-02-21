@@ -167,6 +167,7 @@ async def main(message: cl.Message) -> None:
                 state._chat_history.append(chunk.message)
     except Exception as e:
         await cl.Message(content=f'Error: {e}').send()
+        raise
     await assistant_message.update()
 
 
