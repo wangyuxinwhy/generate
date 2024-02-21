@@ -16,6 +16,7 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 * [百度智能云](https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t)
 * [智谱](https://open.bigmodel.cn/dev/api)
 * [月之暗面](https://platform.moonshot.cn/docs)
+* [DeepSeek](https://platform.deepseek.com/usage)
 * ...
 
 ## Features
@@ -203,19 +204,21 @@ for stream_output in model.stream_generate('介绍一下唐朝'):
 ```python
 from generate.chat_completion import ChatModelRegistry
 
-print(list(ChatModelRegistry.keys()))
+print('\n'.join(list(ChatModelRegistry.keys())))
 
 # ----- Output -----
-['azure',
- 'openai',
- 'minimax_pro',
- 'minimax',
- 'zhipu',
- 'zhipu_character',
- 'wenxin',
- 'hunyuan',
- 'baichuan',
- 'bailian',
- 'dashscope',
- 'dashscope_multimodal']
+azure
+openai
+minimax_pro
+minimax
+zhipu
+zhipu_character
+wenxin
+hunyuan
+baichuan
+bailian
+dashscope
+dashscope_multimodal
+moonshot
+deepseek
 ```
