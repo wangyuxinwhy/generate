@@ -114,7 +114,7 @@ class Country(BaseModel):
     name: str
     capital: str
 
-model = OpenAIChat().structure(instruction='Extract Country from the text.', output_structure_type=Country)
+model = OpenAIChat().structure(output_structure_type=Country)
 model.generate('Paris is the capital of France and also the largest city in the country.')
 # ----- Output -----
 StructureModelOutput(

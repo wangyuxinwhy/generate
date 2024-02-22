@@ -121,14 +121,14 @@ class Structure(GenerateModel[str, StructureModelOutput[O]], Generic[M, O]):
     def __init__(
         self,
         model: M,
-        instruction: str,
         output_structure_type: Type[O],
+        instruction: str | None = None,
         examples: Optional[Iterable[Example[O]]] = None,
         system_template: str = system_template,
         max_num_reask: int = 2,
     ) -> None:
         self.model = model
-        self.instruction = instruction
+        self.instruction = instruction or f'Extract {output_structure_type.__name__}'
         self.output_structure_type = output_structure_type
         self.examples = examples or []
         self.system_template = system_template
