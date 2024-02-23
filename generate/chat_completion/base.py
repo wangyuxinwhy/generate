@@ -16,6 +16,8 @@ from generate.model import GenerateModel, ModelParameters
 O = TypeVar('O', bound=BaseModel)  # noqa: E741
 
 if TYPE_CHECKING:
+    from generate.modifiers.agent import Agent, AgentKwargs
+    from generate.modifiers.session import Session
     from generate.modifiers.structure import Structure, StructureKwargs
 
 
@@ -36,7 +38,7 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
 
     def structure(
         self, output_structure_type: Type[O], instruction: str | None = None, **kwargs: Unpack['StructureKwargs']
-    ) -> Structure[Self, O]:
+    ) -> 'Structure[Self, O]':
         from generate.modifiers.structure import Structure
 
         return Structure(
@@ -45,6 +47,16 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
             output_structure_type=output_structure_type,
             **kwargs,
         )
+
+    def session(self) -> 'Session':
+        from generate.modifiers.session import Session
+
+        return Session(model=self)
+
+    def agent(self, **kwargs: Unpack['AgentKwargs']) -> 'Agent':
+        from generate.modifiers.agent import Agent
+
+        return Agent(model=self, **kwargs)
 
 
 class RemoteChatCompletionModel(ChatCompletionModel):

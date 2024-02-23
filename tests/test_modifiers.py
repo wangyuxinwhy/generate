@@ -36,6 +36,14 @@ def test_structure() -> None:
         name: str
         capital: str
 
-    model = OpenAIChat().structure(instruction='提取文本中的国家实体', output_structure_type=Country)
+    model = OpenAIChat().structure(output_structure_type=Country)
     result = model.generate('Paris is the capital of France and also the largest city in the country.')
     assert result.structure == Country(name='France', capital='Paris')
+
+
+def test_session() -> None:
+    model = OpenAIChat().session()
+    model.generate('I am bob')
+    reply = model.generate('who am i?').reply
+
+    assert 'bob' in reply.lower()

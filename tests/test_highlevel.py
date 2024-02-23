@@ -1,4 +1,4 @@
-from generate.utils import (
+from generate.highlevel import (
     generate_image,
     generate_speech,
     generate_text,

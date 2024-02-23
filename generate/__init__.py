@@ -5,6 +5,8 @@ from generate.chat_completion import (
     BailianChat,
     BailianChatParameters,
     ChatCompletionModel,
+    ChatCompletionOutput,
+    ChatModelRegistry,
     DashScopeChat,
     DashScopeChatParameters,
     DashScopeMultiModalChat,
@@ -21,6 +23,7 @@ from generate.chat_completion import (
     MoonshotChatParameters,
     OpenAIChat,
     OpenAIChatParameters,
+    Prompt,
     RemoteChatCompletionModel,
     WenxinChat,
     WenxinChatParameters,
@@ -28,13 +31,22 @@ from generate.chat_completion import (
     ZhipuCharacterChatParameters,
     ZhipuChat,
     ZhipuChatParameters,
+    tool,
 )
-from generate.chat_completion.function_call import function
-from generate.chat_engine import ChatEngine
-from generate.completion_engine import CompletionEngine
+from generate.highlevel import (
+    generate_image,
+    generate_speech,
+    generate_text,
+    load_chat_model,
+    load_image_generation_model,
+    load_speech_model,
+)
 from generate.image_generation import (
     BaiduImageGeneration,
     BaiduImageGenerationParameters,
+    ImageGenerationModel,
+    ImageGenerationModelRegistry,
+    ImageGenerationOutput,
     OpenAIImageGeneration,
     OpenAIImageGenerationParameters,
     QianfanImageGeneration,
@@ -62,22 +74,15 @@ from generate.text_to_speech import (
     MinimaxSpeechParameters,
     OpenAISpeech,
     OpenAISpeechParameters,
-)
-from generate.utils import (
-    generate_image,
-    generate_speech,
-    generate_text,
-    load_chat_model,
-    load_image_generation_model,
-    load_speech_model,
+    SpeechModelRegistry,
+    TextToSpeechModel,
+    TextToSpeechOutput,
 )
 from generate.version import __version__
 
 __all__ = [
     'ChatCompletionModel',
     'RemoteChatCompletionModel',
-    'ChatEngine',
-    'CompletionEngine',
     'AzureChat',
     'OpenAIChat',
     'OpenAIChatParameters',
@@ -118,6 +123,15 @@ __all__ = [
     'QianfanImageGeneration',
     'QianfanImageGenerationParameters',
     'ZhipuImageGeneration',
+    'ImageGenerationModel',
+    'TextToSpeechModel',
+    'ImageGenerationModelRegistry',
+    'Prompt',
+    'ChatCompletionOutput',
+    'ImageGenerationOutput',
+    'TextToSpeechOutput',
+    'ChatModelRegistry',
+    'SpeechModelRegistry',
     'AzureSettings',
     'BaichuanSettings',
     'BaiduCreationSettings',
@@ -130,7 +144,7 @@ __all__ = [
     'DashScopeSettings',
     'MoonshotSettings',
     'DeepSeekSettings',
-    'function',
+    'tool',
     'load_chat_model',
     'load_speech_model',
     'load_image_generation_model',

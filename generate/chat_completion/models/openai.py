@@ -9,7 +9,6 @@ from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
-from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -28,6 +27,7 @@ from generate.chat_completion.message import (
     ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.tool import FunctionJsonSchema, Tool, ToolCallMixin
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -35,7 +35,8 @@ from generate.http import (
 )
 from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.openai import OpenAISettings
-from generate.types import Probability, Temperature
+from generate.types import OrIterable, Probability, Temperature
+from generate.utils import ensure_iterable
 
 
 class FunctionCallName(TypedDict):
@@ -249,6 +250,10 @@ def _convert_to_assistant_message(message: dict[str, Any]) -> AssistantMessage:
     return AssistantMessage(content=message.get('content') or '', function_call=function_call, tool_calls=tool_calls)
 
 
+def convert_to_openai_tool(tool: Tool) -> OpenAITool:
+    return OpenAITool(type='function', function=tool.json_schema)
+
+
 def parse_openai_model_reponse(response: ResponseValue, model_type: str) -> ChatCompletionOutput:
     message = _convert_to_assistant_message(response['choices'][0]['message'])
     extra = {'usage': response['usage']}
@@ -345,7 +350,7 @@ class _StreamResponseProcessor:
         return finish_reason
 
 
-class OpenAIChat(RemoteChatCompletionModel):
+class OpenAIChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'openai'
 
     parameters: OpenAIChatParameters
@@ -439,6 +444,14 @@ class OpenAIChat(RemoteChatCompletionModel):
                 continue
             is_finish = output.is_finish
             yield output
+
+    @override
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        new_tools = [convert_to_openai_tool(tool) for tool in ensure_iterable(tools)]
+        if self.parameters.tools is None:
+            self.parameters.tools = new_tools
+        else:
+            self.parameters.tools.extend(new_tools)
 
     @property
     @override

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Generic, TypeVar
+from collections import UserDict
+from typing import Any, Callable, Generic, MutableMapping, TypeVar
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
-from typing_extensions import NotRequired, ParamSpec, TypedDict
+from typing_extensions import NotRequired, ParamSpec, Self, TypedDict
 
-from generate.types import JsonSchema
+from generate.types import JsonSchema, OrIterable
+from generate.utils import ensure_iterable
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -36,14 +38,24 @@ def get_json_schema(function: Callable[..., Any]) -> FunctionJsonSchema:
     return json_schema
 
 
-class function(Generic[P, T]):  # noqa: N801
-    def __init__(self, function: Callable[P, T]) -> None:
-        self.function: Callable[P, T] = validate_call(function)
-        self.json_schema: FunctionJsonSchema = get_json_schema(function)
+def function(callable_obj: Callable[P, T]) -> Tool[P, T]:
+    return Tool(callable_obj)
+
+
+def tool(callable_obj: Callable[P, T]) -> Tool[P, T]:
+    return Tool(callable_obj)
+
+
+class Tool(Generic[P, T]):  # noqa: N801
+    def __init__(self, callable_obj: Callable[P, T], name: str | None = None) -> None:
+        self.callable_obj: Callable[P, T] = validate_call(callable_obj)
+        self.json_schema: FunctionJsonSchema = get_json_schema(callable_obj)
+
+        self._name = name
 
     @property
     def name(self) -> str:
-        return self.json_schema['name']
+        return self._name or self.json_schema['name']
 
     @property
     def description(self) -> str:
@@ -54,7 +66,7 @@ class function(Generic[P, T]):  # noqa: N801
         return self.json_schema['parameters']
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        return self.function(*args, **kwargs)
+        return self.callable_obj(*args, **kwargs)
 
 
 def recusive_remove(obj: Any, remove_key: str) -> None:
@@ -74,3 +86,17 @@ def recusive_remove(obj: Any, remove_key: str) -> None:
                 del obj[key]
             else:
                 recusive_remove(obj[key], remove_key)
+
+
+class ToolDict(UserDict, MutableMapping[str, Tool]):
+    def call(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        return self.data[name](*args, **kwargs)
+
+    @classmethod
+    def from_iterable(cls, tools: OrIterable[Tool]) -> Self:
+        return cls({tool.name: tool for tool in ensure_iterable(tools)})
+
+
+class ToolCallMixin:
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        raise NotImplementedError

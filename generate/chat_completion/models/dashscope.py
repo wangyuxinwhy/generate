@@ -354,7 +354,12 @@ class DashScopeMultiModalChat(RemoteChatCompletionModel):
             finish_reason=choice.get('finish_reason'),
             message=AssistantMessage(content=text),
             cost=None,
-            extra={'usage': response['usage'], 'request_id': response['request_id'], 'content': content_list, 'result_images': result_images},
+            extra={
+                'usage': response['usage'],
+                'request_id': response['request_id'],
+                'content': content_list,
+                'result_images': result_images,
+            },
         )
 
     @override

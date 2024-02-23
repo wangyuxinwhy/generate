@@ -25,10 +25,9 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 * **跨平台**，完整支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外多家平台
 * **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
 * **异步和流式**，提供流式调用，非流式调用，同步调用，异步调用，异步批量调用，适配不同的应用场景
-* **自带电池**，提供 UI，输入检查，参数检查，计费，速率控制，*ChatEngine*, *function call* 等功能
+* **自带电池**，提供 UI，输入检查，参数检查，计费，速率控制，*Agent*, *Tool call* 等功能
 * **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
 
-> 完整支持是指，只要是平台提供的功能和参数，`generate` 包都原生支持，不打折扣！比如，OpenAI 的 Function Call, Tool Calls，MinimaxPro 的 Plugins 等
 ## 基础使用
 
 <a target="_blank" href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">
@@ -56,6 +55,11 @@ from generate import OpenAIChat
 
 model = OpenAIChat()
 model.generate('你好，GPT！', temperature=0, seed=2023)
+# 异步生成 model.async_generate
+# 流式生产 model.stream_generate
+# 异步流式生成 model.async_stream_generate
+# 批量生成 model.batch_generate
+# 异步批量生成 model.async_batch_generate
 
 # ----- Output -----
 ChatCompletionOutput(
@@ -123,6 +127,58 @@ StructureModelOutput(
     extra={'usage': {'prompt_tokens': 75, 'completion_tokens': 12, 'total_tokens': 87}},
     structure=Country(name='France', capital='Paris')
 )
+```
+
+### 派生功能
+
+#### 速率限制
+```python
+import time
+from generate import OpenAIChat
+
+# 限制速率，每 10 秒最多 4 次请求
+limit_model = OpenAIChat().limit(max_generates_per_time_window=2, num_seconds_in_time_window=10)
+start_time = time.time()
+for i in limit_model.batch_generate([f'1 + {i} = ?' for i in range(4)]):
+    print(i.reply)
+    print(f'elapsed time: {time.time() - start_time:.2f} seconds')
+
+# ----- Output -----
+1
+elapsed time: 0.70 seconds
+2
+elapsed time: 1.34 seconds
+3
+elapsed time: 11.47 seconds
+4
+elapsed time: 12.15 seconds
+```
+
+#### 对话保持
+```python
+from generate import OpenAIChat
+
+session_model = OpenAIChat().session()
+session_model.generate('i am bob')
+print(session_model.generate('What is my name?').reply)
+
+# ----- Output -----
+Your name is Bob.
+```
+
+#### 工具调用
+```python
+from generate import OpenAIChat, tool
+
+@tool
+def get_weather(location: str) -> str:
+    return f'{location}, 27°C, Sunny'
+
+agent = OpenAIChat().agent(tools=get_weather)
+print(agent.generate('what is the weather in Beijing?').reply)
+
+# ----- Output -----
+The weather in Beijing is currently 27°C and sunny.
 ```
 
 ### 图像生成
