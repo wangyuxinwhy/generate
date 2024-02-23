@@ -2,6 +2,7 @@ from generate.platforms.azure import AzureSettings
 from generate.platforms.baichuan import BaichuanSettings
 from generate.platforms.baidu import BaiduCreationSettings, QianfanSettings
 from generate.platforms.bailian import BailianSettings
+from generate.platforms.base import PlatformSettings
 from generate.platforms.dashscope import DashScopeSettings
 from generate.platforms.deepseek import DeepSeekSettings
 from generate.platforms.hunyuan import HunyuanSettings
@@ -23,4 +24,5 @@ __all__ = [
     'DashScopeSettings',
     'MoonshotSettings',
     'DeepSeekSettings',
+    'PlatformSettings',
 ]
