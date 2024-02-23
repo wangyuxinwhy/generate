@@ -3,7 +3,16 @@ from __future__ import annotations
 from typing import Type
 
 from generate.chat_completion.base import ChatCompletionModel, RemoteChatCompletionModel
-from generate.chat_completion.function_call import function, get_json_schema
+from generate.chat_completion.message import (
+    AssistantMessage,
+    FunctionMessage,
+    Messages,
+    Prompt,
+    SystemMessage,
+    ToolMessage,
+    UserMessage,
+    UserMultiPartMessage,
+)
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models import (
     AzureChat,
@@ -35,6 +44,7 @@ from generate.chat_completion.models import (
     ZhipuChatParameters,
 )
 from generate.chat_completion.printer import MessagePrinter, SimpleMessagePrinter
+from generate.chat_completion.tool import Tool, get_json_schema, tool
 from generate.model import ModelParameters
 
 ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
@@ -95,5 +105,14 @@ __all__ = [
     'MessagePrinter',
     'SimpleMessagePrinter',
     'get_json_schema',
-    'function',
+    'tool',
+    'Tool',
+    'Prompt',
+    'Messages',
+    'SystemMessage',
+    'UserMessage',
+    'AssistantMessage',
+    'ToolMessage',
+    'FunctionMessage',
+    'UserMultiPartMessage',
 ]

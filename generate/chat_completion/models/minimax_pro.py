@@ -7,7 +7,6 @@ from pydantic import Field, PositiveInt, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
-from generate.chat_completion.function_call import FunctionJsonSchema
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -22,6 +21,7 @@ from generate.chat_completion.message import (
     ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.tool import FunctionJsonSchema, Tool, ToolCallMixin
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -30,7 +30,8 @@ from generate.http import (
 )
 from generate.model import ModelInfo, ModelParameters, ModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
-from generate.types import Probability, Temperature
+from generate.types import OrIterable, Probability, Temperature
+from generate.utils import ensure_iterable
 
 
 class BotSettingDict(TypedDict):
@@ -256,7 +257,7 @@ def calculate_cost(model_name: str, usage: dict[str, int], num_web_search: int =
     return model_cost + (0.03 * num_web_search)
 
 
-class MinimaxProChat(RemoteChatCompletionModel):
+class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'minimax_pro'
 
     parameters: MinimaxProChatParameters
@@ -365,6 +366,13 @@ class MinimaxProChat(RemoteChatCompletionModel):
         stream_processor = _StreamResponseProcessor(model_info=self.model_info)
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             yield stream_processor.process(json.loads(line))
+
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        new_functions = [tool.json_schema for tool in ensure_iterable(tools)]
+        if self.parameters.functions is None:
+            self.parameters.functions = new_functions
+        else:
+            self.parameters.functions.extend(new_functions)
 
     @property
     @override

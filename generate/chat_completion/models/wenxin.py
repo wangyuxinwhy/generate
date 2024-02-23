@@ -20,6 +20,7 @@ from generate.chat_completion.message import (
     ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.tool import Tool, ToolCallMixin
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -28,7 +29,8 @@ from generate.http import (
 )
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
-from generate.types import JsonSchema, Probability, Temperature
+from generate.types import JsonSchema, OrIterable, Probability, Temperature
+from generate.utils import ensure_iterable
 
 
 class WenxinMessage(TypedDict):
@@ -52,7 +54,15 @@ class WenxinFunction(TypedDict):
     examples: NotRequired[List[WenxinMessage]]
 
 
-def _convert_to_wenxin_message(message: Message) -> WenxinMessage:
+def convert_to_wenxin_function(tool: Tool) -> WenxinFunction:
+    return {
+        'name': tool.name,
+        'description': tool.description,
+        'parameters': tool.parameters,
+    }
+
+
+def convert_to_wenxin_message(message: Message) -> WenxinMessage:
     if isinstance(message, UserMessage):
         return {
             'role': 'user',
@@ -89,7 +99,7 @@ def _convert_messages(messages: Messages) -> list[WenxinMessage]:
     if isinstance(system_message := messages[0], SystemMessage):
         prepend_messages = [UserMessage(content=system_message.content), AssistantMessage(content='好的')]
         messages = prepend_messages + messages[1:]
-    return [_convert_to_wenxin_message(message) for message in messages]
+    return [convert_to_wenxin_message(message) for message in messages]
 
 
 class WenxinChatParameters(ModelParameters):
@@ -122,7 +132,7 @@ class WenxinChatParametersDict(ModelParametersDict, total=False):
     user: Optional[str]
 
 
-class WenxinChat(RemoteChatCompletionModel):
+class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'wenxin'
     model_name_entrypoint_map: ClassVar[dict[str, str]] = {
         'ERNIE-Bot': 'completions',
@@ -270,6 +280,13 @@ class WenxinChat(RemoteChatCompletionModel):
         if self.name == 'ERNIE-Bot-4':
             return 0.12 * (usage['total_tokens'] / 1000)
         return None
+
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        new_functions = [convert_to_wenxin_function(tool) for tool in ensure_iterable(tools)]
+        if self.parameters.functions is None:
+            self.parameters.functions = new_functions
+        else:
+            self.parameters.functions.extend(new_functions)
 
     @property
     @override

@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from generate import ChatEngine, OpenAIChat, OpenAIChatParameters, function
-from generate.chat_completion.function_call import get_json_schema
+from generate import OpenAIChat, tool
+from generate.chat_completion.tool import get_json_schema
 
 
 def get_weather_without_wrap(city: str, country: Literal['US', 'CN'] = 'US') -> str:
@@ -25,7 +25,7 @@ class UserInfo(BaseModel):
     age: int
 
 
-@function
+@tool
 def upload_user_info(user_info: UserInfo) -> Literal['success']:
     """
     Uploads user information to the database.
@@ -63,7 +63,7 @@ def test_validate_function() -> None:
     assert output == 'success'
 
 
-@function
+@tool
 def get_weather(loc: str) -> str:
     """
     获取指定地区的天气信息
@@ -74,7 +74,7 @@ def get_weather(loc: str) -> str:
     return f'{loc}，晴朗，27度'
 
 
-@function
+@tool
 def google(keyword: str) -> str:
     """
     搜索谷歌
@@ -85,26 +85,7 @@ def google(keyword: str) -> str:
     return '没有内容'
 
 
-def test_openai_function() -> None:
-    model = OpenAIChat(parameters=OpenAIChatParameters(functions=[get_weather.json_schema, google.json_schema], temperature=0))
-    engine = ChatEngine(
-        model, functions={f.name: f for f in [get_weather, google]}, stream=False, function_call_raise_error=True
-    )
-    reply = engine.chat('今天北京天气怎么样？')
-    assert '27' in reply
-
-
-def test_openai_tool() -> None:
-    model = OpenAIChat(
-        parameters=OpenAIChatParameters(
-            tools=[
-                {'type': 'function', 'function': get_weather.json_schema},
-                {'type': 'function', 'function': google.json_schema},
-            ]
-        )
-    )
-    engine = ChatEngine(
-        model, functions={f.name: f for f in [get_weather, google]}, stream=False, function_call_raise_error=True
-    )
-    reply = engine.chat('今天北京天气怎么样？')
+def test_agent() -> None:
+    agent = OpenAIChat().agent(tools=[get_weather, google])
+    reply = agent.generate('今天北京天气怎么样？').reply
     assert '27' in reply
