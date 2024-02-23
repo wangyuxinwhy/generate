@@ -1,11 +1,12 @@
 from pydantic import SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
 
 from generate.access_token_manager import AccessTokenManager
 from generate.http import HttpClient
+from generate.platforms.base import PlatformSettings
 
 
-class BailianSettings(BaseSettings):
+class BailianSettings(PlatformSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='bailian_', env_file='.env')
 
     default_app_id: str
@@ -13,6 +14,7 @@ class BailianSettings(BaseSettings):
     access_key_secret: SecretStr
     agent_key: str
     completion_api: str = 'https://bailian.aliyuncs.com/v2/app/completions'
+    platform_url: str = 'https://help.aliyun.com/product/2400256.html'
 
 
 class BailianTokenManager(AccessTokenManager):

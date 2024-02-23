@@ -3,18 +3,21 @@ import time
 import cachetools.func  # type: ignore
 import jwt
 from pydantic import SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+
+from generate.platforms.base import PlatformSettings
 
 API_TOKEN_TTL_SECONDS = 3 * 60
 CACHE_TTL_SECONDS = API_TOKEN_TTL_SECONDS - 30
 
 
-class ZhipuSettings(BaseSettings):
+class ZhipuSettings(PlatformSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='zhipu_', env_file='.env')
 
     api_key: SecretStr
     v3_api_base: str = 'https://open.bigmodel.cn/api/paas/v3/model-api'
     v4_api_base: str = 'https://open.bigmodel.cn/api/paas/v4/'
+    platform_url: str = 'https://open.bigmodel.cn/dev/howuse/introduction'
 
 
 @cachetools.func.ttl_cache(ttl=CACHE_TTL_SECONDS)

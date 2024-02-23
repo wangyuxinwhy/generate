@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pydantic import SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
 
 from generate.access_token_manager import AccessTokenManager
 from generate.http import HttpClient, UnexpectedResponseError
+from generate.platforms.base import PlatformSettings
 
 
-class QianfanSettings(BaseSettings):
+class QianfanSettings(PlatformSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='qianfan_', env_file='.env')
 
     api_key: SecretStr
@@ -15,6 +16,7 @@ class QianfanSettings(BaseSettings):
     comlpetion_api_base: str = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/'
     image_generation_api_base: str = 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/text2image/'
     access_token_api: str = 'https://aip.baidubce.com/oauth/2.0/token'
+    platform_url: str = 'https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Dlkm79mnx'
 
 
 class QianfanTokenManager(AccessTokenManager):
@@ -44,7 +46,7 @@ class QianfanTokenManager(AccessTokenManager):
         return response_dict['access_token']
 
 
-class BaiduCreationSettings(BaseSettings):
+class BaiduCreationSettings(PlatformSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='baidu_creation_', env_file='.env')
 
     api_key: SecretStr

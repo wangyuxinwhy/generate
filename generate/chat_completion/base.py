@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, Type, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, Type, TypeVar, get_type_hints
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
 from typing_extensions import Self, Unpack
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.http import HttpClient
 from generate.model import GenerateModel, ModelParameters
+from generate.platforms import PlatformSettings
 
 O = TypeVar('O', bound=BaseModel)  # noqa: E741
 
@@ -54,18 +54,26 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
         return Session(model=self)
 
     def agent(self, **kwargs: Unpack['AgentKwargs']) -> 'Agent':
+        """Create an instance of the Agent class. An Agent is a wrapper around a model that allows tool use."""
         from generate.modifiers.agent import Agent
 
         return Agent(model=self, **kwargs)
 
 
 class RemoteChatCompletionModel(ChatCompletionModel):
+    settings: PlatformSettings
+    http_client: HttpClient
+
     def __init__(
         self,
         parameters: ModelParameters,
-        settings: BaseSettings,
+        settings: PlatformSettings,
         http_client: HttpClient,
     ) -> None:
         self.parameters = parameters
         self.settings = settings
         self.http_client = http_client
+
+    @classmethod
+    def how_to_settings(cls) -> str:
+        return f'{cls.__name__} Settings\n\n' + get_type_hints(cls)['settings'].how_to_settings()

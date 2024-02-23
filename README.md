@@ -4,7 +4,7 @@
 
 ## 简介
 
-Generate Package 允许用户通过统一的 api 访问跨平台的生成式模型，当前支持：
+Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当前支持：
 
 * [OpenAI](https://platform.openai.com/docs/introduction)
 * [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/chatgpt?tabs=python&amp;pivots=programming-language-chat-completions)
@@ -22,10 +22,11 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 ## Features
 
 * **多模态**，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...
-* **跨平台**，完整支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外多家平台
+* **跨平台**，支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外 10+ 平台
 * **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
-* **异步和流式**，提供流式调用，非流式调用，同步调用，异步调用，异步批量调用，适配不同的应用场景
-* **自带电池**，提供 UI，输入检查，参数检查，计费，速率控制，*Agent*, *Tool call* 等功能
+* **异步，流式和并发**，提供流式调用，非流式调用，同步调用，异步调用，异步批量并发调用，适配不同的应用场景
+* **自带电池**，提供 chainlit UI，输入检查，参数检查，计费，速率控制，*Agent*, *Tool call* 等
+* **轻量**，最小化依赖，不同平台的请求和鉴权逻辑均为原生内置功能
 * **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
 
 ## 基础使用
@@ -40,26 +41,63 @@ Generate Package 允许用户通过统一的 api 访问跨平台的生成式模�
 pip install generate-core
 ```
 
-### 启动 chainlit UI
+### 查看模型列表
 
-```bash
-python -m generate.ui
-# help
-# python -m generate.ui --help
+```python
+from generate.chat_completion import ChatModelRegistry
+
+print('\n'.join([model_cls.__name__ for model_cls, _ in ChatModelRegistry.values()]))
+
+# ----- Output -----
+AzureChat
+OpenAIChat
+MinimaxProChat
+MinimaxChat
+ZhipuChat
+ZhipuCharacterChat
+WenxinChat
+HunyuanChat
+BaichuanChat
+BailianChat
+DashScopeChat
+DashScopeMultiModalChat
+MoonshotChat
+DeepSeekChat
 ```
 
-### 文本生成
+### 配置模型 API
+```python
+from generate import WenxinChat
+
+# 获取如何配置文心一言，其他模型同理
+print(WenxinChat.how_to_settings())
+
+# ----- Output -----
+WenxinChat Settings
+
+# Platform
+Qianfan
+
+# Required Environment Variables
+['QIANFAN_API_KEY', 'QIANFAN_SECRET_KEY']
+
+# Optional Environment Variables
+['QIANFAN_PLATFORM_URL', 'QIANFAN_COMLPETION_API_BASE', 'QIANFAN_IMAGE_GENERATION_API_BASE', 'QIANFAN_ACCESS_TOKEN_API']
+
+You can get more information from this link: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Dlkm79mnx
+
+tips: You can also set these variables in the .env file, and generate will automatically load them.
+```
+
+### 对话补全模型
+
+#### 文本生成
 
 ```python
 from generate import OpenAIChat
 
 model = OpenAIChat()
 model.generate('你好，GPT！', temperature=0, seed=2023)
-# 异步生成 model.async_generate
-# 流式生产 model.stream_generate
-# 异步流式生成 model.async_stream_generate
-# 批量生成 model.batch_generate
-# 异步批量生成 model.async_batch_generate
 
 # ----- Output -----
 ChatCompletionOutput(
@@ -77,7 +115,7 @@ ChatCompletionOutput(
 )
 ```
 
-### 多模态文本生成
+#### 多模态文本生成
 
 ```python
 from generate import OpenAIChat
@@ -108,7 +146,9 @@ ChatCompletionOutput(
 )
 ```
 
-### 结构体生成
+### 派生功能
+
+#### 结构体生成
 
 ```python
 from generate import OpenAIChat
@@ -128,8 +168,6 @@ StructureModelOutput(
     structure=Country(name='France', capital='Paris')
 )
 ```
-
-### 派生功能
 
 #### 速率限制
 ```python
@@ -154,7 +192,7 @@ elapsed time: 11.47 seconds
 elapsed time: 12.15 seconds
 ```
 
-#### 对话保持
+#### 对话历史保持
 ```python
 from generate import OpenAIChat
 
@@ -181,7 +219,7 @@ print(agent.generate('what is the weather in Beijing?').reply)
 The weather in Beijing is currently 27°C and sunny.
 ```
 
-### 图像生成
+### 图像生成模型
 
 ```python
 from generate import OpenAIImageGeneration
@@ -209,7 +247,7 @@ nebulas, illuminating the vast, infinite space with specks of light.',
 )
 ```
 
-### 语音生成
+### 语音生成模型
 
 ```python
 from generate import MinimaxSpeech
@@ -227,17 +265,6 @@ TextToSpeechOutput(
 )
 ```
 
-### 限制请求速率
-
-```python
-from generate import OpenAIChat
-
-# max 4 requests per 10 seconds
-model = OpenAIChat(model='gpt-4-vision-preview').limit(
-    max_generates_per_time_window=4,
-    num_seconds_in_time_window=10,
-)
-```
 
 ### 多种调用方式
 ```python
@@ -255,26 +282,10 @@ for stream_output in model.stream_generate('介绍一下唐朝'):
 # 异步批量调用，model.async_batch_generate
 ```
 
-### 支持多种模型
+### 启动 chainlit UI
 
-```python
-from generate.chat_completion import ChatModelRegistry
-
-print('\n'.join(list(ChatModelRegistry.keys())))
-
-# ----- Output -----
-azure
-openai
-minimax_pro
-minimax
-zhipu
-zhipu_character
-wenxin
-hunyuan
-baichuan
-bailian
-dashscope
-dashscope_multimodal
-moonshot
-deepseek
+```bash
+python -m generate.ui
+# help
+# python -m generate.ui --help
 ```

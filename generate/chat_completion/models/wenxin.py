@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
 from pydantic import Field, model_validator
 from typing_extensions import Annotated, NotRequired, Self, TypedDict, Unpack, override
@@ -134,7 +134,7 @@ class WenxinChatParametersDict(ModelParametersDict, total=False):
 
 class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'wenxin'
-    model_name_entrypoint_map: ClassVar[dict[str, str]] = {
+    model_name_entrypoint_map: ClassVar[Dict[str, str]] = {
         'ERNIE-Bot': 'completions',
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
