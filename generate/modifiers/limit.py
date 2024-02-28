@@ -22,7 +22,7 @@ def _batch(items: Iterable[T], batch_size: int) -> Generator[List[T], None, None
         yield batch
 
 
-class Limit(GenerateModel[I, O]):
+class LimitGenerateModel(GenerateModel[I, O]):
     def __init__(
         self,
         model: GenerateModel[I, O],

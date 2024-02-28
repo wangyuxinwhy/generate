@@ -17,8 +17,9 @@ O = TypeVar('O', bound=BaseModel)  # noqa: E741
 
 if TYPE_CHECKING:
     from generate.modifiers.agent import Agent, AgentKwargs
-    from generate.modifiers.session import Session
-    from generate.modifiers.structure import Structure, StructureKwargs
+    from generate.modifiers.hook import HookChatCompletionModel, HookModelKwargs
+    from generate.modifiers.session import SessionChatCompletionModel
+    from generate.modifiers.structure import StructureGenerateModel, StructureModelKwargs
 
 
 logger = logging.getLogger(__name__)
@@ -37,27 +38,33 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
         ...
 
     def structure(
-        self, output_structure_type: Type[O], instruction: str | None = None, **kwargs: Unpack['StructureKwargs']
-    ) -> 'Structure[Self, O]':
-        from generate.modifiers.structure import Structure
+        self, output_structure_type: Type[O], instruction: str | None = None, **kwargs: Unpack['StructureModelKwargs']
+    ) -> 'StructureGenerateModel[Self, O]':
+        from generate.modifiers.structure import StructureGenerateModel
 
-        return Structure(
+        return StructureGenerateModel(
             self,
             instruction=instruction,
             output_structure_type=output_structure_type,
             **kwargs,
         )
 
-    def session(self) -> 'Session':
-        from generate.modifiers.session import Session
+    def session(self) -> 'SessionChatCompletionModel':
+        from generate.modifiers.session import SessionChatCompletionModel
 
-        return Session(model=self)
+        return SessionChatCompletionModel(model=self)
 
     def agent(self, **kwargs: Unpack['AgentKwargs']) -> 'Agent':
         """Create an instance of the Agent class. An Agent is a wrapper around a model that allows tool use."""
         from generate.modifiers.agent import Agent
 
         return Agent(model=self, **kwargs)
+
+    def hook(self, **kwargs: Unpack['HookModelKwargs']) -> 'HookChatCompletionModel':
+        """Create an instance of the HookModel class. A HookModel is a wrapper around a model that allows hook use."""
+        from generate.modifiers.hook import HookChatCompletionModel
+
+        return HookChatCompletionModel(model=self, **kwargs)
 
 
 class RemoteChatCompletionModel(ChatCompletionModel):

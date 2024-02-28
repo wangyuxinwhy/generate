@@ -53,6 +53,7 @@ from generate.image_generation import (
     QianfanImageGenerationParameters,
     ZhipuImageGeneration,
 )
+from generate.modifiers.hook import AfterGenerateContext, BeforeGenerateContext
 from generate.platforms import (
     AzureSettings,
     BaichuanSettings,
@@ -144,6 +145,8 @@ __all__ = [
     'DashScopeSettings',
     'MoonshotSettings',
     'DeepSeekSettings',
+    'AfterGenerateContext',
+    'BeforeGenerateContext',
     'tool',
     'load_chat_model',
     'load_speech_model',
