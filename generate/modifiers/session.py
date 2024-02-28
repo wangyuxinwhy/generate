@@ -12,10 +12,12 @@ from generate.chat_completion.model_output import ChatCompletionStreamOutput
 T = TypeVar('T')
 
 
-class Session(ChatCompletionModel):
+class SessionChatCompletionModel(ChatCompletionModel):
     def __init__(self, model: ChatCompletionModel) -> None:
         self.model = model
         self.history: Messages = []
+
+        self.model_type = self.model.model_type  # type: ignore
 
     @property
     def name(self) -> str:

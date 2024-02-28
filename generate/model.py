@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self, TypedDict
 
 if TYPE_CHECKING:
-    from generate.modifiers.limit import Limit
+    from generate.modifiers.limit import LimitGenerateModel
 
 
 class ModelParameters(BaseModel):
@@ -99,10 +99,10 @@ class GenerateModel(Generic[I, O], ABC):
 
     def limit(
         self, async_capacity: int = 3, max_generates_per_time_window: int = 20, num_seconds_in_time_window: int = 60
-    ) -> Limit[I, O]:
-        from generate.modifiers.limit import Limit
+    ) -> LimitGenerateModel[I, O]:
+        from generate.modifiers.limit import LimitGenerateModel
 
-        return Limit(
+        return LimitGenerateModel(
             self,
             async_capacity=async_capacity,
             max_generates_per_time_window=max_generates_per_time_window,

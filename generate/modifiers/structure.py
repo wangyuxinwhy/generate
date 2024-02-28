@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from copy import deepcopy
-from typing import Any, Dict, Generic, Iterable, List, Optional, Type, TypeVar
+from typing import Any, ClassVar, Dict, Generic, Iterable, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 from typing_extensions import Self, TypedDict, Unpack
@@ -111,13 +111,15 @@ class StructureModelOutput(ModelOutput, Generic[O]):
     structure: O
 
 
-class StructureKwargs(TypedDict, Generic[O], total=False):
+class StructureModelKwargs(TypedDict, Generic[O], total=False):
     examples: Optional[Iterable[Example[O]]]
     system_template: str
     max_num_reask: int
 
 
-class Structure(GenerateModel[str, StructureModelOutput[O]], Generic[M, O]):
+class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generic[M, O]):
+    model_task: ClassVar[str] = 'text_to_structure'
+
     def __init__(
         self,
         model: M,
@@ -133,6 +135,8 @@ class Structure(GenerateModel[str, StructureModelOutput[O]], Generic[M, O]):
         self.examples = examples or []
         self.system_template = system_template
         self.max_num_reask = max_num_reask
+
+        self.model_type = self.model.model_type  # type: ignore
 
     @property
     def name(self) -> str:
