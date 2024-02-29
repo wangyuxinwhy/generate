@@ -18,6 +18,7 @@ Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当
 * [月之暗面](https://platform.moonshot.cn/docs)
 * [DeepSeek](https://platform.deepseek.com/usage)
 * [零一万物](https://www.lingyiwanwu.com/)
+* [Anthropic](https://www.anthropic.com/)
 * ...
 
 ## Features
