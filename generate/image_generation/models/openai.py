@@ -110,7 +110,7 @@ class OpenAIImageGeneration(RemoteImageGenerationModel):
             **parameters.custom_model_dump(),
         }
         return {
-            'url': self.settings.api_base + 'images/generations',
+            'url': self.settings.api_base + '/images/generations',
             'json': json_data,
             'headers': headers,
         }

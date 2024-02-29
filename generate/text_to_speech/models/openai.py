@@ -54,7 +54,7 @@ class OpenAISpeech(RemoteTextToSpeechModel):
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.settings.api_base + 'audio/speech',
+            'url': self.settings.api_base + '/audio/speech',
             'json': json_data,
             'headers': headers,
         }
