@@ -1,3 +1,4 @@
+from generate.chat_completion.models.anthropic import AnthropicChat, AnthropicChatParameters
 from generate.chat_completion.models.azure import AzureChat
 from generate.chat_completion.models.baichuan import BaichuanChat, BaichuanChatParameters
 from generate.chat_completion.models.bailian import (
@@ -27,6 +28,8 @@ from generate.chat_completion.models.zhipu import (
 
 __all__ = [
     'AzureChat',
+    'AnthropicChat',
+    'AnthropicChatParameters',
     'BaichuanChat',
     'BaichuanChatParameters',
     'BailianChat',

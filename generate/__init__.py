@@ -1,4 +1,6 @@
 from generate.chat_completion import (
+    AnthropicChat,
+    AnthropicChatParameters,
     AzureChat,
     BaichuanChat,
     BaichuanChatParameters,
@@ -57,6 +59,7 @@ from generate.image_generation import (
 )
 from generate.modifiers.hook import AfterGenerateContext, BeforeGenerateContext
 from generate.platforms import (
+    AnthropicSettings,
     AzureSettings,
     BaichuanSettings,
     BaiduCreationSettings,
@@ -118,6 +121,8 @@ __all__ = [
     'OpenAISpeechParameters',
     'YiChat',
     'YiChatParameters',
+    'AnthropicChat',
+    'AnthropicChatParameters',
     'MinimaxSpeech',
     'MinimaxSpeechParameters',
     'MinimaxProSpeech',
@@ -139,6 +144,7 @@ __all__ = [
     'ChatModelRegistry',
     'SpeechModelRegistry',
     'AzureSettings',
+    'AnthropicSettings',
     'BaichuanSettings',
     'BaiduCreationSettings',
     'MinimaxSettings',
