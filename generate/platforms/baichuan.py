@@ -11,4 +11,4 @@ class BaichuanSettings(PlatformSettings):
     secret_key: SecretStr
     api_base: str = 'https://api.baichuan-ai.com/v1/chat'
     stream_api_base: str = 'https://api.baichuan-ai.com/v1/stream/chat'
-    document_url: str = 'https://platform.baichuan-ai.com/docs/api'
+    platform_url: str = 'https://platform.baichuan-ai.com/docs/api'
