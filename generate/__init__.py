@@ -27,6 +27,8 @@ from generate.chat_completion import (
     RemoteChatCompletionModel,
     WenxinChat,
     WenxinChatParameters,
+    YiChat,
+    YiChatParameters,
     ZhipuCharacterChat,
     ZhipuCharacterChatParameters,
     ZhipuChat,
@@ -66,6 +68,7 @@ from generate.platforms import (
     MoonshotSettings,
     OpenAISettings,
     QianfanSettings,
+    YiSettings,
     ZhipuSettings,
 )
 from generate.text_to_speech import (
@@ -113,6 +116,8 @@ __all__ = [
     'DeepSeekChatParameters',
     'OpenAISpeech',
     'OpenAISpeechParameters',
+    'YiChat',
+    'YiChatParameters',
     'MinimaxSpeech',
     'MinimaxSpeechParameters',
     'MinimaxProSpeech',
@@ -145,6 +150,7 @@ __all__ = [
     'DashScopeSettings',
     'MoonshotSettings',
     'DeepSeekSettings',
+    'YiSettings',
     'AfterGenerateContext',
     'BeforeGenerateContext',
     'tool',

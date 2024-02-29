@@ -17,6 +17,7 @@ Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当
 * [智谱](https://open.bigmodel.cn/dev/api)
 * [月之暗面](https://platform.moonshot.cn/docs)
 * [DeepSeek](https://platform.deepseek.com/usage)
+* [零一万物](https://www.lingyiwanwu.com/)
 * ...
 
 ## Features
@@ -63,6 +64,7 @@ DashScopeChat
 DashScopeMultiModalChat
 MoonshotChat
 DeepSeekChat
+YiChat
 ```
 
 ### 配置模型 API

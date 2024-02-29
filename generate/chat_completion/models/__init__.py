@@ -17,6 +17,7 @@ from generate.chat_completion.models.minimax_pro import MinimaxProChat, MinimaxP
 from generate.chat_completion.models.moonshot import MoonshotChat, MoonshotChatParameters
 from generate.chat_completion.models.openai import OpenAIChat, OpenAIChatParameters
 from generate.chat_completion.models.wenxin import WenxinChat, WenxinChatParameters
+from generate.chat_completion.models.yi import YiChat, YiChatParameters
 from generate.chat_completion.models.zhipu import (
     ZhipuCharacterChat,
     ZhipuCharacterChatParameters,
@@ -40,6 +41,8 @@ __all__ = [
     'OpenAIChatParameters',
     'WenxinChat',
     'WenxinChatParameters',
+    'YiChat',
+    'YiChatParameters',
     'ZhipuChat',
     'ZhipuChatParameters',
     'ZhipuCharacterChat',
