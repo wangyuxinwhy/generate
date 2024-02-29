@@ -15,6 +15,8 @@ from generate.chat_completion.message import (
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models import (
+    AnthropicChat,
+    AnthropicChatParameters,
     AzureChat,
     BaichuanChat,
     BaichuanChatParameters,
@@ -51,6 +53,7 @@ from generate.model import ModelParameters
 
 ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (AzureChat, OpenAIChatParameters),
+    (AnthropicChat, AnthropicChatParameters),
     (OpenAIChat, OpenAIChatParameters),
     (MinimaxProChat, MinimaxProChatParameters),
     (MinimaxChat, MinimaxProChatParameters),
@@ -99,6 +102,8 @@ __all__ = [
     'BailianChatParameters',
     'YiChat',
     'YiChatParameters',
+    'AnthropicChat',
+    'AnthropicChatParameters',
     'DashScopeChat',
     'DashScopeChatParameters',
     'DashScopeMultiModalChat',
