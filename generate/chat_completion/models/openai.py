@@ -64,6 +64,7 @@ class OpenAIChat(OpenAILikeChat, ToolCallMixin):
     avaliable_models: ClassVar[list[str]] = [
         'gpt-4-turbo-preview',
         'gpt-3.5-turbo',
+        'gpt-4-vision-preview',
     ]
 
     parameters: OpenAIChatParameters

@@ -332,6 +332,7 @@ class _StreamResponseProcessor:
 
 class ZhipuChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu'
+    avaliable_models: ClassVar[list[str]] = ['glm-4', 'glm-3-turbo', 'glm-4v']
 
     parameters: ZhipuChatParameters
     settings: ZhipuSettings
@@ -452,6 +453,7 @@ class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
 
 class ZhipuCharacterChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu_character'
+    avaliable_models: ClassVar[list[str]] = ['charglm-3']
 
     parameters: ZhipuCharacterChatParameters
     settings: ZhipuSettings

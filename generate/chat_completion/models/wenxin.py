@@ -140,6 +140,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
     }
+    avaliable_models: ClassVar[List[str]] = list(model_name_entrypoint_map.keys())
 
     parameters: WenxinChatParameters
     settings: QianfanSettings
