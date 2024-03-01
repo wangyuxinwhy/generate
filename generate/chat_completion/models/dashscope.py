@@ -57,7 +57,7 @@ class DashScopeChatParametersDict(ModelParametersDict, total=False):
 
 class DashScopeChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'dashscope'
-    avaliable_models: ClassVar[list[str]] = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-1201', 'qwen-max-longcontext']
+    avaliable_models: ClassVar[List[str]] = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-1201', 'qwen-max-longcontext']
 
     parameters: DashScopeChatParameters
     settings: DashScopeSettings

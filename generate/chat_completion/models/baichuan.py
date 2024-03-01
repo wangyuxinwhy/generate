@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import AsyncIterator, ClassVar, Iterator, Literal, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field
 from typing_extensions import Annotated, TypedDict, Unpack, override
@@ -52,7 +52,7 @@ class BaichuanChatParametersDict(ModelParametersDict, total=False):
 
 class BaichuanChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'baichuan'
-    avaliable_models: ClassVar[list[str]] = ['Baichuan2-Turbo', 'Baichuan2-53B', 'Baichuan2-Turbo-192k']
+    avaliable_models: ClassVar[List[str]] = ['Baichuan2-Turbo', 'Baichuan2-53B', 'Baichuan2-Turbo-192k']
 
     parameters: BaichuanChatParameters
     settings: BaichuanSettings

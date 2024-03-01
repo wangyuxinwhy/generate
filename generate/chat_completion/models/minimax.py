@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Iterator, Literal, Optional
+from typing import Any, AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, TypedDict, Unpack, override
@@ -96,7 +96,7 @@ def _convert_messages(messages: Messages) -> list[MinimaxMessage]:
 
 class MinimaxChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'minimax'
-    avaliable_models: ClassVar[list[str]] = ['abab5.5-chat', 'abab5.5s-chat']
+    avaliable_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat']
 
     parameters: MinimaxChatParameters
     settings: MinimaxSettings

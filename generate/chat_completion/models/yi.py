@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import AsyncIterator, ClassVar, Iterator, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Optional
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Unpack, override
@@ -25,7 +25,7 @@ class YiParametersDict(ModelParametersDict, total=False):
 
 class YiChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'yi'
-    avaliable_models: ClassVar[list[str]] = ['yi-34b-chat', 'Yi-34B-Chat-200K']
+    avaliable_models: ClassVar[List[str]] = ['yi-34b-chat', 'Yi-34B-Chat-200K']
 
     parameters: YiChatParameters
     settings: YiSettings

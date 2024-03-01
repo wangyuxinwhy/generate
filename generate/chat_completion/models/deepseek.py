@@ -34,7 +34,7 @@ class DeepSeekParametersDict(ModelParametersDict, total=False):
 
 class DeepSeekChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'deepseek'
-    avaliable_models: ClassVar[list[str]] = ['deepseek-chat', 'deepseek-coder']
+    avaliable_models: ClassVar[List[str]] = ['deepseek-chat', 'deepseek-coder']
 
     parameters: DeepSeekChatParameters
     settings: DeepSeekSettings

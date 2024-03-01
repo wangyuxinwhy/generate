@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import AsyncIterator, ClassVar, Iterator, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Optional
 
 from pydantic import PositiveInt
 from typing_extensions import Unpack, override
@@ -28,7 +28,7 @@ class MoonshotParametersDict(ModelParametersDict, total=False):
 
 class MoonshotChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'moonshot'
-    avaliable_models: ClassVar[list[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
+    avaliable_models: ClassVar[List[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
 
     parameters: MoonshotChatParameters
     settings: MoonshotSettings

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from io import BytesIO
-from typing import AsyncIterator, ClassVar, Iterator, Literal, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, TypedDict, Unpack, override
@@ -54,7 +54,7 @@ class DashScopeMultiModalMessage(TypedDict):
 
 class DashScopeMultiModalChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'dashscope_multimodal'
-    avaliable_models: ClassVar[list[str]] = ['qwen-vl-max', 'qwen-vl-plus']
+    avaliable_models: ClassVar[List[str]] = ['qwen-vl-max', 'qwen-vl-plus']
 
     parameters: DashScopeMultiModalChatParameters
     settings: DashScopeSettings

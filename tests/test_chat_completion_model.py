@@ -10,6 +10,7 @@ from generate.chat_completion import (
     ChatCompletionStreamOutput,
     ChatModelRegistry,
     ChatModels,
+    RemoteChatCompletionModel,
 )
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.models.azure import AzureChat
@@ -90,3 +91,17 @@ async def async_stream_helper(model: ChatCompletionModel, prompt: Prompt) -> Cha
         if output.stream.control == 'finish':
             return output
     raise RuntimeError('Stream did not finish')
+
+
+@pytest.mark.parametrize(
+    ('model_cls'),
+    get_pytest_params(
+        'test_how_to_settings',
+        ChatModelRegistry,
+        types='model_cls',
+        exclude=['azure'],
+    ),
+)
+def test_how_to_settings(model_cls: Type[RemoteChatCompletionModel]) -> None:
+    how_to_settings = model_cls.how_to_settings()
+    assert model_cls.__name__ in how_to_settings

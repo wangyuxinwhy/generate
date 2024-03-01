@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, Type, TypeVar, get_type_hints
+from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, List, Type, TypeVar, get_type_hints
 
 from pydantic import BaseModel
 from typing_extensions import Self, Unpack, override
@@ -69,7 +69,7 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
 class RemoteChatCompletionModel(ChatCompletionModel, ABC):
     settings: PlatformSettings
     http_client: HttpClient
-    avaliable_models: ClassVar[list[str]] = []
+    avaliable_models: ClassVar[List[str]] = []
 
     def __init__(
         self,

@@ -46,7 +46,7 @@ class AnthropicParametersDict(ModelParametersDict, total=False):
 
 class AnthropicChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'anthropic'
-    avaliable_models: ClassVar[list[str]] = ['claude-2.1', 'claude-2.0', 'claude-instant-1.2']
+    avaliable_models: ClassVar[List[str]] = ['claude-2.1', 'claude-2.0', 'claude-instant-1.2']
 
     parameters: AnthropicChatParameters
     settings: AnthropicSettings

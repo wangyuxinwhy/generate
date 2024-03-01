@@ -259,7 +259,7 @@ def minimax_calculate_cost(model_name: str, usage: dict[str, int], num_web_searc
 
 class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'minimax_pro'
-    avaliable_models: ClassVar[list[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat']
+    avaliable_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat']
 
     parameters: MinimaxProChatParameters
     settings: MinimaxSettings
