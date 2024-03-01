@@ -52,6 +52,7 @@ print('\n'.join([model_cls.__name__ for model_cls, _ in ChatModelRegistry.values
 
 # ----- Output -----
 AzureChat
+AnthropicChat
 OpenAIChat
 MinimaxProChat
 MinimaxChat
