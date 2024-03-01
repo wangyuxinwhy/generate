@@ -1,10 +1,10 @@
 from pydantic import SecretStr
 from pydantic_settings import SettingsConfigDict
 
-from generate.platforms.base import PlatformSettings
+from generate.platforms.openai_like import OpenAILikeSettings
 
 
-class YiSettings(PlatformSettings):
+class YiSettings(OpenAILikeSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='yi_', env_file='.env')
 
     api_key: SecretStr

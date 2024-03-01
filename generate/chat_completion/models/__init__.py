@@ -8,6 +8,8 @@ from generate.chat_completion.models.bailian import (
 from generate.chat_completion.models.dashscope import (
     DashScopeChat,
     DashScopeChatParameters,
+)
+from generate.chat_completion.models.dashscope_multimodal import (
     DashScopeMultiModalChat,
     DashScopeMultiModalChatParameters,
 )

@@ -1,10 +1,10 @@
 from pydantic import SecretStr
 from pydantic_settings import SettingsConfigDict
 
-from generate.platforms.base import PlatformSettings
+from generate.platforms.openai_like import OpenAILikeSettings
 
 
-class MoonshotSettings(PlatformSettings):
+class MoonshotSettings(OpenAILikeSettings):
     model_config = SettingsConfigDict(extra='ignore', env_prefix='moonshot_', env_file='.env')
 
     api_key: SecretStr
