@@ -4,7 +4,7 @@ from typing import Any, List, Optional, cast
 
 from pydantic import BaseModel
 
-from generate.chat_completion.models.dashscope import DashScopeMultiModalChat
+from generate.chat_completion.models.dashscope_multimodal import DashScopeMultiModalChat
 
 try:
     import chainlit as cl

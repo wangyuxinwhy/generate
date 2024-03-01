@@ -1,21 +1,27 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Optional
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt
-from typing_extensions import Annotated, Self, Unpack, override
+from typing_extensions import Annotated, TypedDict, Unpack, override
 
-from generate.chat_completion.base import ChatCompletionModel
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import Prompt
-from generate.chat_completion.message.core import AssistantMessage, Message, Messages, SystemMessage, UserMessage
+from generate.chat_completion.message.core import AssistantMessage, Message, SystemMessage, UserMessage
 from generate.chat_completion.message.exception import MessageTypeError
 from generate.chat_completion.message.utils import ensure_messages
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
-from generate.http import HttpClient, HttpxPostKwargs, ResponseValue
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
+from generate.chat_completion.stream_manager import StreamManager
+from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms import AnthropicSettings
 from generate.types import Probability, Temperature
+
+
+class AnthropicMessage(TypedDict):
+    role: Literal['user', 'assistant']
+    content: str
 
 
 class AnthropicChatParameters(ModelParameters):
@@ -29,17 +35,18 @@ class AnthropicChatParameters(ModelParameters):
 
 
 class AnthropicParametersDict(ModelParametersDict, total=False):
-    system: str
-    max_tokens: int
-    metadata: Dict[str, Any]
-    stop: List[str]
-    temperature: float
-    top_p: float
-    top_k: int
+    system: Optional[str]
+    max_tokens: PositiveInt
+    metadata: Optional[Dict[str, Any]]
+    stop: Optional[List[str]]
+    temperature: Optional[Temperature]
+    top_p: Optional[Probability]
+    top_k: Optional[PositiveInt]
 
 
-class AnthropicChat(ChatCompletionModel):
+class AnthropicChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'anthropic'
+    avaliable_models: ClassVar[List[str]] = ['claude-2.1', 'claude-2.0', 'claude-instant-1.2']
 
     parameters: AnthropicChatParameters
     settings: AnthropicSettings
@@ -51,10 +58,31 @@ class AnthropicChat(ChatCompletionModel):
         settings: AnthropicSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or AnthropicChatParameters()
-        self.settings = settings or AnthropicSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
-        self.model = model
+        parameters = parameters or AnthropicChatParameters()
+        settings = settings or AnthropicSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]) -> ChatCompletionOutput:
+        return super().generate(prompt, **kwargs)
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]) -> ChatCompletionOutput:
+        return await super().async_generate(prompt, **kwargs)
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        yield from super().stream_generate(prompt, **kwargs)
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        async for output in super().async_stream_generate(prompt, **kwargs):
+            yield output
 
     def _convert_message(self, message: Message) -> dict[str, str]:
         if isinstance(message, UserMessage):
@@ -63,7 +91,13 @@ class AnthropicChat(ChatCompletionModel):
             return {'role': 'assistant', 'content': message.content}
         raise MessageTypeError(message, (UserMessage, AssistantMessage))
 
-    def _get_request_parameters(self, messages: Messages, parameters: AnthropicChatParameters) -> HttpxPostKwargs:
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[AnthropicParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
+
         if isinstance(messages[0], SystemMessage):
             parameters.system = messages[0].content
             messages = messages[1:]
@@ -72,6 +106,9 @@ class AnthropicChat(ChatCompletionModel):
         json_dict = parameters.custom_model_dump()
         json_dict['model'] = self.model
         json_dict['messages'] = anthropic_messages
+        if stream:
+            json_dict['stream'] = True
+
         headers = {
             'Content-Type': 'application/json',
             'anthropic-version': self.settings.api_version,
@@ -83,12 +120,8 @@ class AnthropicChat(ChatCompletionModel):
             'json': json_dict,
         }
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: AnthropicChatParameters) -> HttpxPostKwargs:
-        kwargs = self._get_request_parameters(messages, parameters)
-        kwargs['json']['stream'] = True
-        return kwargs
-
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    @override
+    def _process_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         content = ''
         for i in response['content']:
             if i['type'] == 'text':
@@ -97,11 +130,11 @@ class AnthropicChat(ChatCompletionModel):
             model_info=self.model_info,
             message=AssistantMessage(content=content),
             finish_reason=response['stop_reason'],
-            cost=self.calculate_cost(**response['usage']),
+            cost=self._calculate_cost(**response['usage']),
             extra={'usage': response['usage'], 'message_id': response['id']},
         )
 
-    def calculate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+    def _calculate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
         dollar_to_yuan = 7
         if 'claude-instant' in self.model:
             # prompt: $0.80/million tokens, completion: $2.40/million tokens
@@ -113,92 +146,27 @@ class AnthropicChat(ChatCompletionModel):
             return cost * dollar_to_yuan
         return None
 
-    def _parse_stream_line(
-        self, line: str, message: AssistantMessage, is_start: bool, usage: dict[str, int]
-    ) -> ChatCompletionStreamOutput | None:
-        parsed_line = json.loads(line)
-        if 'message' in parsed_line:
-            message_dict = parsed_line['message']
-            usage['input_tokens'] = message_dict['usage']['input_tokens']
+    @override
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
             return None
-        if 'delta' in parsed_line:
-            if 'stop_reason' in parsed_line['delta']:
-                delta_dict = parsed_line['delta']
-                usage['output_tokens'] = parsed_line['usage']['output_tokens']
-                return ChatCompletionStreamOutput(
-                    model_info=self.model_info,
-                    message=message,
-                    finish_reason=delta_dict['stop_reason'],
-                    cost=self.calculate_cost(**usage),
-                    stream=Stream(delta='', control='finish'),
-                    extra={'usage': usage},
-                )
-            delta = parsed_line['delta']['text']
-            message.content += delta
-            return ChatCompletionStreamOutput(
-                model_info=self.model_info,
-                message=message,
-                finish_reason=None,
-                stream=Stream(delta=delta, control='start' if is_start else 'continue'),
-            )
+
+        if 'message' in data:
+            input_tokens = data['message']['usage']['input_tokens']
+            stream_manager.extra.setdefault('usage', {}).update({'input_tokens': input_tokens})
+            return None
+
+        if 'delta' in data:
+            if 'stop_reason' in data['delta']:
+                delta_dict = data['delta']
+                stream_manager.delta = ''
+                stream_manager.finish_reason = delta_dict['stop_reason']
+                stream_manager.extra['output_tokens'] = data['usage']['output_tokens']
+                stream_manager.cost = self._calculate_cost(**stream_manager.extra['usage'])
+                return stream_manager.build_stream_output()
+
+            stream_manager.delta = data['delta']['text']
+            return stream_manager.build_stream_output()
         return None
-
-    @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        usage = {}
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start, usage=usage)
-            if output is None:
-                continue
-
-            is_start = False
-            yield output
-
-    @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[AnthropicParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        usage = {}
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start, usage=usage)
-            if output is None:
-                continue
-
-            is_start = False
-            yield output
-
-    @property
-    def name(self) -> str:
-        return self.model
-
-    @classmethod
-    def from_name(cls, name: str) -> Self:
-        return cls(model=name)

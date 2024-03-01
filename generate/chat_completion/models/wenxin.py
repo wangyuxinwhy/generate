@@ -19,7 +19,8 @@ from generate.chat_completion.message import (
     UserMessage,
     ensure_messages,
 )
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
+from generate.chat_completion.stream_manager import StreamManager
 from generate.chat_completion.tool import Tool, ToolCallMixin
 from generate.http import (
     HttpClient,
@@ -139,6 +140,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         'ERNIE-Bot-turbo': 'eb-instant',
         'ERNIE-Bot-4': 'completions_pro',
     }
+    avaliable_models: ClassVar[List[str]] = ['ERNIE-Bot', 'ERNIE-Bot-turbo', 'ERNIE-Bot-4']
 
     parameters: WenxinChatParameters
     settings: QianfanSettings
@@ -153,17 +155,42 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         parameters = parameters or WenxinChatParameters()
         settings = settings or QianfanSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
-
-        self.model = model
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
         self.token_manager = QianfanTokenManager(self.settings, self.http_client)
 
-    def _get_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+        return super().generate(prompt, **kwargs)
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
+        return await super().async_generate(prompt, **kwargs)
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        yield from super().stream_generate(prompt, **kwargs)
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        async for output in super().async_stream_generate(prompt, **kwargs):
+            yield output
+
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[WenxinChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         wenxin_messages: list[WenxinMessage] = _convert_messages(messages)
         parameters_dict = parameters.custom_model_dump()
         if 'temperature' in parameters_dict:
             parameters_dict['temperature'] = max(0.01, parameters_dict['temperature'])
         json_data = {'messages': wenxin_messages, **parameters_dict}
+        if stream:
+            json_data['stream'] = True
 
         return {
             'url': self.settings.comlpetion_api_base + self.model_name_entrypoint_map[self.model],
@@ -173,22 +200,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response.get('error_msg'):
             raise UnexpectedResponseError(response)
         if response.get('function_call'):
@@ -203,7 +215,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         return ChatCompletionOutput(
             model_info=self.model_info,
             message=message,
-            cost=self.calculate_cost(response['usage']),
+            cost=self._calculate_cost(response['usage']),
             extra={
                 'is_truncated': response['is_truncated'],
                 'need_clear_history': response['need_clear_history'],
@@ -211,68 +223,26 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
             },
         )
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: WenxinChatParameters) -> HttpxPostKwargs:
-        http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['json']['stream'] = True
-        return http_parameters
-
     @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        if parameters.functions:
-            raise ValueError('stream_generate does not support functions')
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            return None
 
-    @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[WenxinChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        if parameters.functions:
-            raise ValueError('stream_generate does not support functions')
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
+        stream_manager.delta = data['result']
+        if data['is_end']:
+            stream_manager.cost = self._calculate_cost(data['usage'])
+            stream_manager.finish_reason = 'stop'
+            extra = {
+                'is_truncated': data['is_truncated'],
+                'need_clear_history': data['need_clear_history'],
+                'usage': data['usage'],
+            }
+            stream_manager.extra.update(extra)
+        return stream_manager.build_stream_output()
 
-    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
-        parsed_line = json.loads(line)
-        delta = parsed_line['result']
-        message.content += delta
-        if parsed_line['is_end']:
-            return ChatCompletionStreamOutput(
-                model_info=self.model_info,
-                cost=self.calculate_cost(parsed_line['usage']),
-                extra={
-                    'is_truncated': parsed_line['is_truncated'],
-                    'need_clear_history': parsed_line['need_clear_history'],
-                    'usage': parsed_line['usage'],
-                },
-                message=message,
-                finish_reason='stop',
-                stream=Stream(delta=delta, control='finish'),
-            )
-        return ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            message=message,
-            finish_reason=None,
-            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
-        )
-
-    def calculate_cost(self, usage: dict[str, Any]) -> float | None:
+    def _calculate_cost(self, usage: dict[str, Any]) -> float | None:
         if self.name == 'ERNIE-Bot':
             return 0.012 * (usage['total_tokens'] / 1000)
         if self.name == 'ERNIE-Bot-turbo':
@@ -287,13 +257,3 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
             self.parameters.functions = new_functions
         else:
             self.parameters.functions.extend(new_functions)
-
-    @property
-    @override
-    def name(self) -> str:
-        return self.model
-
-    @classmethod
-    @override
-    def from_name(cls, name: str) -> Self:
-        return cls(model=name)

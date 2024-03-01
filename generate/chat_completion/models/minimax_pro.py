@@ -12,7 +12,6 @@ from generate.chat_completion.message import (
     FunctionCall,
     FunctionMessage,
     Message,
-    Messages,
     MessageTypeError,
     MessageValueError,
     Prompt,
@@ -21,6 +20,7 @@ from generate.chat_completion.message import (
     ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.stream_manager import StreamManager
 from generate.chat_completion.tool import FunctionJsonSchema, Tool, ToolCallMixin
 from generate.http import (
     HttpClient,
@@ -200,7 +200,7 @@ class _StreamResponseProcessor:
                 model_info=self.model_info,
                 message=self.message,
                 finish_reason=response['choices'][0]['finish_reason'],
-                cost=calculate_cost(model_name=self.model_info.name, usage=response['usage']),
+                cost=minimax_calculate_cost(model_name=self.model_info.name, usage=response['usage']),
                 extra={
                     'input_sensitive': response['input_sensitive'],
                     'output_sensitive': response['output_sensitive'],
@@ -245,7 +245,7 @@ class _StreamResponseProcessor:
         return delta
 
 
-def calculate_cost(model_name: str, usage: dict[str, int], num_web_search: int = 0) -> float:
+def minimax_calculate_cost(model_name: str, usage: dict[str, int], num_web_search: int = 0) -> float | None:
     if model_name == 'abab6-chat':
         model_cost = 0.1 * (usage['total_tokens'] / 1000)
     elif model_name == 'abab5.5-chat':
@@ -253,12 +253,13 @@ def calculate_cost(model_name: str, usage: dict[str, int], num_web_search: int =
     elif model_name == 'abab5.5s-chat':
         model_cost = 0.005 * (usage['total_tokens'] / 1000)
     else:
-        return 0.0
+        return None
     return model_cost + (0.03 * num_web_search)
 
 
 class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
     model_type: ClassVar[str] = 'minimax_pro'
+    avaliable_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat']
 
     parameters: MinimaxProChatParameters
     settings: MinimaxSettings
@@ -273,12 +274,72 @@ class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
         parameters = parameters or MinimaxProChatParameters()
         settings = settings or MinimaxSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
-        self.model = model
         self.default_user_name = '用户'
 
-    def _get_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
+        return super().generate(prompt, **kwargs)
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
+        return await super().async_generate(prompt, **kwargs)
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
+        for line in self.http_client.stream_post(request_parameters=request_parameters):
+            yield stream_processor.process(json.loads(line))
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
+        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
+            yield stream_processor.process(json.loads(line))
+
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        new_functions = [tool.json_schema for tool in ensure_iterable(tools)]
+        if self.parameters.functions is None:
+            self.parameters.functions = new_functions
+        else:
+            self.parameters.functions.extend(new_functions)
+
+    @override
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+        try:
+            messages: list[AssistantMessage | FunctionMessage] = [
+                _convert_to_message(i) for i in response['choices'][0]['messages']
+            ]
+            message = cast(AssistantMessage, messages[-1])
+            finish_reason = response['choices'][0]['finish_reason']
+            num_web_search = sum([1 for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
+            return ChatCompletionOutput(
+                model_info=self.model_info,
+                message=message,
+                finish_reason=finish_reason,
+                cost=minimax_calculate_cost(model_name=self.name, usage=response['usage'], num_web_search=num_web_search),
+                extra={
+                    'input_sensitive': response['input_sensitive'],
+                    'output_sensitive': response['output_sensitive'],
+                    'usage': response['usage'],
+                },
+            )
+        except (KeyError, IndexError, TypeError) as e:
+            raise UnexpectedResponseError(response) from e
+
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[MinimaxProChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         if isinstance(messages[0], SystemMessage):
             system_message = messages[0]
             parameters.set_system_prompt(system_message.content)
@@ -291,6 +352,9 @@ class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
             for message in messages
         ]
         json_data = {'model': self.model, 'messages': minimax_pro_messages, **parameters.custom_model_dump()}
+        if stream:
+            json_data['stream'] = True
+
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
             'Content-Type': 'application/json',
@@ -303,81 +367,9 @@ class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
-        try:
-            messages: list[AssistantMessage | FunctionMessage] = [
-                _convert_to_message(i) for i in response['choices'][0]['messages']
-            ]
-            message = cast(AssistantMessage, messages[-1])
-            finish_reason = response['choices'][0]['finish_reason']
-            num_web_search = sum([1 for i in response['choices'][0]['messages'] if i['sender_name'] == 'plugin_web_search'])
-            return ChatCompletionOutput(
-                model_info=self.model_info,
-                message=message,
-                finish_reason=finish_reason,
-                cost=calculate_cost(model_name=self.name, usage=response['usage'], num_web_search=num_web_search),
-                extra={
-                    'input_sensitive': response['input_sensitive'],
-                    'output_sensitive': response['output_sensitive'],
-                    'usage': response['usage'],
-                },
-            )
-        except (KeyError, IndexError, TypeError) as e:
-            raise UnexpectedResponseError(response) from e
-
-    def _get_stream_request_parameters(self, messages: Messages, parameters: MinimaxProChatParameters) -> HttpxPostKwargs:
-        http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['json']['stream'] = True
-        return http_parameters
-
-    @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            yield stream_processor.process(json.loads(line))
-
-    @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[MinimaxProChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        stream_processor = _StreamResponseProcessor(model_info=self.model_info)
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            yield stream_processor.process(json.loads(line))
-
-    def add_tools(self, tools: OrIterable[Tool]) -> None:
-        new_functions = [tool.json_schema for tool in ensure_iterable(tools)]
-        if self.parameters.functions is None:
-            self.parameters.functions = new_functions
-        else:
-            self.parameters.functions.extend(new_functions)
-
-    @property
-    @override
-    def name(self) -> str:
-        return self.model
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        # TODO: implement this
+        raise NotImplementedError
 
     @classmethod
     @override

@@ -11,14 +11,14 @@ from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
     AssistantMessage,
     Message,
-    Messages,
     MessageTypeError,
     Prompt,
     SystemMessage,
     UserMessage,
     ensure_messages,
 )
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
+from generate.chat_completion.stream_manager import StreamManager
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -38,16 +38,6 @@ def generate_default_request_id() -> str:
 class BailianMessage(TypedDict):
     Role: Literal['user', 'assistant', 'system']
     Content: str
-
-
-def _convert_message_to_bailian_message(message: Message) -> BailianMessage:
-    if isinstance(message, UserMessage):
-        return {'Role': 'user', 'Content': message.content}
-    if isinstance(message, AssistantMessage):
-        return {'Role': 'assistant', 'Content': message.content}
-    if isinstance(message, SystemMessage):
-        return {'Role': 'system', 'Content': message.content}
-    raise MessageTypeError(message, (UserMessage, AssistantMessage, SystemMessage))
 
 
 class BailianChatParameters(ModelParameters):
@@ -79,22 +69,12 @@ class BailianChatParameters(ModelParameters):
 
 class BailianChatParametersDict(ModelParametersDict, total=False):
     request_id: str
-    top_p: Probability
-    top_k: int
-    seed: int
-    temperature: float
-    max_tokens: PositiveInt
-    stop: List[str]
-
-
-def calculate_bailian_cost(model_id: str, total_tokens: int) -> float | None:
-    if model_id == 'qwen-turbo':
-        return 0.008 * total_tokens / 1000
-    if model_id == 'qwen-plus':
-        return 0.012 * total_tokens / 1000
-    if model_id == 'qwen-max':
-        return 0.12 * total_tokens / 1000
-    return None
+    top_p: Optional[Probability]
+    top_k: Optional[int]
+    seed: Optional[int]
+    temperature: Optional[float]
+    max_tokens: Optional[PositiveInt]
+    stop: Optional[List[str]]
 
 
 class BailianChat(RemoteChatCompletionModel):
@@ -113,12 +93,54 @@ class BailianChat(RemoteChatCompletionModel):
         parameters = parameters or BailianChatParameters()
         settings = settings or BailianSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+        self.app_id = app_id or settings.default_app_id
+        super().__init__(model=self.app_id, parameters=parameters, settings=settings, http_client=http_client)
 
-        self.app_id = app_id or self.settings.default_app_id
         self.token_manager = BailianTokenManager(self.settings, self.http_client)
 
-    def _get_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
+    @override
+    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        return super().generate(prompt, **kwargs)
+
+    @override
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
+        return await super().async_generate(prompt, **kwargs)
+
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        yield from super().stream_generate(prompt, **kwargs)
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        async for output in super().async_stream_generate(prompt, **kwargs):
+            yield output
+
+    @classmethod
+    @override
+    def from_name(cls, name: str) -> Self:
+        return cls(app_id=name)
+
+    @staticmethod
+    def _convert_message(message: Message) -> BailianMessage:
+        if isinstance(message, UserMessage):
+            return {'Role': 'user', 'Content': message.content}
+        if isinstance(message, AssistantMessage):
+            return {'Role': 'assistant', 'Content': message.content}
+        if isinstance(message, SystemMessage):
+            return {'Role': 'system', 'Content': message.content}
+        raise MessageTypeError(message, (UserMessage, AssistantMessage, SystemMessage))
+
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[BailianChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
+
         if not isinstance(messages[-1], UserMessage):
             raise MessageTypeError(messages[-1], allowed_message_type=(UserMessage,))
 
@@ -128,7 +150,12 @@ class BailianChat(RemoteChatCompletionModel):
             'Authorization': f'Bearer {self.token_manager.token}',
         }
         json_dict['AppId'] = self.app_id
-        json_dict['Messages'] = [_convert_message_to_bailian_message(i) for i in messages]
+        json_dict['Messages'] = [self._convert_message(i) for i in messages]
+
+        if stream:
+            headers['Accept'] = 'text/event-stream'
+            json_dict['Stream'] = True
+
         return {
             'url': self.settings.completion_api,
             'headers': headers,
@@ -136,22 +163,7 @@ class BailianChat(RemoteChatCompletionModel):
         }
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
-
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if not response['Success']:
             raise UnexpectedResponseError(response)
         response_data = response['Data']
@@ -159,7 +171,7 @@ class BailianChat(RemoteChatCompletionModel):
         model_id = response_data['Usage'][0]['ModelId']
         return ChatCompletionOutput(
             model_info=self.model_info,
-            cost=calculate_bailian_cost(model_id=model_id, total_tokens=total_tokens),
+            cost=self._calculate_cost(model_id=model_id, total_tokens=total_tokens),
             finish_reason=response_data.get('FinishReason'),
             message=AssistantMessage(content=response_data['Text']),
             extra={
@@ -171,90 +183,44 @@ class BailianChat(RemoteChatCompletionModel):
             },
         )
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: BailianChatParameters) -> HttpxPostKwargs:
-        http_post_kwargs = self._get_request_parameters(messages, parameters)
-        http_post_kwargs['headers']['Accept'] = 'text/event-stream'  # type: ignore
-        http_post_kwargs['json']['Stream'] = True  # type: ignore
-        return http_post_kwargs
-
     @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        is_finish = False
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            if is_finish:
-                continue
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            return None
 
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            is_finish = output.is_finish
-            yield output
-
-    @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[BailianChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        is_finish = False
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            if is_finish:
-                continue
-
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            is_finish = output.is_finish
-            yield output
-
-    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
-        parsed_line = json.loads(line)
-        response_data = parsed_line['Data']
+        response_data = data['Data']
         reply: str = response_data['Text']
-        extra = {
-            'thoughts': response_data.get('Thoughts'),
-            'doc_references': response_data.get('DocReferences'),
-            'response_id': response_data.get('ResponseId'),
-        }
-        if len(reply) == len(message.content):
-            total_tokens = response_data['Usage'][0]['InputTokens'] + response_data['Usage'][0]['OutputTokens']
-            model_id = response_data['Usage'][0]['ModelId']
-            extra['usage'] = response_data['Usage'][0]
-            extra['response_id'] = response_data.get('ResponseId')
-            return ChatCompletionStreamOutput(
-                model_info=self.model_info,
-                cost=calculate_bailian_cost(model_id=model_id, total_tokens=total_tokens),
-                message=message,
-                extra=extra,
-                finish_reason='stop',
-                stream=Stream(delta='', control='finish'),
-            )
-
-        delta = reply[len(message.content) :]
-        message.content = reply
-        return ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            message=message,
-            extra=extra,
-            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
+        stream_manager.extra.update(
+            {
+                'thoughts': response_data.get('Thoughts'),
+                'doc_references': response_data.get('DocReferences'),
+                'response_id': response_data.get('ResponseId'),
+            }
         )
 
-    @property
-    @override
-    def name(self) -> str:
-        return self.app_id
+        is_finish = len(reply) == len(stream_manager.content)
+        if is_finish:
+            total_tokens = response_data['Usage'][0]['InputTokens'] + response_data['Usage'][0]['OutputTokens']
+            model_id = response_data['Usage'][0]['ModelId']
+            stream_manager.delta = ''
+            stream_manager.extra['usage'] = response_data['Usage'][0]
+            stream_manager.extra['response_id'] = response_data.get('ResponseId')
+            stream_manager.cost = self._calculate_cost(model_id=model_id, total_tokens=total_tokens)
+            stream_manager.finish_reason = 'stop'
+            return stream_manager.build_stream_output()
 
-    @classmethod
-    @override
-    def from_name(cls, name: str) -> Self:
-        if name:
-            raise ValueError(f'{cls} cannot be initialized from name')
-        return cls()
+        delta = reply[len(stream_manager.content) :]
+        stream_manager.delta = delta
+        return stream_manager.build_stream_output()
+
+    @staticmethod
+    def _calculate_cost(model_id: str, total_tokens: int) -> float | None:
+        if model_id == 'qwen-turbo':
+            return 0.008 * total_tokens / 1000
+        if model_id == 'qwen-plus':
+            return 0.012 * total_tokens / 1000
+        if model_id == 'qwen-max':
+            return 0.12 * total_tokens / 1000
+        return None

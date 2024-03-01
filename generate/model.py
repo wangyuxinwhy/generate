@@ -8,6 +8,8 @@ import asyncer
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self, TypedDict
 
+from generate.utils import sync_await
+
 if TYPE_CHECKING:
     from generate.modifiers.limit import LimitGenerateModel
 
@@ -66,9 +68,8 @@ class GenerateModel(Generic[I, O], ABC):
     def from_name(cls, name: str) -> Self:
         ...
 
-    @abstractmethod
     def generate(self, prompt: I, **kwargs: Any) -> O:
-        ...
+        return sync_await(self.async_generate(prompt, **kwargs))
 
     @abstractmethod
     async def async_generate(self, prompt: I, **kwargs: Any) -> O:

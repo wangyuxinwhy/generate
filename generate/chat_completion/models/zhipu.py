@@ -5,7 +5,7 @@ import json
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional, Union
 
 from pydantic import field_validator
-from typing_extensions import NotRequired, Self, TypedDict, Unpack, override
+from typing_extensions import NotRequired, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
@@ -26,6 +26,7 @@ from generate.chat_completion.message import (
     ensure_messages,
 )
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.stream_manager import StreamManager
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -331,6 +332,7 @@ class _StreamResponseProcessor:
 
 class ZhipuChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu'
+    avaliable_models: ClassVar[List[str]] = ['glm-4', 'glm-3-turbo', 'glm-4v']
 
     parameters: ZhipuChatParameters
     settings: ZhipuSettings
@@ -345,23 +347,27 @@ class ZhipuChat(RemoteChatCompletionModel):
         parameters = parameters or ZhipuChatParameters()
         settings = settings or ZhipuSettings()  # type: ignore
         http_client = http_client or HttpClient(stream_strategy='basic')
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
-        self.model = model
-
-    def _get_request_parameters(self, messages: Messages, parameters: ZhipuChatParameters) -> HttpxPostKwargs:
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[ZhipuChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         zhipu_messages = self._convert_messages(messages)
         headers = {
             'Authorization': generate_zhipu_token(self.settings.api_key.get_secret_value()),
         }
-        params = {'messages': zhipu_messages, 'model': self.model, **parameters.custom_model_dump()}
+        params = {'messages': zhipu_messages, 'model': self.model, 'stream': stream, **parameters.custom_model_dump()}
         return {
             'url': f'{self.settings.v4_api_base}/chat/completions',
             'headers': headers,
             'json': params,
         }
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    @override
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         message_dict = response['choices'][0]['message']
         return ChatCompletionOutput(
             model_info=self.model_info,
@@ -370,37 +376,22 @@ class ZhipuChat(RemoteChatCompletionModel):
             extra={'usage': response['usage']},
         )
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: ZhipuChatParameters) -> HttpxPostKwargs:
-        http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['json']['stream'] = True
-        return http_parameters
-
     def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
         return [convert_to_zhipu_message(message) for message in messages]
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return super().generate(prompt, **kwargs)
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return await super().async_generate(prompt, **kwargs)
 
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
         stream_processor = _StreamResponseProcessor()
         is_finish = False
         for line in self.http_client.stream_post(request_parameters=request_parameters):
@@ -416,9 +407,7 @@ class ZhipuChat(RemoteChatCompletionModel):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
         stream_processor = _StreamResponseProcessor()
         is_finish = False
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
@@ -430,15 +419,9 @@ class ZhipuChat(RemoteChatCompletionModel):
             is_finish = output.is_finish
             yield output
 
-    @property
     @override
-    def name(self) -> str:
-        return self.model
-
-    @classmethod
-    @override
-    def from_name(cls, name: str) -> Self:
-        return cls(model=name)
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        raise NotImplementedError
 
 
 class ZhipuMeta(TypedDict):
@@ -470,6 +453,7 @@ class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
 
 class ZhipuCharacterChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'zhipu_character'
+    avaliable_models: ClassVar[List[str]] = ['charglm-3']
 
     parameters: ZhipuCharacterChatParameters
     settings: ZhipuSettings
@@ -484,18 +468,25 @@ class ZhipuCharacterChat(RemoteChatCompletionModel):
         parameters = parameters or ZhipuCharacterChatParameters()
         settings = settings or ZhipuSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
-        self.model = model
-
-    def _get_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         zhipu_messages = self._convert_messages(messages)
         headers = {
             'Authorization': generate_zhipu_token(self.settings.api_key.get_secret_value()),
         }
         params = {'prompt': zhipu_messages, **parameters.custom_model_dump()}
+        if stream:
+            url = f'{self.settings.v3_api_base}/{self.model}/sse-invoke'
+        else:
+            url = f'{self.settings.v3_api_base}/{self.model}/invoke'
         return {
-            'url': f'{self.settings.v3_api_base}/{self.model}/invoke',
+            'url': url,
             'headers': headers,
             'json': params,
         }
@@ -503,7 +494,8 @@ class ZhipuCharacterChat(RemoteChatCompletionModel):
     def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
         return [convert_to_zhipu_message(message) for message in messages]
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    @override
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response['success']:
             text = response['data']['choices'][0]['content']
             return ChatCompletionOutput(
@@ -515,34 +507,19 @@ class ZhipuCharacterChat(RemoteChatCompletionModel):
 
         raise UnexpectedResponseError(response)
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: ModelParameters) -> HttpxPostKwargs:
-        http_parameters = self._get_request_parameters(messages, parameters)
-        http_parameters['url'] = f'{self.settings.v3_api_base}/{self.model}/sse-invoke'
-        return http_parameters
-
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return super().generate(prompt, **kwargs)
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return await super().async_generate(prompt, **kwargs)
 
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
         message = AssistantMessage(content='')
         is_start = True
         for line in self.http_client.stream_post(request_parameters=request_parameters):
@@ -564,9 +541,7 @@ class ZhipuCharacterChat(RemoteChatCompletionModel):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[ZhipuCharacterChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
+        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
         message = AssistantMessage(content='')
         is_start = True
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
@@ -584,12 +559,6 @@ class ZhipuCharacterChat(RemoteChatCompletionModel):
             stream=Stream(delta='', control='finish'),
         )
 
-    @property
     @override
-    def name(self) -> str:
-        return self.model
-
-    @classmethod
-    @override
-    def from_name(cls, name: str) -> Self:
-        return cls(model=name)
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        raise NotImplementedError

@@ -21,7 +21,8 @@ from generate.chat_completion.message import (
     UserMessage,
     ensure_messages,
 )
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, Stream
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
+from generate.chat_completion.stream_manager import StreamManager
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -78,39 +79,31 @@ class HunyuanChat(RemoteChatCompletionModel):
         parameters = parameters or HunyuanChatParameters()
         settings = settings or HunyuanSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(parameters=parameters, settings=settings, http_client=http_client)
-
-    def _get_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
-        hunyuan_messages = _convert_messages(messages)
-        json_dict = self.generate_json_dict(hunyuan_messages, parameters)
-        signature = self.generate_signature(self.generate_sign_parameters(json_dict))
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': signature,
-        }
-        return {
-            'url': self.settings.completion_api,
-            'headers': headers,
-            'json': json_dict,
-        }
+        super().__init__(model='', parameters=parameters, settings=settings, http_client=http_client)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = self.http_client.post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return super().generate(prompt, **kwargs)
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]) -> ChatCompletionOutput:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_request_parameters(messages, parameters)
-        response = await self.http_client.async_post(request_parameters=request_parameters)
-        return self._parse_reponse(response.json())
+        return await super().async_generate(prompt, **kwargs)
 
-    def _parse_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+    @override
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
+        yield from super().stream_generate(prompt, **kwargs)
+
+    @override
+    async def async_stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
+    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+        async for output in super().async_stream_generate(prompt, **kwargs):
+            yield output
+
+    @override
+    def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         if response.get('error'):
             raise UnexpectedResponseError(response)
         return ChatCompletionOutput(
@@ -121,9 +114,17 @@ class HunyuanChat(RemoteChatCompletionModel):
             extra={'usage': response['usage']},
         )
 
-    def _get_stream_request_parameters(self, messages: Messages, parameters: HunyuanChatParameters) -> HttpxPostKwargs:
+    @override
+    def _get_request_parameters(
+        self, prompt: Prompt, stream: bool = False, **kwargs: Unpack[HunyuanChatParametersDict]
+    ) -> HttpxPostKwargs:
+        messages = ensure_messages(prompt)
+        parameters = self.parameters.clone_with_changes(**kwargs)
         hunyuan_messages = _convert_messages(messages)
-        json_dict = self.generate_json_dict(hunyuan_messages, parameters, stream=True)
+        if stream:
+            json_dict = self.generate_json_dict(hunyuan_messages, parameters, stream=True)
+        else:
+            json_dict = self.generate_json_dict(hunyuan_messages, parameters)
         signature = self.generate_signature(self.generate_sign_parameters(json_dict))
         headers = {
             'Content-Type': 'application/json',
@@ -136,53 +137,19 @@ class HunyuanChat(RemoteChatCompletionModel):
         }
 
     @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        for line in self.http_client.stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            return None
 
-    @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[HunyuanChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        messages = ensure_messages(prompt)
-        parameters = self.parameters.clone_with_changes(**kwargs)
-        request_parameters = self._get_stream_request_parameters(messages, parameters)
-        message = AssistantMessage(content='')
-        is_start = True
-        async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            output = self._parse_stream_line(line, message, is_start)
-            is_start = False
-            yield output
-
-    def _parse_stream_line(self, line: str, message: AssistantMessage, is_start: bool) -> ChatCompletionStreamOutput:
-        parsed_line = json.loads(line)
-        message_dict = parsed_line['choices'][0]
-        delta = message_dict['delta']['content']
-        message.content += delta
+        message_dict = data['choices'][0]
+        stream_manager.delta = message_dict['delta']['content']
         if message_dict['finish_reason']:
-            return ChatCompletionStreamOutput(
-                model_info=self.model_info,
-                message=message,
-                finish_reason=message_dict['finish_reason'],
-                cost=self.calculate_cost(parsed_line['usage']),
-                stream=Stream(delta=delta, control='finish'),
-                extra={'usage': parsed_line['usage']},
-            )
-        return ChatCompletionStreamOutput(
-            model_info=self.model_info,
-            message=message,
-            finish_reason=None,
-            stream=Stream(delta=delta, control='start' if is_start else 'continue'),
-        )
+            stream_manager.finish_reason = message_dict['finish_reason']
+            stream_manager.cost = self.calculate_cost(data['usage'])
+            stream_manager.extra.update(usage=data['usage'])
+        return stream_manager.build_stream_output()
 
     def generate_json_dict(
         self, messages: list[HunyuanMessage], parameters: HunyuanChatParameters, stream: bool = False

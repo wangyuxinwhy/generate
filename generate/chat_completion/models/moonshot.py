@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import AsyncIterator, ClassVar, Iterator, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Optional
 
 from pydantic import PositiveInt
 from typing_extensions import Unpack, override
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.chat_completion.models.openai import OpenAIChat
+from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
 from generate.model import ModelParameters, ModelParametersDict
 from generate.platforms import MoonshotSettings
@@ -26,8 +26,9 @@ class MoonshotParametersDict(ModelParametersDict, total=False):
     max_tokens: PositiveInt
 
 
-class MoonshotChat(OpenAIChat):
+class MoonshotChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'moonshot'
+    avaliable_models: ClassVar[List[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
 
     parameters: MoonshotChatParameters
     settings: MoonshotSettings
@@ -39,10 +40,11 @@ class MoonshotChat(OpenAIChat):
         settings: MoonshotSettings | None = None,
         http_client: HttpClient | None = None,
     ) -> None:
-        self.parameters = parameters or MoonshotChatParameters()
-        self.settings = settings or MoonshotSettings()  # type: ignore
-        self.http_client = http_client or HttpClient()
-        self.model = model
+        parameters = parameters or MoonshotChatParameters()
+        settings = settings or MoonshotSettings()  # type: ignore
+        http_client = http_client or HttpClient()
+        model = model
+        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]) -> ChatCompletionOutput:
