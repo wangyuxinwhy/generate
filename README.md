@@ -1,25 +1,28 @@
 # Generate
 
+[文档](https://wangyuxinwhy.github.io/generate/)
+
 > A Python Package to Access World-Class Generative Models.
 
 ## 简介
 
-Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当前支持：
+Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：
 
-* [OpenAI](https://platform.openai.com/docs/introduction)
-* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/chatgpt?tabs=python&amp;pivots=programming-language-chat-completions)
-* [阿里云-百炼](https://bailian.console.aliyun.com/)
-* [阿里云-灵积](https://dashscope.console.aliyun.com/overview)
-* [百川智能](https://platform.baichuan-ai.com/docs/api)
-* [腾讯云-混元](https://cloud.tencent.com/document/product/1729)
-* [Minimax](https://api.minimax.chat/document/guides/chat)
-* [百度智能云](https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t)
-* [智谱](https://open.bigmodel.cn/dev/api)
-* [月之暗面](https://platform.moonshot.cn/docs)
-* [DeepSeek](https://platform.deepseek.com/usage)
-* [零一万物](https://www.lingyiwanwu.com/)
-* [Anthropic](https://www.anthropic.com/)
-* ...
+| 平台 🤖       | 同步 🔄 | 异步 ⏳ | 流式 🌊 | Vision 👀 | Tools 🛠️ |
+|----------------|---------|---------|---------|-----------|-----------|
+| OpenAI         | ✅       | ✅       | ✅       | ✅         | ✅         |
+| Azure         | ✅       | ✅       | ❌       | ✅         | ✅         |
+| Anthropic         | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 文心 Wenxin | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 百炼 Bailian | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 灵积 DashScope | ✅       | ✅       | ✅       | ✅         | ❌         |
+| 百川智能 Baichuan | ✅       | ✅       | ✅       | ❌         | ❌         |
+| Minimax        | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 混元 Hunyuan        | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 智谱 Zhipu    | ✅       | ✅       | ✅       | ✅         | ✅         |
+| 月之暗面 Moonshot| ✅       | ✅       | ✅       | ❌         | ❌         |
+| DeepSeek       | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 零一万物 Yi       | ✅       | ✅       | ✅       | ❌         | ❌         |
 
 ## Features
 
