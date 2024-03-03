@@ -2,24 +2,32 @@
 
 > A Python Package to Access World-Class Generative Models.
 
+```python
+from generate import OpenAIChat, MinimaxChat
+
+OpenAIChat().generate('Hello，World!')
+MinimaxChat().generate('Hello，World!')
+```
+
 ## 简介
 
-Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当前支持：
+Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：
 
-* [OpenAI](https://platform.openai.com/docs/introduction)
-* [Azure](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/chatgpt?tabs=python&amp;pivots=programming-language-chat-completions)
-* [阿里云-百炼](https://bailian.console.aliyun.com/)
-* [阿里云-灵积](https://dashscope.console.aliyun.com/overview)
-* [百川智能](https://platform.baichuan-ai.com/docs/api)
-* [腾讯云-混元](https://cloud.tencent.com/document/product/1729)
-* [Minimax](https://api.minimax.chat/document/guides/chat)
-* [百度智能云](https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t)
-* [智谱](https://open.bigmodel.cn/dev/api)
-* [月之暗面](https://platform.moonshot.cn/docs)
-* [DeepSeek](https://platform.deepseek.com/usage)
-* [零一万物](https://www.lingyiwanwu.com/)
-* [Anthropic](https://www.anthropic.com/)
-* ...
+| 平台 🤖       | 同步 🔄 | 异步 ⏳ | 流式 🌊 | Vision 👀 | Tools 🛠️ |
+|----------------|---------|---------|---------|-----------|-----------|
+| OpenAI         | ✅       | ✅       | ✅       | ✅         | ✅         |
+| Azure         | ✅       | ✅       | ❌       | ✅         | ✅         |
+| Anthropic         | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 文心 Wenxin | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 百炼 Bailian | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 灵积 DashScope | ✅       | ✅       | ✅       | ✅         | ❌         |
+| 百川智能 Baichuan | ✅       | ✅       | ✅       | ❌         | ❌         |
+| Minimax        | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 混元 Hunyuan        | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 智谱 Zhipu    | ✅       | ✅       | ✅       | ✅         | ✅         |
+| 月之暗面 Moonshot| ✅       | ✅       | ✅       | ❌         | ❌         |
+| DeepSeek       | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 零一万物 Yi       | ✅       | ✅       | ✅       | ❌         | ❌         |
 
 ## Features
 
@@ -31,17 +39,13 @@ Generate 允许用户通过统一的 api 访问跨平台的生成式模型，当
 * **轻量**，最小化依赖，不同平台的请求和鉴权逻辑均为原生内置功能
 * **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
 
-## 基础使用
-
-<a target="_blank" href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
-</a>
-
-### 安装
+## 安装
 
 ```bash
 pip install generate-core
 ```
+
+## 对话模型
 
 ### 查看模型列表
 
@@ -93,9 +97,7 @@ You can get more information from this link: https://cloud.baidu.com/doc/WENXINW
 tips: You can also set these variables in the .env file, and generate will automatically load them.
 ```
 
-### 对话补全模型
-
-#### 文本生成
+### 文本生成
 
 ```python
 from generate import OpenAIChat
@@ -119,7 +121,7 @@ ChatCompletionOutput(
 )
 ```
 
-#### 多模态文本生成
+### 多模态文本生成
 
 ```python
 from generate import OpenAIChat
@@ -148,6 +150,22 @@ ChatCompletionOutput(
     ),
     finish_reason='stop'
 )
+```
+
+### 多种调用方式
+```python
+from generate import OpenAIChat
+
+model = OpenAIChat()
+for stream_output in model.stream_generate('介绍一下唐朝'):
+    print(stream_output.stream.delta, end='', flush=True)
+
+# 同步调用，model.generate
+# 异步调用，model.async_generate
+# 流式调用，model.stream_generate
+# 异步流式调用，model.async_stream_generate
+# 批量调研，model.batch_generate
+# 异步批量调用，model.async_batch_generate
 ```
 
 ### 派生功能
@@ -223,7 +241,7 @@ print(agent.generate('what is the weather in Beijing?').reply)
 The weather in Beijing is currently 27°C and sunny.
 ```
 
-### 图像生成模型
+## 图像生成模型
 
 ```python
 from generate import OpenAIImageGeneration
@@ -251,7 +269,7 @@ nebulas, illuminating the vast, infinite space with specks of light.',
 )
 ```
 
-### 语音生成模型
+## 语音生成模型
 
 ```python
 from generate import MinimaxSpeech
@@ -269,24 +287,7 @@ TextToSpeechOutput(
 )
 ```
 
-
-### 多种调用方式
-```python
-from generate import OpenAIChat
-
-model = OpenAIChat()
-for stream_output in model.stream_generate('介绍一下唐朝'):
-    print(stream_output.stream.delta, end='', flush=True)
-
-# 同步调用，model.generate
-# 异步调用，model.async_generate
-# 流式调用，model.stream_generate
-# 异步流式调用，model.async_stream_generate
-# 批量调研，model.batch_generate
-# 异步批量调用，model.async_batch_generate
-```
-
-### 启动 chainlit UI
+## UI
 
 ```bash
 python -m generate.ui
