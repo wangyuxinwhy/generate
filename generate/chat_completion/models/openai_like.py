@@ -228,20 +228,23 @@ def process_openai_like_model_reponse(response: ResponseValue, model_type: str) 
     if (finish_reason := choice.get('finish_reason')) is None:
         finish_reason = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
 
-    if model_type == 'openai':
-        cost = openai_calculate_cost(
-            model_name=response['model'],
-            input_tokens=response['usage']['prompt_tokens'],
-            output_tokens=response['usage']['completion_tokens'],
-        )
-    else:
-        cost_calculator = GeneralCostCalculator()
-        cost = cost_calculator.calculate(
-            model_type=model_type,
-            model_name=response['model'],
-            input_tokens=response['usage']['prompt_tokens'],
-            output_tokens=response['usage']['completion_tokens'],
-        )
+    try:
+        if model_type == 'openai':
+            cost = openai_calculate_cost(
+                model_name=response['model'],
+                input_tokens=response['usage']['prompt_tokens'],
+                output_tokens=response['usage']['completion_tokens'],
+            )
+        else:
+            cost_calculator = GeneralCostCalculator()
+            cost = cost_calculator.calculate(
+                model_type=model_type,
+                model_name=response['model'],
+                input_tokens=response['usage']['prompt_tokens'],
+                output_tokens=response['usage']['completion_tokens'],
+            )
+    except Exception:
+        cost = None
 
     return ChatCompletionOutput(
         model_info=ModelInfo(task='chat_completion', type=model_type, name=response['model']),
