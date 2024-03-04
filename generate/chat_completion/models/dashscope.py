@@ -129,6 +129,7 @@ class DashScopeChat(RemoteChatCompletionModel):
             message=AssistantMessage(content=response['output']['text']),
             cost=self._calculate_cost(response['usage']['total_tokens']),
             extra={'usage': response['usage'], 'request_id': response['request_id']},
+            finish_reason=response['output']['finish_reason'],
         )
 
     @override

@@ -221,6 +221,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
                 'need_clear_history': response['need_clear_history'],
                 'usage': response['usage'],
             },
+            finish_reason=response['finish_reason'],
         )
 
     @override

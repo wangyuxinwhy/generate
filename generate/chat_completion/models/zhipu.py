@@ -369,11 +369,13 @@ class ZhipuChat(RemoteChatCompletionModel):
     @override
     def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         message_dict = response['choices'][0]['message']
+        finish_reason = response['choices'][0]['finish_reason']
         return ChatCompletionOutput(
             model_info=self.model_info,
             message=_convert_to_assistant_message(message_dict),
             cost=_calculate_cost(self.model, response['usage']),
             extra={'usage': response['usage']},
+            finish_reason=finish_reason,
         )
 
     def _convert_messages(self, messages: Messages) -> list[ZhipuMessage]:
