@@ -10,6 +10,9 @@ MinimaxChat().generate('Hello，World!')
 ```
 
 ## 简介
+<a target="_blank" href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
 Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：
 
