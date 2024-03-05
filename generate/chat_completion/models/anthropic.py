@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
@@ -8,7 +9,16 @@ from typing_extensions import Annotated, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import Prompt
-from generate.chat_completion.message.core import AssistantMessage, Message, SystemMessage, UserMessage
+from generate.chat_completion.message.core import (
+    AssistantMessage,
+    ImagePart,
+    ImageUrlPart,
+    Message,
+    SystemMessage,
+    TextPart,
+    UserMessage,
+    UserMultiPartMessage,
+)
 from generate.chat_completion.message.exception import MessageTypeError
 from generate.chat_completion.message.utils import ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
@@ -89,7 +99,28 @@ class AnthropicChat(RemoteChatCompletionModel):
             return {'role': 'user', 'content': message.content}
         if isinstance(message, AssistantMessage):
             return {'role': 'assistant', 'content': message.content}
-        raise MessageTypeError(message, (UserMessage, AssistantMessage))
+        if isinstance(message, UserMultiPartMessage):
+            message_dict = {'role': 'user', 'content': []}
+            for part in message.content:
+                if isinstance(part, TextPart):
+                    message_dict['content'].append({'type': 'text', 'text': part.text})
+
+                if isinstance(part, ImagePart):
+                    data = base64.b64encode(part.image).decode()
+                    media_type = part.image_format or 'image/jpeg'
+                    message_dict['content'].append(
+                        {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': data}}
+                    )
+
+                if isinstance(part, ImageUrlPart):
+                    response = self.http_client.get({'url': part.image_url.url})
+                    data = base64.b64encode(response.content).decode()
+                    media_type = response.headers.get('Content-Type') or 'image/jpeg'
+                    message_dict['content'].append(
+                        {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': data}}
+                    )
+            return message_dict
+        raise MessageTypeError(message, (UserMessage, AssistantMessage, UserMultiPartMessage))
 
     @override
     def _get_request_parameters(
@@ -135,15 +166,18 @@ class AnthropicChat(RemoteChatCompletionModel):
         )
 
     def _calculate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        model_price_mapping = {
+            'claude-instant': (0.80, 2.40),
+            'claude-2': (8, 24),
+            'claude-3-haiku': (0.25, 1.25),
+            'claude-3-sonnet': (3, 15),
+            'claude-3-opus': (15, 75),
+        }
         dollar_to_yuan = 7
-        if 'claude-instant' in self.model:
-            # prompt: $0.80/million tokens, completion: $2.40/million tokens
-            cost = (input_tokens * 0.8 / 1_000_000) + (output_tokens * 2.4 / 1_000_000)
-            return cost * dollar_to_yuan
-        if 'claude-2' in self.model:
-            # prompt: $8/million tokens, completion: $24/million tokens
-            cost = (input_tokens * 8 / 1_000_000) + (output_tokens * 24 / 1_000_000)
-            return cost * dollar_to_yuan
+        for model_name, (prompt_price, completion_price) in model_price_mapping.items():
+            if model_name in self.model:
+                cost = (input_tokens * prompt_price / 1_000_000) + (output_tokens * completion_price / 1_000_000)
+                return cost * dollar_to_yuan
         return None
 
     @override
@@ -163,7 +197,7 @@ class AnthropicChat(RemoteChatCompletionModel):
                 delta_dict = data['delta']
                 stream_manager.delta = ''
                 stream_manager.finish_reason = delta_dict['stop_reason']
-                stream_manager.extra['output_tokens'] = data['usage']['output_tokens']
+                stream_manager.extra['usage']['output_tokens'] = data['usage']['output_tokens']
                 stream_manager.cost = self._calculate_cost(**stream_manager.extra['usage'])
                 return stream_manager.build_stream_output()
 

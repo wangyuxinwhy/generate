@@ -70,7 +70,7 @@ def test_http_stream_chat_model(chat_completion_model: ChatCompletionModel) -> N
         'test_multimodel_chat_completion',
         ChatModelRegistry,
         types='model_cls',
-        include=['dashscope_multimodal', 'zhipu', 'openai'],
+        include=['dashscope_multimodal', 'zhipu', 'openai', 'anthropic'],
     ),
 )
 def test_multimodel_chat_completion(model_cls: Type[ChatCompletionModel]) -> None:
@@ -81,7 +81,12 @@ def test_multimodel_chat_completion(model_cls: Type[ChatCompletionModel]) -> Non
             {'image_url': {'url': 'https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg'}},
         ],
     }
-    model = model_cls(model='gpt-4-vision-preview') if model_cls.model_type == 'openai' else model_cls()
+    if model_cls.model_type == 'openai':
+        model = model_cls(model='gpt-4-vision-preview')
+    elif model_cls.model_type == 'anthropic':
+        model = model_cls(model='claude-3-sonnet-20240229')
+    else:
+        model = model_cls()
     output = model.generate(user_message)
     assert output.reply != ''
 
