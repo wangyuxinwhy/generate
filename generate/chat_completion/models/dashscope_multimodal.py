@@ -30,7 +30,7 @@ from generate.http import (
     HttpxPostKwargs,
     ResponseValue,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.dashscope import DashScopeSettings
 from generate.types import Probability
 
@@ -41,7 +41,7 @@ class DashScopeMultiModalChatParameters(ModelParameters):
     top_k: Optional[Annotated[int, Field(ge=0, le=100)]] = None
 
 
-class DashScopeMultiModalChatParametersDict(ModelParametersDict, total=False):
+class DashScopeMultiModalChatParametersDict(RemoteModelParametersDict, total=False):
     seed: Optional[PositiveInt]
     top_p: Optional[Probability]
     top_k: Optional[int]

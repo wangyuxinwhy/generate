@@ -28,7 +28,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 from generate.types import JsonSchema, OrIterable, Probability, Temperature
 from generate.utils import ensure_iterable
@@ -124,7 +124,7 @@ class WenxinChatParameters(ModelParameters):
         return output
 
 
-class WenxinChatParametersDict(ModelParametersDict, total=False):
+class WenxinChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Temperature]
     top_p: Optional[Probability]
     functions: Optional[List[WenxinFunction]]

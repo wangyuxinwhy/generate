@@ -9,7 +9,7 @@ from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.image_generation.base import GeneratedImage, ImageGenerationOutput, RemoteImageGenerationModel
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.openai import OpenAISettings
 
 MAX_PROMPT_LENGTH_DALLE_3 = 4000
@@ -46,7 +46,7 @@ class OpenAIImageGenerationParameters(ModelParameters):
     user: Optional[str] = None
 
 
-class OpenAIImageGenerationParametersDict(ModelParametersDict, total=False):
+class OpenAIImageGenerationParametersDict(RemoteModelParametersDict, total=False):
     quality: Optional[Literal['hd', 'standard']]
     response_format: Optional[Literal['url', 'b64_json']]
     size: Optional[Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792']]

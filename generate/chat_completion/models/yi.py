@@ -9,7 +9,7 @@ from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import YiSettings
 
 
@@ -18,7 +18,7 @@ class YiChatParameters(ModelParameters):
     max_tokens: Optional[PositiveInt] = None
 
 
-class YiParametersDict(ModelParametersDict, total=False):
+class YiParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Annotated[float, Field(ge=0, lt=2)]]
     max_tokens: Optional[PositiveInt]
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncIterator, Awaitable, Generator, Generic, Iterable, TypeVar
+from typing import Any, AsyncIterator, Awaitable, Generator, Generic, Iterable, TypeVar
 
 from generate.types import OrIterable
 
@@ -50,3 +50,13 @@ def sync_aiter(aiterator: AsyncIterator[T]) -> Generator[T, None, None]:
 
         nest_asyncio.apply()
         yield from sync_aiter(aiterator)
+
+
+def unwrap_model(model: Any) -> Any:
+    from generate.model import GenerateModel
+
+    if hasattr(model, 'model'):
+        if isinstance(model.model, GenerateModel):
+            return unwrap_model(model.model)
+        return model
+    return model

@@ -9,7 +9,7 @@ from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import DeepSeekSettings
 from generate.types import Probability
 
@@ -23,7 +23,7 @@ class DeepSeekChatParameters(ModelParameters):
     stop: Optional[Union[str, List[str]]] = None
 
 
-class DeepSeekParametersDict(ModelParametersDict, total=False):
+class DeepSeekParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[float]
     top_p: Optional[Probability]
     max_tokens: Optional[PositiveInt]

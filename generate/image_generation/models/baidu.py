@@ -13,7 +13,7 @@ from generate.image_generation.base import (
     ImageGenerationOutput,
     RemoteImageGenerationModel,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.baidu import BaiduCreationSettings, BaiduCreationTokenManager
 
 ValidSize = Literal[
@@ -52,7 +52,7 @@ class BaiduImageGenerationParameters(ModelParameters):
         return output_data
 
 
-class BaiduImageGenerationParametersDict(ModelParametersDict, total=False):
+class BaiduImageGenerationParametersDict(RemoteModelParametersDict, total=False):
     size: ValidSize
     n: Optional[int]
     reference_image: Union[HttpUrl, Base64Str, None]

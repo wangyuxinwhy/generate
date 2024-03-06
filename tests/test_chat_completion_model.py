@@ -29,7 +29,7 @@ def test_model_type_is_unique() -> None:
     'parameters',
     [
         {},
-        {'temperature': 0.5, 'top_p': 0.85, 'max_tokens': 20},
+        {'temperature': 0.5, 'top_p': 0.85, 'max_tokens': 20, 'timeout': 20},
     ],
 )
 def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameters: dict[str, Any]) -> None:

@@ -29,7 +29,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.hunyuan import HunyuanSettings
 from generate.types import Probability, Temperature
 
@@ -44,7 +44,7 @@ class HunyuanChatParameters(ModelParameters):
     top_p: Optional[Probability] = None
 
 
-class HunyuanChatParametersDict(ModelParametersDict, total=False):
+class HunyuanChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Temperature]
     top_p: Optional[Probability]
 
