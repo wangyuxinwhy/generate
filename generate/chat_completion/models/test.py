@@ -11,14 +11,14 @@ from generate.chat_completion import (
 )
 from generate.chat_completion.message import AssistantMessage, Prompt, ensure_messages
 from generate.chat_completion.model_output import Stream
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 
 
 class FakeChatParameters(ModelParameters):
     prefix: str = 'Completed:'
 
 
-class FakeChatParametersDict(ModelParametersDict, total=False):
+class FakeChatParametersDict(RemoteModelParametersDict, total=False):
     prefix: str
 
 
@@ -28,19 +28,21 @@ class FakeChat(ChatCompletionModel):
     def __init__(self, parameters: FakeChatParameters | None = None) -> None:
         self.parameters = parameters or FakeChatParameters()
 
-    def generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, message=AssistantMessage(content=content))
 
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]) -> ChatCompletionOutput:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
         return ChatCompletionOutput(model_info=self.model_info, message=AssistantMessage(content=content))
 
-    def stream_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)
         content = f'{parameters.prefix}{messages[-1].content}'
@@ -56,7 +58,7 @@ class FakeChat(ChatCompletionModel):
         )
 
     async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]
+        self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)

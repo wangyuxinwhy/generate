@@ -9,7 +9,7 @@ from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import MoonshotSettings
 from generate.types import Probability, Temperature
 
@@ -20,7 +20,7 @@ class MoonshotChatParameters(ModelParameters):
     max_tokens: Optional[PositiveInt] = None
 
 
-class MoonshotParametersDict(ModelParametersDict, total=False):
+class MoonshotParametersDict(RemoteModelParametersDict, total=False):
     temperature: Temperature
     top_p: Probability
     max_tokens: PositiveInt

@@ -25,7 +25,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import Probability, Temperature
 
@@ -62,7 +62,7 @@ class MinimaxChatParameters(ModelParameters):
         return output
 
 
-class MinimaxChatParametersDict(ModelParametersDict, total=False):
+class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
     system_prompt: str
     role_meta: RoleMeta
     beam_width: Optional[int]

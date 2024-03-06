@@ -23,7 +23,7 @@ from generate.http import (
     HttpxPostKwargs,
     ResponseValue,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.dashscope import DashScopeSettings
 from generate.types import Probability
 
@@ -44,7 +44,7 @@ class DashScopeChatParameters(ModelParameters):
     search: Annotated[Optional[bool], Field(alias='enable_search')] = None
 
 
-class DashScopeChatParametersDict(ModelParametersDict, total=False):
+class DashScopeChatParametersDict(RemoteModelParametersDict, total=False):
     seed: Optional[PositiveInt]
     max_tokens: Optional[PositiveInt]
     top_p: Optional[Probability]

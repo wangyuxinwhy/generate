@@ -24,7 +24,7 @@ from generate.chat_completion.message.utils import ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.stream_manager import StreamManager
 from generate.http import HttpClient, HttpxPostKwargs
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import AnthropicSettings
 from generate.types import Probability, Temperature
 
@@ -44,7 +44,7 @@ class AnthropicChatParameters(ModelParameters):
     top_k: Optional[PositiveInt] = None
 
 
-class AnthropicParametersDict(ModelParametersDict, total=False):
+class AnthropicParametersDict(RemoteModelParametersDict, total=False):
     system: Optional[str]
     max_tokens: PositiveInt
     metadata: Optional[Dict[str, Any]]

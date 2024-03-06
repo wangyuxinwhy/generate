@@ -97,19 +97,25 @@ class RemoteChatCompletionModel(ChatCompletionModel, ABC):
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
+        timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
         request_parameters = self._get_request_parameters(prompt, **kwargs)
+        request_parameters['timeout'] = timeout
         response = self.http_client.post(request_parameters=request_parameters)
         return self._process_reponse(response.json())
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
+        timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
         request_parameters = self._get_request_parameters(prompt, **kwargs)
+        request_parameters['timeout'] = timeout
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._process_reponse(response.json())
 
     @override
     def stream_generate(self, prompt: Prompt, **kwargs: Any) -> Iterator[ChatCompletionStreamOutput]:
+        timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
         request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        request_parameters['timeout'] = timeout
         stream_manager = StreamManager(info=self.model_info)
         for line in self.http_client.stream_post(request_parameters=request_parameters):
             if output := self._process_stream_line(line, stream_manager):
@@ -117,7 +123,9 @@ class RemoteChatCompletionModel(ChatCompletionModel, ABC):
 
     @override
     async def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
+        timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
         request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        request_parameters['timeout'] = timeout
         stream_manager = StreamManager(info=self.model_info)
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
             if output := self._process_stream_line(line, stream_manager):

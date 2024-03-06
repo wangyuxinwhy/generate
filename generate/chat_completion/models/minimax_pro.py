@@ -28,7 +28,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelInfo, ModelParameters, ModelParametersDict
+from generate.model import ModelInfo, ModelParameters, RemoteModelParametersDict
 from generate.platforms.minimax import MinimaxSettings
 from generate.types import OrIterable, Probability, Temperature
 from generate.utils import ensure_iterable
@@ -118,7 +118,7 @@ class MinimaxProChatParameters(ModelParameters):
         return output
 
 
-class MinimaxProChatParametersDict(ModelParametersDict, total=False):
+class MinimaxProChatParametersDict(RemoteModelParametersDict, total=False):
     reply_constraints: ReplyConstrainsDict
     bot_setting: List[BotSettingDict]
     temperature: Optional[Temperature]

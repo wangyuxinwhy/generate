@@ -33,7 +33,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelInfo, ModelParameters, ModelParametersDict
+from generate.model import ModelInfo, ModelParameters, RemoteModelParametersDict
 from generate.platforms.zhipu import ZhipuSettings, generate_zhipu_token
 from generate.types import JsonSchema, Probability, Temperature
 
@@ -92,7 +92,7 @@ class ZhipuChatParameters(ModelParameters):
         return v
 
 
-class ZhipuChatParametersDict(ModelParametersDict, total=False):
+class ZhipuChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Temperature]
     top_p: Optional[Probability]
     request_id: Optional[str]
@@ -448,7 +448,7 @@ class ZhipuCharacterChatParameters(ModelParameters):
         return output
 
 
-class ZhipuCharacterChatParametersDict(ModelParametersDict, total=False):
+class ZhipuCharacterChatParametersDict(RemoteModelParametersDict, total=False):
     meta: ZhipuMeta
     request_id: Optional[str]
 

@@ -25,7 +25,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.bailian import BailianSettings, BailianTokenManager
 from generate.types import Probability
 
@@ -67,7 +67,7 @@ class BailianChatParameters(ModelParameters):
         return output
 
 
-class BailianChatParametersDict(ModelParametersDict, total=False):
+class BailianChatParametersDict(RemoteModelParametersDict, total=False):
     request_id: str
     top_p: Optional[Probability]
     top_k: Optional[int]

@@ -17,7 +17,7 @@ from generate.chat_completion.message import (
     UserMessage,
     ensure_messages,
 )
-from generate.model import GenerateModel, ModelOutput, ModelParametersDict
+from generate.model import GenerateModel, ModelOutput, RemoteModelParametersDict
 
 field_info_title = 'Output JSON strictly based the format and pydantic field information below:\n'
 json_schema_title = 'Output JSON strictly based the OpenAI JSON Schema:\n'
@@ -177,7 +177,7 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         )
         return SystemMessage(content=system_content)
 
-    def generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> StructureModelOutput[O]:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]) -> StructureModelOutput[O]:
         messages = deepcopy(self.messages)
         messages.extend(ensure_messages(prompt))
         num_reask = 0
@@ -205,7 +205,7 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
 
         raise ValueError(f'Failed to generate valid JSON after {self.max_num_reask} reasks.')
 
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[ModelParametersDict]) -> StructureModelOutput[O]:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]) -> StructureModelOutput[O]:
         messages = deepcopy(self.messages)
         messages.extend(ensure_messages(prompt))
         num_reask = 0

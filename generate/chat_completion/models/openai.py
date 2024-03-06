@@ -19,7 +19,7 @@ from generate.chat_completion.tool import FunctionJsonSchema, Tool, ToolCallMixi
 from generate.http import (
     HttpClient,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.openai import OpenAISettings
 from generate.types import OrIterable, Probability, Temperature
 from generate.utils import ensure_iterable
@@ -42,7 +42,7 @@ class OpenAIChatParameters(ModelParameters):
     tool_choice: Union[Literal['auto'], OpenAIToolChoice, None] = None
 
 
-class OpenAIChatParametersDict(ModelParametersDict, total=False):
+class OpenAIChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Temperature]
     top_p: Optional[Probability]
     max_tokens: Optional[PositiveInt]

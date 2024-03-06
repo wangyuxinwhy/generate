@@ -28,8 +28,8 @@ class ModelParameters(BaseModel):
             setattr(self, k, v)
 
 
-class ModelParametersDict(TypedDict, total=False):
-    ...
+class RemoteModelParametersDict(TypedDict, total=False):
+    timeout: Optional[int]
 
 
 class ModelInfo(BaseModel):

@@ -8,7 +8,7 @@ from typing_extensions import Annotated, Self, Unpack, override
 
 from generate.http import HttpClient, HttpxPostKwargs, ResponseValue
 from generate.image_generation.base import GeneratedImage, ImageGenerationOutput, RemoteImageGenerationModel
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.baidu import QianfanSettings, QianfanTokenManager
 
 ValidSize = Literal[
@@ -30,7 +30,7 @@ class QianfanImageGenerationParameters(ModelParameters):
     user: Optional[str] = Field(default=None, serialization_alias='user_id')
 
 
-class QianfanImageGenerationParametersDict(ModelParametersDict, total=False):
+class QianfanImageGenerationParametersDict(RemoteModelParametersDict, total=False):
     size: Optional[ValidSize]
     n: Optional[int]
     negative_prompt: Optional[str]

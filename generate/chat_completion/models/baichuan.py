@@ -26,7 +26,7 @@ from generate.http import (
     ResponseValue,
     UnexpectedResponseError,
 )
-from generate.model import ModelParameters, ModelParametersDict
+from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms.baichuan import BaichuanSettings
 from generate.types import Probability, Temperature
 
@@ -43,7 +43,7 @@ class BaichuanChatParameters(ModelParameters):
     search: Optional[bool] = Field(default=None, alias='with_search_enhance')
 
 
-class BaichuanChatParametersDict(ModelParametersDict, total=False):
+class BaichuanChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Optional[Temperature]
     top_k: Optional[int]
     top_p: Optional[Probability]
