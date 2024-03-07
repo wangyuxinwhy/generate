@@ -7,6 +7,11 @@ DefaultPriceMap = {
         'moonshot-v1-32k': (0.024, 0.024),
         'moonshot-v1-128k': (0.06, 0.06),
     },
+    'minimax': {
+        'abab5.5-chat': (0.015, 0.015),
+        'abab5.5s-chat': (0.005, 0.005),
+        'abab6-chat': (0.1, 0.1),
+    },
 }
 
 

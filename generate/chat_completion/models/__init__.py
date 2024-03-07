@@ -16,6 +16,7 @@ from generate.chat_completion.models.dashscope_multimodal import (
 from generate.chat_completion.models.deepseek import DeepSeekChat, DeepSeekChatParameters
 from generate.chat_completion.models.hunyuan import HunyuanChat, HunyuanChatParameters
 from generate.chat_completion.models.minimax import MinimaxChat, MinimaxChatParameters
+from generate.chat_completion.models.minimax_legacy import MinimaxLegacyChat, MinimaxLegacyChatParameters
 from generate.chat_completion.models.minimax_pro import MinimaxProChat, MinimaxProChatParameters
 from generate.chat_completion.models.moonshot import MoonshotChat, MoonshotChatParameters
 from generate.chat_completion.models.openai import OpenAIChat, OpenAIChatParameters
@@ -38,10 +39,12 @@ __all__ = [
     'BailianChatParameters',
     'HunyuanChat',
     'HunyuanChatParameters',
-    'MinimaxChat',
-    'MinimaxChatParameters',
+    'MinimaxLegacyChat',
+    'MinimaxLegacyChatParameters',
     'MinimaxProChat',
     'MinimaxProChatParameters',
+    'MinimaxChat',
+    'MinimaxChatParameters',
     'OpenAIChat',
     'OpenAIChatParameters',
     'WenxinChat',

@@ -360,7 +360,7 @@ class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.settings.api_base + 'text/chatcompletion_pro',
+            'url': self.settings.api_base + '/text/chatcompletion_pro',
             'json': json_data,
             'headers': headers,
             'params': {'GroupId': self.settings.group_id},

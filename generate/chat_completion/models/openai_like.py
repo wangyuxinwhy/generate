@@ -291,7 +291,7 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
         except json.JSONDecodeError:
             return None
 
-        delta_dict = data['choices'][0]['delta']
+        delta_dict = data['choices'][0].get('delta', {})
         self._update_delta(delta_dict, stream_manager=stream_manager)
         stream_manager.extra = self._extract_extra_info(data)
         stream_manager.cost = self._calculate_cost(data)
@@ -347,11 +347,16 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
             )
 
         cost_calculator = GeneralCostCalculator()
+        input_tokens = response['usage'].get('prompt_tokens', 0)
+        output_tokens = response['usage'].get('completion_tokens', 0)
+        if 'total_tokens' in response['usage']:
+            input_tokens = 0
+            output_tokens = response['usage']['total_tokens']
         return cost_calculator.calculate(
             model_type=self.model_type,
             model_name=response['model'],
-            input_tokens=response['usage']['prompt_tokens'],
-            output_tokens=response['usage']['completion_tokens'],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def _determine_finish_reason(self, response: ResponseValue) -> str | None:
