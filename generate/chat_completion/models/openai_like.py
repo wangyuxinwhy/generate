@@ -26,6 +26,7 @@ from generate.chat_completion.message import (
     UserMultiPartMessage,
     ensure_messages,
 )
+from generate.chat_completion.message.core import Messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.stream_manager import StreamManager
 from generate.chat_completion.tool import FunctionJsonSchema, Tool
@@ -262,7 +263,7 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
     def _get_request_parameters(self, prompt: Prompt, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)
-        openai_messages = [convert_to_openai_message(message) for message in messages]
+        openai_messages = self._convert_to_openai_messages(messages)
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
         }
@@ -279,6 +280,9 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
             'headers': headers,
             'json': params,
         }
+
+    def _convert_to_openai_messages(self, messages: Messages) -> List[OpenAIMessage]:
+        return [convert_to_openai_message(message) for message in messages]
 
     @override
     def _process_reponse(self, response: Dict[str, Any]) -> ChatCompletionOutput:
