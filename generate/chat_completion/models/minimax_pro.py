@@ -274,6 +274,10 @@ class MinimaxProChat(RemoteChatCompletionModel, ToolCallMixin):
         parameters = parameters or MinimaxProChatParameters()
         settings = settings or MinimaxSettings()  # type: ignore
         http_client = http_client or HttpClient()
+        if not settings.group_id:
+            raise ValueError(
+                'group_id is required for MinimaxProChat, you can set it in settings or environment variable MINIMAX_GROUP_ID'
+            )
         super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
         self.default_user_name = '用户'

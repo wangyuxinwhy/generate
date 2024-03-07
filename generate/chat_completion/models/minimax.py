@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Optional
 
-from pydantic import PositiveInt
+from pydantic import PositiveInt, field_validator
 from typing_extensions import Unpack, override
 
 from generate.chat_completion.message import (
@@ -25,6 +25,13 @@ class MinimaxChatParameters(ModelParameters):
     max_tokens: Optional[PositiveInt] = None
     tool_choice: Optional[str] = None
     tools: Optional[List[OpenAITool]] = None
+
+    @field_validator('temperature', 'top_p')
+    @classmethod
+    def can_not_equal_zero(cls, v: Optional[Temperature]) -> Optional[Temperature]:
+        if v == 0:
+            return 0.01
+        return v
 
 
 class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
