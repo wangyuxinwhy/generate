@@ -25,7 +25,7 @@ class YiParametersDict(RemoteModelParametersDict, total=False):
 
 class YiChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'yi'
-    avaliable_models: ClassVar[List[str]] = ['yi-34b-chat', 'Yi-34B-Chat-200K']
+    available_models: ClassVar[List[str]] = ['yi-34b-chat', 'Yi-34B-Chat-200K']
 
     parameters: YiChatParameters
     settings: YiSettings
@@ -59,5 +59,5 @@ class YiChat(OpenAILikeChat):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[YiParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for i in super().async_stream_generate(prompt, **kwargs):
-            yield i
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+            yield stream_output

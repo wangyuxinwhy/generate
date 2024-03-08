@@ -7,6 +7,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Type, Union, cast
 
 from typing_extensions import NotRequired, TypedDict, override
+import uuid
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.cost_caculator import GeneralCostCalculator
@@ -26,6 +27,7 @@ from generate.chat_completion.message import (
     UserMultiPartMessage,
     ensure_messages,
 )
+from generate.chat_completion.message.core import Messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.stream_manager import StreamManager
 from generate.chat_completion.tool import FunctionJsonSchema, Tool
@@ -262,7 +264,7 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
     def _get_request_parameters(self, prompt: Prompt, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
         messages = ensure_messages(prompt)
         parameters = self.parameters.clone_with_changes(**kwargs)
-        openai_messages = [convert_to_openai_message(message) for message in messages]
+        openai_messages = self._convert_to_openai_messages(messages)
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
         }
@@ -280,6 +282,13 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
             'json': params,
         }
 
+    def _convert_to_openai_messages(self, messages: Messages) -> List[OpenAIMessage]:
+        return [convert_to_openai_message(message) for message in messages]
+
+    @staticmethod
+    def generate_tool_call_id() -> str:
+        return f'call_{uuid.uuid4()}'
+
     @override
     def _process_reponse(self, response: Dict[str, Any]) -> ChatCompletionOutput:
         return process_openai_like_model_reponse(response, model_type=self.model_type)
@@ -291,7 +300,7 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
         except json.JSONDecodeError:
             return None
 
-        delta_dict = data['choices'][0]['delta']
+        delta_dict = data['choices'][0].get('delta', {})
         self._update_delta(delta_dict, stream_manager=stream_manager)
         stream_manager.extra = self._extract_extra_info(data)
         stream_manager.cost = self._calculate_cost(data)
@@ -347,11 +356,16 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
             )
 
         cost_calculator = GeneralCostCalculator()
+        input_tokens = response['usage'].get('prompt_tokens', 0)
+        output_tokens = response['usage'].get('completion_tokens', 0)
+        if 'total_tokens' in response['usage']:
+            input_tokens = 0
+            output_tokens = response['usage']['total_tokens']
         return cost_calculator.calculate(
             model_type=self.model_type,
             model_name=response['model'],
-            input_tokens=response['usage']['prompt_tokens'],
-            output_tokens=response['usage']['completion_tokens'],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def _determine_finish_reason(self, response: ResponseValue) -> str | None:

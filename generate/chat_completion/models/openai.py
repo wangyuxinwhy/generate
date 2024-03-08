@@ -61,7 +61,7 @@ class OpenAIChatParametersDict(RemoteModelParametersDict, total=False):
 
 class OpenAIChat(OpenAILikeChat, ToolCallMixin):
     model_type: ClassVar[str] = 'openai'
-    avaliable_models: ClassVar[List[str]] = [
+    available_models: ClassVar[List[str]] = [
         'gpt-4-turbo-preview',
         'gpt-3.5-turbo',
         'gpt-4-vision-preview',
@@ -100,8 +100,8 @@ class OpenAIChat(OpenAILikeChat, ToolCallMixin):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for i in super().async_stream_generate(prompt, **kwargs):
-            yield i
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+            yield stream_output
 
     @override
     def add_tools(self, tools: OrIterable[Tool]) -> None:

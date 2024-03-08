@@ -28,7 +28,7 @@ class MoonshotParametersDict(RemoteModelParametersDict, total=False):
 
 class MoonshotChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'moonshot'
-    avaliable_models: ClassVar[List[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
+    available_models: ClassVar[List[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
 
     parameters: MoonshotChatParameters
     settings: MoonshotSettings
@@ -62,5 +62,5 @@ class MoonshotChat(OpenAILikeChat):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for i in super().async_stream_generate(prompt, **kwargs):
-            yield i
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+            yield stream_output

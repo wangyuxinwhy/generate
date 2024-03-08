@@ -52,7 +52,7 @@ class BaichuanChatParametersDict(RemoteModelParametersDict, total=False):
 
 class BaichuanChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'baichuan'
-    avaliable_models: ClassVar[List[str]] = ['Baichuan2-Turbo', 'Baichuan2-53B', 'Baichuan2-Turbo-192k']
+    available_models: ClassVar[List[str]] = ['Baichuan2-Turbo', 'Baichuan2-53B', 'Baichuan2-Turbo-192k']
 
     parameters: BaichuanChatParameters
     settings: BaichuanSettings
