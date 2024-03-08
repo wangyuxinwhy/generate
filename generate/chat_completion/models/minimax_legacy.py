@@ -96,7 +96,7 @@ def _convert_messages(messages: Messages) -> list[MinimaxMessage]:
 
 class MinimaxLegacyChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'minimax_legacy'
-    avaliable_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat']
+    available_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat']
 
     parameters: MinimaxLegacyChatParameters
     settings: MinimaxSettings

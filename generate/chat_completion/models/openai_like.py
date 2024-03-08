@@ -7,6 +7,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Type, Union, cast
 
 from typing_extensions import NotRequired, TypedDict, override
+import uuid
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.cost_caculator import GeneralCostCalculator
@@ -283,6 +284,10 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
 
     def _convert_to_openai_messages(self, messages: Messages) -> List[OpenAIMessage]:
         return [convert_to_openai_message(message) for message in messages]
+
+    @staticmethod
+    def generate_tool_call_id() -> str:
+        return f'call_{uuid.uuid4()}'
 
     @override
     def _process_reponse(self, response: Dict[str, Any]) -> ChatCompletionOutput:

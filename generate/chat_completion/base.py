@@ -69,7 +69,7 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
 class RemoteChatCompletionModel(ChatCompletionModel, ABC):
     settings: PlatformSettings
     http_client: HttpClient
-    avaliable_models: ClassVar[List[str]] = []
+    available_models: ClassVar[List[str]] = []
 
     def __init__(
         self,

@@ -31,10 +31,10 @@ class MinimaxChatParameters(ModelParameters):
 
     @field_validator('temperature', 'top_p')
     @classmethod
-    def can_not_equal_zero(cls, v: Optional[Temperature]) -> Optional[Temperature]:
-        if v == 0:
+    def can_not_equal_zero(cls, value: Optional[Temperature]) -> Optional[Temperature]:
+        if value == 0:
             return 0.01
-        return v
+        return value
 
 
 class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
@@ -47,7 +47,8 @@ class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
 
 class MinimaxChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'minimax'
-    avaliable_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab6-chat']
+    available_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat']
+    CHAT_COMPLETION_ENDPOINT: ClassVar[str] = '/text/chatcompletion_v2'
 
     parameters: MinimaxChatParameters
     settings: MinimaxSettings
@@ -62,14 +63,14 @@ class MinimaxChat(OpenAILikeChat):
         parameters = parameters or MinimaxChatParameters()
         settings = settings or MinimaxSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        model = model
         super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
     def _get_request_parameters(self, prompt: Prompt, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
         http_kwargs = super()._get_request_parameters(prompt, stream, **kwargs)
-        http_kwargs['url'] = self.settings.api_base + '/text/chatcompletion_v2'
+        http_kwargs['url'] = self.settings.api_base + self.CHAT_COMPLETION_ENDPOINT
         if 'tools' in http_kwargs['json']:
+            # Serialize jsonschema dict to JSON string for Minimax compatibility
             for tool in http_kwargs['json']['tools']:
                 if 'function' in tool:
                     tool['function']['parameters'] = json.dumps(tool['function']['parameters'])
@@ -86,13 +87,14 @@ class MinimaxChat(OpenAILikeChat):
 
     @override
     def _convert_to_openai_messages(self, messages: Messages) -> List[OpenAIMessage]:
-        new_messages = []
-        fake_tool_call_id = f'call_{uuid.uuid4()}'
+        converted_messages = []
+        temp_tool_call_id = self.generate_tool_call_id()
         for message in messages:
+            # Convert FunctionMessage to ToolMessage with self-generated tool_call_id
             if isinstance(message, AssistantMessage):
                 if message.function_call is not None:
                     tool_call = ToolCall(
-                        id=fake_tool_call_id,
+                        id=temp_tool_call_id,
                         function=message.function_call,
                     )
                     message.tool_calls = [tool_call]
@@ -101,13 +103,13 @@ class MinimaxChat(OpenAILikeChat):
                 tool_message = ToolMessage(
                     name=message.name,
                     content=message.content,
-                    tool_call_id=fake_tool_call_id,
+                    tool_call_id=temp_tool_call_id,
                 )
-                fake_tool_call_id = f'call_{uuid.uuid4()}'
-                new_messages.append(tool_message)
+                temp_tool_call_id = self.generate_tool_call_id()
+                converted_messages.append(tool_message)
                 continue
-            new_messages.append(message.model_copy(deep=True))
-        return super()._convert_to_openai_messages(new_messages)
+            converted_messages.append(message.model_copy(deep=True))
+        return super()._convert_to_openai_messages(converted_messages)
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
@@ -127,5 +129,5 @@ class MinimaxChat(OpenAILikeChat):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for i in super().async_stream_generate(prompt, **kwargs):
-            yield i
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+            yield stream_output

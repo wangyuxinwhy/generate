@@ -34,7 +34,7 @@ class DeepSeekParametersDict(RemoteModelParametersDict, total=False):
 
 class DeepSeekChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'deepseek'
-    avaliable_models: ClassVar[List[str]] = ['deepseek-chat', 'deepseek-coder']
+    available_models: ClassVar[List[str]] = ['deepseek-chat', 'deepseek-coder']
 
     parameters: DeepSeekChatParameters
     settings: DeepSeekSettings
@@ -68,5 +68,5 @@ class DeepSeekChat(OpenAILikeChat):
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[DeepSeekParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for i in super().async_stream_generate(prompt, **kwargs):
-            yield i
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+            yield stream_output

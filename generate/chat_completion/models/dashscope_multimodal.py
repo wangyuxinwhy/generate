@@ -54,7 +54,7 @@ class DashScopeMultiModalMessage(TypedDict):
 
 class DashScopeMultiModalChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'dashscope_multimodal'
-    avaliable_models: ClassVar[List[str]] = ['qwen-vl-max', 'qwen-vl-plus']
+    available_models: ClassVar[List[str]] = ['qwen-vl-max', 'qwen-vl-plus']
 
     parameters: DashScopeMultiModalChatParameters
     settings: DashScopeSettings
