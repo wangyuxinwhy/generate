@@ -33,9 +33,6 @@ def test_model_type_is_unique() -> None:
     ],
 )
 def test_http_chat_model(model_cls: Type[ChatCompletionModel], parameters: dict[str, Any]) -> None:
-    if issubclass(model_cls, AzureChat):
-        return
-
     model = model_cls()
     prompt = '这是测试，只回复你好'
     sync_output = model.generate(prompt, **parameters)

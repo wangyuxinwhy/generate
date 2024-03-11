@@ -43,7 +43,7 @@ def test_structure() -> None:
 
 def test_session() -> None:
     model = OpenAIChat().session()
-    model.generate('I am bob')
-    reply = model.generate('who am i?').reply
+    model.generate('call me BOB')
+    reply = model.generate('TEST: my name is ?').reply
 
     assert 'bob' in reply.lower()

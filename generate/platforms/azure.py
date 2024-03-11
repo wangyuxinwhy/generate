@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import SecretStr
 from pydantic_settings import SettingsConfigDict
 
@@ -10,4 +12,5 @@ class AzureSettings(PlatformSettings):
     api_key: SecretStr
     api_base: str
     api_version: str
+    chat_api_engine: Optional[str] = None
     platform_url: str = 'https://learn.microsoft.com/en-us/azure/ai-services/openai/'

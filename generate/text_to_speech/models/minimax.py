@@ -79,7 +79,7 @@ class MinimaxSpeech(RemoteTextToSpeechModel):
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.settings.api_base + 'text_to_speech',
+            'url': self.settings.api_base + '/text_to_speech',
             'json': json_data,
             'headers': headers,
             'params': {'GroupId': self.settings.group_id},
@@ -154,7 +154,7 @@ class MinimaxProSpeech(RemoteTextToSpeechModel):
             'Content-Type': 'application/json',
         }
         return {
-            'url': self.settings.api_base + 't2a_pro',
+            'url': self.settings.api_base + '/t2a_pro',
             'json': json_data,
             'headers': headers,
             'params': {'GroupId': self.settings.group_id},
