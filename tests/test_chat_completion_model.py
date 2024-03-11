@@ -13,7 +13,6 @@ from generate.chat_completion import (
     RemoteChatCompletionModel,
 )
 from generate.chat_completion.message import Prompt
-from generate.chat_completion.models.azure import AzureChat
 from generate.test import get_pytest_params
 
 
