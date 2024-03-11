@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import base64
 import json
+import uuid
 from abc import ABC
 from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Type, Union, cast
 
 from typing_extensions import NotRequired, TypedDict, override
-import uuid
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.cost_caculator import GeneralCostCalculator

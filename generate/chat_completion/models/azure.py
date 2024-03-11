@@ -9,6 +9,7 @@ from generate.chat_completion.message import Prompt, ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai import OpenAIChatParameters, OpenAIChatParametersDict
 from generate.chat_completion.models.openai_like import convert_to_openai_message, process_openai_like_model_reponse
+from generate.chat_completion.stream_manager import StreamManager
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.platforms.azure import AzureSettings
 
@@ -21,7 +22,7 @@ class AzureChat(RemoteChatCompletionModel):
 
     def __init__(
         self,
-        model: str,
+        model: str | None = None,
         parameters: OpenAIChatParameters | None = None,
         settings: AzureSettings | None = None,
         http_client: HttpClient | None = None,
@@ -29,6 +30,9 @@ class AzureChat(RemoteChatCompletionModel):
         parameters = parameters or OpenAIChatParameters()
         settings = settings or AzureSettings()  # type: ignore
         http_client = http_client or HttpClient()
+        model = model or settings.chat_api_engine
+        if model is None:
+            raise ValueError('model must be provided or set in settings.chat_api_engine')
         super().__init__(model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
@@ -75,3 +79,7 @@ class AzureChat(RemoteChatCompletionModel):
     @override
     def _process_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         return process_openai_like_model_reponse(response, model_type=self.model_type)
+
+    @override
+    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+        raise NotImplementedError
