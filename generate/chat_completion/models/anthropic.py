@@ -56,7 +56,13 @@ class AnthropicParametersDict(RemoteModelParametersDict, total=False):
 
 class AnthropicChat(RemoteChatCompletionModel):
     model_type: ClassVar[str] = 'anthropic'
-    available_models: ClassVar[List[str]] = ['claude-2.1', 'claude-2.0', 'claude-instant-1.2']
+    available_models: ClassVar[List[str]] = [
+        'claude-2.1',
+        'claude-2.0',
+        'claude-instant-1.2',
+        'claude-3-opus-20240229',
+        'claude-3-sonnet-20240229',
+    ]
 
     parameters: AnthropicChatParameters
     settings: AnthropicSettings
@@ -107,7 +113,7 @@ class AnthropicChat(RemoteChatCompletionModel):
 
                 if isinstance(part, ImagePart):
                     data = base64.b64encode(part.image).decode()
-                    media_type = part.image_format or 'image/jpeg'
+                    media_type = 'image/jpeg' if part.image_format is None else f'image/{part.image_format}'
                     message_dict['content'].append(
                         {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': data}}
                     )

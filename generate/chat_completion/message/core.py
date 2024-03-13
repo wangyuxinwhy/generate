@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import mimetypes
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Sequence, Union
 
 from pydantic import BaseModel, TypeAdapter
+from typing_extensions import Self
+
+from generate.utils import fetch_data
 
 
 class Message(BaseModel):
@@ -37,6 +42,14 @@ class ImageUrlPart(BaseModel):
 class ImagePart(BaseModel):
     image: bytes
     image_format: Optional[str] = None
+
+    @classmethod
+    def from_url_or_path(cls, url_or_path: str | Path) -> Self:
+        image_data = fetch_data(str(url_or_path))
+        mimetype = mimetypes.guess_type(url=str(url_or_path))[0]
+        if mimetype is not None:
+            image_format = mimetype.split('/')[1]
+        return cls(image=image_data, image_format=image_format)
 
 
 class UserMultiPartMessage(Message):
