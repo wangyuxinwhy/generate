@@ -20,8 +20,7 @@ cachetools = "^5.3.1"
 tqdm = "^4.66.1"
 pydantic = "^2.0"
 docstring-parser = "^0.15"
-anyio = "<4.0.0"
-httpx-sse = "0.3.1"
+httpx-sse = "^0.4.0"
 pydantic-settings = "^2.1.0"
 
 [tool.ruff]
@@ -69,6 +68,7 @@ pyright = "^1.1.310"
 ruff = "^0.1.4"
 coverage = "^7.3.2"
 mkdocs-material = "^9.5.12"
+pytest-mock = "^3.12.0"
 
 [tool.poetry.group.bailian.dependencies]
 broadscope-bailian = "^1.1.8"

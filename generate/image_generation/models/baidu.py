@@ -43,7 +43,7 @@ class BaiduImageGenerationParameters(ModelParameters):
         n = self.n or 1
         output_data['image_num'] = n
         if self.reference_image:
-            if isinstance(self.reference_image, HttpUrl):
+            if isinstance(self.reference_image, str):
                 output_data['url'] = self.reference_image
             else:
                 output_data['image'] = self.reference_image

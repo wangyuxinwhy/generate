@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Generator, Generic, Iterable, TypeVar
+from urllib.parse import urlparse
 
 from generate.types import OrIterable
 
@@ -60,3 +62,23 @@ def unwrap_model(model: Any) -> Any:
             return unwrap_model(model.model)
         return model
     return model
+
+
+def fetch_data(url_or_file: str) -> bytes:
+    parsed_url = urlparse(url_or_file)
+    if not parsed_url.scheme and Path(url_or_file).exists():
+        return Path(url_or_file).read_bytes()
+
+    if parsed_url.scheme == 'file':
+        if Path(parsed_url.path).exists():
+            return Path(parsed_url.path).read_bytes()
+        raise FileNotFoundError(f'File {parsed_url.path} not found')
+
+    if parsed_url.scheme in ('http', 'https'):
+        import httpx
+
+        response = httpx.get(url_or_file)
+        response.raise_for_status()
+        return response.content
+
+    raise ValueError(f'Unsupported URL scheme {parsed_url.scheme}')

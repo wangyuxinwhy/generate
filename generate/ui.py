@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional, Type, cast
 
 from pydantic import BaseModel
 
+from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.models.dashscope_multimodal import DashScopeMultiModalChat
+from generate.model import ModelInfo
 
 try:
     import chainlit as cl
@@ -14,7 +16,7 @@ try:
 except ImportError as e:
     raise ImportError('Please install chainlit with "pip install chainlit typer"') from e
 
-from generate import ChatCompletionModel, load_chat_model
+from generate import ChatCompletionModel, ChatModelRegistry, load_chat_model
 from generate.chat_completion.message import (
     ImagePart,
     ImageUrl,
@@ -64,26 +66,24 @@ def get_avatars() -> List[Avatar]:
 
 
 def get_generate_settings() -> List[Any]:
+    available_model_ids = []
+    for model_cls, _ in ChatModelRegistry.values():
+        model_cls = cast(Type[RemoteChatCompletionModel], model_cls)
+        for model_name in model_cls.available_models:
+            model_info = ModelInfo(
+                task=model_cls.model_task,
+                type=model_cls.model_type,
+                name=model_name,
+            )
+            available_model_ids.append(model_info.model_id)
     model_select = Select(
         id='Model',
         label='Model',
-        values=[
-            'openai',
-            'openai/gpt-4-vision-preview',
-            'dashscope',
-            'dashscope_multimodal',
-            'zhipu',
-            'zhipu/glm-4v',
-            'wenxin',
-            'baichuan',
-            'minimax_pro',
-            'moonshot',
-            'deepseek',
-        ],
+        values=available_model_ids,
     )
     model_id = TextInput(
         id='ModelId',
-        label='Model ID',
+        label='Custom Model ID',
         initial='',
         description='如 openai/gpt-4-turbo-preview，此设置会覆盖 Model 选项。',
     )
