@@ -78,9 +78,9 @@ def test_multimodel_chat_completion(model_cls: Type[ChatCompletionModel]) -> Non
         ],
     }
     if model_cls.model_type == 'openai':
-        model = model_cls(model='gpt-4-vision-preview')
+        model = model_cls(model='gpt-4-vision-preview')  # type: ignore
     elif model_cls.model_type == 'anthropic':
-        model = model_cls(model='claude-3-sonnet-20240229')
+        model = model_cls(model='claude-3-sonnet-20240229')  # type: ignore
     else:
         model = model_cls()
     output = model.generate(user_message)

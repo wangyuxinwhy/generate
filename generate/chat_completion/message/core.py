@@ -47,8 +47,7 @@ class ImagePart(BaseModel):
     def from_url_or_path(cls, url_or_path: str | Path) -> Self:
         image_data = fetch_data(str(url_or_path))
         mimetype = mimetypes.guess_type(url=str(url_or_path))[0]
-        if mimetype is not None:
-            image_format = mimetype.split('/')[1]
+        image_format = mimetype.split('/')[1] if mimetype is not None else None
         return cls(image=image_data, image_format=image_format)
 
 

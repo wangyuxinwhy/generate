@@ -25,14 +25,14 @@ class YiParametersDict(RemoteModelParametersDict, total=False):
 
 class YiChat(OpenAILikeChat):
     model_type: ClassVar[str] = 'yi'
-    available_models: ClassVar[List[str]] = ['yi-34b-chat', 'Yi-34B-Chat-200K']
+    available_models: ClassVar[List[str]] = ['yi-34b-chat-0205', 'yi-34b-chat-200k', 'yi-vl-plus']
 
     parameters: YiChatParameters
     settings: YiSettings
 
     def __init__(
         self,
-        model: str = 'yi-34b-chat',
+        model: str = 'yi-34b-chat-0205',
         parameters: YiChatParameters | None = None,
         settings: YiSettings | None = None,
         http_client: HttpClient | None = None,
