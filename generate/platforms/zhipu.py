@@ -16,7 +16,7 @@ class ZhipuSettings(PlatformSettings):
 
     api_key: SecretStr
     v3_api_base: str = 'https://open.bigmodel.cn/api/paas/v3/model-api'
-    v4_api_base: str = 'https://open.bigmodel.cn/api/paas/v4/'
+    v4_api_base: str = 'https://open.bigmodel.cn/api/paas/v4'
     platform_url: str = 'https://open.bigmodel.cn/dev/howuse/introduction'
 
 
