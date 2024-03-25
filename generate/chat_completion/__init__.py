@@ -40,6 +40,8 @@ from generate.chat_completion.models import (
     MoonshotChatParameters,
     OpenAIChat,
     OpenAIChatParameters,
+    StepFunChat,
+    StepFunChatParameters,
     WenxinChat,
     WenxinChatParameters,
     YiChat,
@@ -70,6 +72,7 @@ ChatModels: list[tuple[Type[ChatCompletionModel], Type[ModelParameters]]] = [
     (DashScopeMultiModalChat, DashScopeMultiModalChatParameters),
     (MoonshotChat, MoonshotChatParameters),
     (DeepSeekChat, DashScopeChatParameters),
+    (StepFunChat, StepFunChatParameters),
     (YiChat, YiChatParameters),
 ]
 
@@ -107,6 +110,8 @@ __all__ = [
     'BailianChatParameters',
     'YiChat',
     'YiChatParameters',
+    'StepFunChat',
+    'StepFunChatParameters',
     'AnthropicChat',
     'AnthropicChatParameters',
     'DashScopeChat',

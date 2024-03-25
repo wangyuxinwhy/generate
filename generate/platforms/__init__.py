@@ -10,6 +10,7 @@ from generate.platforms.hunyuan import HunyuanSettings
 from generate.platforms.minimax import MinimaxSettings
 from generate.platforms.moonshot import MoonshotSettings
 from generate.platforms.openai import OpenAISettings
+from generate.platforms.stepfun import StepFunSettings
 from generate.platforms.yi import YiSettings
 from generate.platforms.zhipu import ZhipuSettings
 
@@ -29,4 +30,5 @@ __all__ = [
     'DeepSeekSettings',
     'YiSettings',
     'PlatformSettings',
+    'StepFunSettings',
 ]
