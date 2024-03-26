@@ -370,6 +370,7 @@ class OpenAILikeChat(RemoteChatCompletionModel, ABC):
 
     def _determine_finish_reason(self, response: ResponseValue) -> str | None:
         choice = response['choices'][0]
-        if (finish_reason := choice.get('finish_reason')) is None:
+        finish_reason = choice.get('finish_reason') or None
+        if finish_reason is None:
             finish_reason: str | None = finish_details['type'] if (finish_details := choice.get('finish_details')) else None
         return finish_reason
