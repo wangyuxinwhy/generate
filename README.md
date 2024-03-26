@@ -18,11 +18,12 @@ Generate 允许用户通过统一的 api 访问多平台的生成式模型，当
 | 灵积 DashScope | ✅       | ✅       | ✅       | ✅         | ❌         |
 | 百川智能 Baichuan | ✅       | ✅       | ✅       | ❌         | ❌         |
 | Minimax        | ✅       | ✅       | ✅       | ❌         | ✅         |
-| 混元 Hunyuan        | ✅       | ✅       | ✅       | ❌         | ✅         |
+| 混元 Hunyuan        | ✅       | ✅       | ✅       | ❌         | ❌         |
 | 智谱 Zhipu    | ✅       | ✅       | ✅       | ✅         | ✅         |
 | 月之暗面 Moonshot| ✅       | ✅       | ✅       | ❌         | ❌         |
 | DeepSeek       | ✅       | ✅       | ✅       | ❌         | ❌         |
-| 零一万物 Yi       | ✅       | ✅       | ✅       | ❌         | ❌         |
+| 零一万物 Yi       | ✅       | ✅       | ✅       | ✅         | ❌         |
+| 阶跃星辰 StepFun       | ✅       | ✅       | ✅       | ✅         | ❌         |
 
 ## Features
 
