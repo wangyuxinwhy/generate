@@ -11,26 +11,15 @@
         <a href="https://wangyuxinwhy.github.io/generate/">中文文档</a>
         ｜
         <a href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">交互式教程</a>
-    <p>
-    <a href="#">
-      <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python Version">
-    </a>
-    <a href="https://wangyuxinwhy.github.io/generate/"> 
-        <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
-    </a>
-    <a href="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml">
-      <img src="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml/badge.svg" alt="CI Status">
-    </a>
-    <a href="https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml">
-      <img src="https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml/badge.svg" alt="CD Status">
-    </a>
-    <a href="https://github.com/wangyuxinwhy/generate/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/wangyuxinwhy/generate" alt="License">
-    </a>
-    <a href="#">
-      <img src="https://img.shields.io/badge/made%20with-love-red.svg" alt="Made with Love">
-    </a>
-  </p>
+    </p>
+
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](#)
+[![CI Status](https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml/badge.svg)](https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml)
+[![CD Status](https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml/badge.svg)](https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml)
+[![License](https://img.shields.io/github/license/wangyuxinwhy/generate)](https://github.com/wangyuxinwhy/generate/blob/main/LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://wangyuxinwhy.github.io/generate/)
+[![Made with Love](https://img.shields.io/badge/made%20with-love-red.svg)](#)
+
 </div>
 <br>
 <br>
