@@ -1,39 +1,72 @@
-# Generate
+<div align="center">
+  <img src="logo/logo.png" alt="Generate Logo" width="200"/>
+</div>
 
-[文档](https://wangyuxinwhy.github.io/generate/)
+<div align="center">
+    <h1>Generate</h1>
+    <p>
+        A Python Package to Access World-Class Generative Models.
+    </p>
+    <p>
+        <a href="https://wangyuxinwhy.github.io/generate/">中文文档</a>
+        ｜
+        <a href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">交互式教程</a>
+    <p>
+    <a href="#">
+      <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python Version">
+    </a>
+    <a href="https://wangyuxinwhy.github.io/generate/"> 
+        <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
+    </a>
+    <a href="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml">
+      <img src="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+    </a>
+    <a href="https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml">
+      <img src="https://github.com/wangyuxinwhy/generate/actions/workflows/cd.yml/badge.svg" alt="CD Status">
+    </a>
+    <a href="https://github.com/wangyuxinwhy/generate/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/wangyuxinwhy/generate" alt="License">
+    </a>
+    <a href="#">
+      <img src="https://img.shields.io/badge/made%20with-love-red.svg" alt="Made with Love">
+    </a>
+  </p>
+</div>
+<br>
+<br>
 
-> A Python Package to Access World-Class Generative Models.
+# 简介
 
-## 简介
+
 
 Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：
 
-| 平台 🤖       | 同步 🔄 | 异步 ⏳ | 流式 🌊 | Vision 👀 | Tools 🛠️ |
-|----------------|---------|---------|---------|-----------|-----------|
-| OpenAI         | ✅       | ✅       | ✅       | ✅         | ✅         |
-| Azure         | ✅       | ✅       | ❌       | ✅         | ✅         |
-| Anthropic         | ✅       | ✅       | ✅       | ✅         | ❌         |
-| 文心 Wenxin | ✅       | ✅       | ✅       | ❌         | ✅         |
-| 百炼 Bailian | ✅       | ✅       | ✅       | ❌         | ❌         |
-| 灵积 DashScope | ✅       | ✅       | ✅       | ✅         | ❌         |
-| 百川智能 Baichuan | ✅       | ✅       | ✅       | ❌         | ❌         |
-| Minimax        | ✅       | ✅       | ✅       | ❌         | ✅         |
-| 混元 Hunyuan        | ✅       | ✅       | ✅       | ❌         | ❌         |
-| 智谱 Zhipu    | ✅       | ✅       | ✅       | ✅         | ✅         |
-| 月之暗面 Moonshot| ✅       | ✅       | ✅       | ❌         | ❌         |
-| DeepSeek       | ✅       | ✅       | ✅       | ❌         | ❌         |
-| 零一万物 Yi       | ✅       | ✅       | ✅       | ✅         | ❌         |
-| 阶跃星辰 StepFun       | ✅       | ✅       | ✅       | ✅         | ❌         |
+| 平台 🤖           | 同步 🔄 | 异步 ⏳ | 流式 🌊 | Vision 👀 | Tools 🛠️ |
+| ----------------- | ------- | ------- | ------- | --------- | -------- |
+| OpenAI            | ✅      | ✅      | ✅      | ✅        | ✅       |
+| Azure             | ✅      | ✅      | ❌      | ✅        | ✅       |
+| Anthropic         | ✅      | ✅      | ✅      | ✅        | ❌       |
+| 文心 Wenxin       | ✅      | ✅      | ✅      | ❌        | ✅       |
+| 百炼 Bailian      | ✅      | ✅      | ✅      | ❌        | ❌       |
+| 灵积 DashScope    | ✅      | ✅      | ✅      | ✅        | ❌       |
+| 百川智能 Baichuan | ✅      | ✅      | ✅      | ❌        | ❌       |
+| Minimax           | ✅      | ✅      | ✅      | ❌        | ✅       |
+| 混元 Hunyuan      | ✅      | ✅      | ✅      | ❌        | ❌       |
+| 智谱 Zhipu        | ✅      | ✅      | ✅      | ✅        | ✅       |
+| 月之暗面 Moonshot | ✅      | ✅      | ✅      | ❌        | ❌       |
+| DeepSeek          | ✅      | ✅      | ✅      | ❌        | ❌       |
+| 零一万物 Yi       | ✅      | ✅      | ✅      | ✅        | ❌       |
+| 阶跃星辰 StepFun  | ✅      | ✅      | ✅      | ✅        | ❌       |
 
 ## Features
 
-* **多模态**，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...
-* **跨平台**，支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外 10+ 平台
-* **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
-* **异步，流式和并发**，提供流式调用，非流式调用，同步调用，异步调用，异步批量并发调用，适配不同的应用场景
-* **自带电池**，提供 chainlit UI，输入检查，参数检查，计费，速率控制，*Agent*, *Tool call* 等
-* **轻量**，最小化依赖，不同平台的请求和鉴权逻辑均为原生内置功能
-* **高质量代码**，100% typehints，pylance strict, ruff lint & format,  test coverage > 85% ...
+- **多模态**，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...
+- **跨平台**，支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外 10+ 平台
+- **One API**，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异
+- **异步，流式和并发**，提供流式调用，非流式调用，同步调用，异步调用，异步批量并发调用，适配不同的应用场景
+- **自带电池**，提供 chainlit UI，输入检查，参数检查，计费，速率控制，_Agent_, _Tool call_ 等
+- **轻量**，最小化依赖，不同平台的请求和鉴权逻辑均为原生内置功能
+- **高质量代码**，100% typehints，pylance strict, ruff lint & format, test coverage > 85% ...
 
 ## 基础使用
 
@@ -74,6 +107,7 @@ YiChat
 ```
 
 ### 配置模型 API
+
 ```python
 from generate import WenxinChat
 
@@ -178,6 +212,7 @@ StructureModelOutput(
 ```
 
 #### 速率限制
+
 ```python
 import time
 from generate import OpenAIChat
@@ -201,6 +236,7 @@ elapsed time: 12.15 seconds
 ```
 
 #### 对话历史保持
+
 ```python
 from generate import OpenAIChat
 
@@ -213,6 +249,7 @@ Your name is Bob.
 ```
 
 #### 工具调用
+
 ```python
 from generate import OpenAIChat, tool
 
@@ -243,9 +280,9 @@ ImageGenerationOutput(
     images=[
         GeneratedImage(
             url='https://oaidalleapiprodscus.blob.core.windows.net/...',
-            prompt='Visualize an astronomical illustration featuring a black hole at its core. The black hole 
-should be portrayed with strong gravitational lensing effect that distorts the light around it. Include a 
-surrounding accretion disk, glowing brightly with blue and white hues, streaked with shades of red and orange, 
+            prompt='Visualize an astronomical illustration featuring a black hole at its core. The black hole
+should be portrayed with strong gravitational lensing effect that distorts the light around it. Include a
+surrounding accretion disk, glowing brightly with blue and white hues, streaked with shades of red and orange,
 indicating heat and intense energy. The cosmos in the background should be filled with distant stars, galaxies, and
 nebulas, illuminating the vast, infinite space with specks of light.',
             image_format='png',
@@ -273,8 +310,8 @@ TextToSpeechOutput(
 )
 ```
 
-
 ### 多种调用方式
+
 ```python
 from generate import OpenAIChat
 
