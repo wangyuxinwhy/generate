@@ -3,11 +3,20 @@
 </div>
 
 <div align="center">
-  <h1>Generate</h1>
-  <p>A Python Package to Access World-Class Generative Models.</p>
-  <p>
+    <h1>Generate</h1>
+    <p>
+        A Python Package to Access World-Class Generative Models.
+    </p>
+    <p>
+        <a href="https://wangyuxinwhy.github.io/generate/">中文文档</a>
+        ｜
+        <a href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">交互式教程</a>
+    <p>
     <a href="#">
       <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python Version">
+    </a>
+    <a href="https://wangyuxinwhy.github.io/generate/"> 
+        <img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation">
     </a>
     <a href="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml">
       <img src="https://github.com/wangyuxinwhy/generate/actions/workflows/ci.yml/badge.svg" alt="CI Status">
@@ -27,6 +36,8 @@
 <br>
 
 # 简介
+
+
 
 Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：
 
