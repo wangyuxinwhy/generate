@@ -127,6 +127,7 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         instruction: str | None = None,
         examples: Optional[Iterable[Example[O]]] = None,
         system_template: str = system_template,
+        output_exclude_none: bool = True,
         max_num_reask: int = 2,
     ) -> None:
         self.model = model
@@ -135,6 +136,7 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         self.examples = examples or []
         self.system_template = system_template
         self.max_num_reask = max_num_reask
+        self.output_exclude_none = output_exclude_none
 
         self.model_type = self.model.model_type  # type: ignore
 
@@ -152,7 +154,7 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         messages.append(self.system_message)
         for example in self.examples:
             messages.extend(ensure_messages(example.prompt))
-            messages.append(AssistantMessage(content=example.output.model_dump_json(exclude_none=True)))
+            messages.append(AssistantMessage(content=example.output.model_dump_json(exclude_none=self.output_exclude_none)))
         return messages
 
     @property
