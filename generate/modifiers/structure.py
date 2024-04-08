@@ -112,9 +112,11 @@ class StructureModelOutput(ModelOutput, Generic[O]):
 
 
 class StructureModelKwargs(TypedDict, Generic[O], total=False):
+    instruction: Optional[str]
     examples: Optional[Iterable[Example[O]]]
     system_template: str
     max_num_reask: int
+    output_exclude_none: bool
 
 
 class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generic[M, O]):
