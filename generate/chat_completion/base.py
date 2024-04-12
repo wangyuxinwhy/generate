@@ -39,13 +39,12 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
         return sync_aiter(self.async_stream_generate(prompt, **kwargs))
 
     def structure(
-        self, output_structure_type: Type[O], instruction: str | None = None, **kwargs: Unpack['StructureModelKwargs']
+        self, output_structure_type: Type[O], **kwargs: Unpack['StructureModelKwargs']
     ) -> 'StructureGenerateModel[Self, O]':
         from generate.modifiers.structure import StructureGenerateModel
 
         return StructureGenerateModel(
             self,
-            instruction=instruction,
             output_structure_type=output_structure_type,
             **kwargs,
         )
