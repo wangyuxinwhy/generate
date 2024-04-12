@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
     model_task: ClassVar[str] = 'chat_completion'
-    model_type: ClassVar[str]
 
     @abstractmethod
     def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
