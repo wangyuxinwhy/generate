@@ -47,21 +47,25 @@ class SessionChatCompletionModel(ChatCompletionModel):
     def stream_generate(self, prompt: Prompt, **kwargs: Any) -> Iterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         self.history.extend(messages)
+        finished = False
         for stream_output in self.model.stream_generate(self.history, **kwargs):
-            yield stream_output
+            if not finished:
+                yield stream_output
             if stream_output.is_finish:
+                finished = True
                 self.history.append(stream_output.message)
-                return
 
     @override
     async def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
         messages = ensure_messages(prompt)
         self.history.extend(messages)
+        finished = False
         async for stream_output in self.model.async_stream_generate(self.history, **kwargs):
-            yield stream_output
+            if not finished:
+                yield stream_output
             if stream_output.is_finish:
+                finished = True
                 self.history.append(stream_output.message)
-                return
 
     async def async_batch_generate(self, prompts: Iterable[Prompt], **kwargs: Any) -> NoReturn:
         raise RuntimeError('Async Batch generation is not supported for session model')
