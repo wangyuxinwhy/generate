@@ -125,8 +125,8 @@ class DashScopeChat(RemoteChatCompletionModel):
     def _process_usage(self, usage: Dict[str, int]) -> Dict[str, int]:
         return {
             'total_tokens': usage['total_tokens'],
-            'prompt_tokens': usage['output_tokens'],
-            'completion_tokens': usage['input_tokens'],
+            'prompt_tokens': usage['input_tokens'],
+            'completion_tokens': usage['output_tokens'],
         }
 
     @override
