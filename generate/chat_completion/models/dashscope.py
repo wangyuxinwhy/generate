@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import AsyncIterator, ClassVar, Iterator, List, Literal, Optional
+from typing import AsyncIterator, ClassVar, Iterator, List, Literal, Optional, Dict
 
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, TypedDict, Unpack, override
@@ -122,13 +122,20 @@ class DashScopeChat(RemoteChatCompletionModel):
             'json': params,
         }
 
+    def _process_usage(self, usage: Dict[str, int]) -> Dict[str, int]:
+        return {
+            'total_tokens': usage['total_tokens'],
+            'prompt_tokens': usage['input_tokens'],
+            'completion_tokens': usage['output_tokens'],
+        }
+
     @override
     def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         return ChatCompletionOutput(
             model_info=self.model_info,
             message=AssistantMessage(content=response['output']['text']),
             cost=self._calculate_cost(response['usage']['total_tokens']),
-            extra={'usage': response['usage'], 'request_id': response['request_id']},
+            extra={'usage': self._process_usage(response['usage']), 'request_id': response['request_id']},
             finish_reason=response['output']['finish_reason'],
         )
 
@@ -141,9 +148,9 @@ class DashScopeChat(RemoteChatCompletionModel):
 
         finish_reason = data['output']['finish_reason'] or None
         reply = data['output']['text']
-        stream_manager.extra['usage'] = data['usage']
+        stream_manager.extra['usage'] = self._process_usage(data['usage'])
         stream_manager.extra['request_id'] = data['request_id']
-        if finish_reason == 'stop':
+        if finish_reason != 'null':
             stream_manager.finish_reason = finish_reason
             stream_manager.delta = ''
             stream_manager.cost = self._calculate_cost(total_tokens=stream_manager.extra['usage']['total_tokens'])
