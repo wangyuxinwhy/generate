@@ -208,7 +208,7 @@ class DashScopeMultiModalChat(RemoteChatCompletionModel):
         )
 
     @override
-    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> Optional[ChatCompletionStreamOutput]:
+    def _process_stream_response(self, line: str, stream_manager: StreamManager) -> Optional[ChatCompletionStreamOutput]:
         try:
             data = json.loads(line)
         except json.JSONDecodeError:

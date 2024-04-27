@@ -5,22 +5,32 @@ from typing import AsyncIterator, ClassVar, Iterator, List, Optional
 from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Unpack, override
 
+from generate.chat_completion.cost_caculator import CostCalculator, GeneralCostCalculator
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.chat_completion.models.openai_like import OpenAILikeChat
+from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAIMessageConverter
 from generate.http import HttpClient
 from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import YiSettings
+from generate.types import ModelPrice
+
+YiModelPrice: ModelPrice = {
+    'yi-34b-chat-200k': (12.0, 12.0),
+    'yi-34b-chat': (2.5, 2.5),
+    'yi-vl-plus': (6, 6),
+}
 
 
 class YiChatParameters(ModelParameters):
     temperature: Optional[Annotated[float, Field(ge=0, lt=2)]] = None
     max_tokens: Optional[PositiveInt] = None
+    top_p: Optional[Annotated[float, Field(ge=0, lt=1)]] = None
 
 
 class YiParametersDict(RemoteModelParametersDict, total=False):
-    temperature: Optional[Annotated[float, Field(ge=0, lt=2)]]
-    max_tokens: Optional[PositiveInt]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
+    top_p: Optional[float]
 
 
 class YiChat(OpenAILikeChat):
@@ -29,6 +39,7 @@ class YiChat(OpenAILikeChat):
 
     parameters: YiChatParameters
     settings: YiSettings
+    message_converter: OpenAIMessageConverter
 
     def __init__(
         self,
@@ -36,12 +47,20 @@ class YiChat(OpenAILikeChat):
         parameters: YiChatParameters | None = None,
         settings: YiSettings | None = None,
         http_client: HttpClient | None = None,
+        message_converter: OpenAIMessageConverter | None = None,
+        cost_calculator: CostCalculator | None = None,
     ) -> None:
         parameters = parameters or YiChatParameters()
         settings = settings or YiSettings()  # type: ignore
-        http_client = http_client or HttpClient()
-        model = model
-        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+        cost_calculator = cost_calculator or GeneralCostCalculator(YiModelPrice)
+        super().__init__(
+            model=model,
+            parameters=parameters,
+            settings=settings,
+            http_client=http_client,
+            message_converter=message_converter,
+            cost_calculator=cost_calculator,
+        )
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[YiParametersDict]) -> ChatCompletionOutput:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import json
 import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, List, Type, TypeVar, get_type_hints
@@ -7,9 +9,14 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, ClassVar, Iterator, List, 
 from pydantic import BaseModel
 from typing_extensions import Self, Unpack, override
 
+from generate.chat_completion.cost_caculator import CostCalculator
 from generate.chat_completion.message import Prompt
+from generate.chat_completion.message.converter import MessageConverter
+from generate.chat_completion.message.core import Messages
+from generate.chat_completion.message.utils import ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.stream_manager import StreamManager
+from generate.chat_completion.tool import ToolCallMixin
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import GenerateModel, ModelParameters
 from generate.platforms import PlatformSettings
@@ -67,6 +74,7 @@ class ChatCompletionModel(GenerateModel[Prompt, ChatCompletionOutput], ABC):
 class RemoteChatCompletionModel(ChatCompletionModel, ABC):
     settings: PlatformSettings
     http_client: HttpClient
+    message_converter: MessageConverter
     available_models: ClassVar[List[str]] = []
 
     def __init__(
@@ -75,28 +83,53 @@ class RemoteChatCompletionModel(ChatCompletionModel, ABC):
         parameters: ModelParameters,
         settings: PlatformSettings,
         http_client: HttpClient,
+        message_converter: MessageConverter,
+        cost_calculator: CostCalculator | None = None,
     ) -> None:
         self.model = model
         self.parameters = parameters
         self.settings = settings
         self.http_client = http_client
+        self.message_converter = message_converter
+        self.cost_calculator = cost_calculator
 
     @abstractmethod
     def _process_reponse(self, response: dict[str, Any]) -> ChatCompletionOutput:
         ...
 
     @abstractmethod
-    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+    def _process_stream_response(
+        self, response: dict[str, Any], stream_manager: StreamManager
+    ) -> ChatCompletionStreamOutput | None:
         ...
 
     @abstractmethod
-    def _get_request_parameters(self, prompt: Prompt, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
+    def _get_request_parameters(self, messages: Messages, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
         ...
+
+    def cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        if self.cost_calculator is None:
+            return None
+        return self.cost_calculator.calculate(
+            model_name=self.model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+
+    def list_models(self) -> List[str]:
+        return self.available_models
+
+    def process_prompt(self, prompt: Prompt) -> Messages:
+        messages = ensure_messages(prompt)
+        if isinstance(self, ToolCallMixin):
+            self.adapt_tool_calls(messages)
+        return messages
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
         timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
-        request_parameters = self._get_request_parameters(prompt, **kwargs)
+        messages = self.process_prompt(prompt)
+        request_parameters = self._get_request_parameters(messages, **kwargs)
         request_parameters['timeout'] = timeout
         response = self.http_client.post(request_parameters=request_parameters)
         return self._process_reponse(response.json())
@@ -104,7 +137,8 @@ class RemoteChatCompletionModel(ChatCompletionModel, ABC):
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
         timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
-        request_parameters = self._get_request_parameters(prompt, **kwargs)
+        messages = self.process_prompt(prompt)
+        request_parameters = self._get_request_parameters(messages, **kwargs)
         request_parameters['timeout'] = timeout
         response = await self.http_client.async_post(request_parameters=request_parameters)
         return self._process_reponse(response.json())
@@ -112,21 +146,27 @@ class RemoteChatCompletionModel(ChatCompletionModel, ABC):
     @override
     def stream_generate(self, prompt: Prompt, **kwargs: Any) -> Iterator[ChatCompletionStreamOutput]:
         timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
-        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        messages = self.process_prompt(prompt)
+        request_parameters = self._get_request_parameters(messages, stream=True, **kwargs)
         request_parameters['timeout'] = timeout
         stream_manager = StreamManager(info=self.model_info)
         for line in self.http_client.stream_post(request_parameters=request_parameters):
-            if output := self._process_stream_line(line, stream_manager):
-                yield output
+            with contextlib.suppress(json.JSONDecodeError):
+                response = json.loads(line)
+                if (output := self._process_stream_response(response, stream_manager)) and output:
+                    yield output
 
     @override
     async def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
         timeout = kwargs.pop('timeout') if 'timeout' in kwargs else None
-        request_parameters = self._get_request_parameters(prompt, stream=True, **kwargs)
+        messages = self.process_prompt(prompt)
+        request_parameters = self._get_request_parameters(messages, stream=True, **kwargs)
         request_parameters['timeout'] = timeout
         stream_manager = StreamManager(info=self.model_info)
         async for line in self.http_client.async_stream_post(request_parameters=request_parameters):
-            if output := self._process_stream_line(line, stream_manager):
+            with contextlib.suppress(json.JSONDecodeError):
+                response = json.loads(line)
+            if (output := self._process_stream_response(response, stream_manager)) and output:
                 yield output
 
     @classmethod

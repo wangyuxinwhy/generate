@@ -3,16 +3,16 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel
 
 from generate.chat_completion.message.core import AssistantMessage, FunctionCall, ToolCall
-from generate.chat_completion.model_output import ChatCompletionStreamOutput, Stream
+from generate.chat_completion.model_output import ChatCompletionStreamOutput, FinishReason, Stream, Usage
 from generate.model import ModelInfo
 
 
 class StreamManager(BaseModel):
     info: ModelInfo
     delta: Optional[str] = None
-    cost: Optional[float] = None
+    usage: Usage = Usage()
     history_streams: List[Stream] = []
-    finish_reason: Optional[str] = None
+    finish_reason: Optional[FinishReason] = None
     function_call: Optional[FunctionCall] = None
     tool_calls: Optional[List[ToolCall]] = None
     close: bool = False
@@ -50,14 +50,11 @@ class StreamManager(BaseModel):
 
         stream = self.current_stream
         if stream:
-            if not self.history_streams:
-                assert self.control == 'start'
-
             self.history_streams.append(stream)
             self.delta = None
             output = ChatCompletionStreamOutput(
                 model_info=self.info,
-                cost=self.cost,
+                usage=self.usage,
                 extra=self.extra,
                 finish_reason=self.finish_reason,
                 message=AssistantMessage(

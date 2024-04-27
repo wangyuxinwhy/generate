@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "generate-core"
-version = "0.4.3"
+version = "0.5.0"
 description = "文本生成，图像生成，语音生成"
 authors = ["wangyuxin <wangyuxin@mokahr.com>"]
 license = "MIT"
@@ -26,12 +26,12 @@ pydantic-settings = "^2.1.0"
 [tool.ruff]
 line-length = 128
 lint.select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "C",    # flake8-comprehensions
-    "B",    # flake8-bugbear
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
     "N",
     "SIM",
     "ANN",
@@ -40,7 +40,6 @@ lint.select = [
     "PT",
     "RET",
     "TRY",
-    "PERF",
 ]
 lint.ignore = [
     "E501",    # line too long, handled by black

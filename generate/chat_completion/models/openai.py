@@ -35,11 +35,13 @@ class OpenAIChatParameters(ModelParameters):
     presence_penalty: Optional[Annotated[float, Field(ge=-2, le=2)]] = None
     frequency_penalty: Optional[Annotated[float, Field(ge=-2, le=2)]] = None
     logit_bias: Optional[Dict[int, Annotated[int, Field(ge=-100, le=100)]]] = None
+    logprobs: Optional[bool] = None
+    top_logprobs: Optional[Annotated[int, Field(ge=0, le=20)]] = None
     user: Optional[str] = None
     response_format: Optional[OpenAIResponseFormat] = None
     seed: Optional[int] = None
     tools: Optional[List[OpenAITool]] = None
-    tool_choice: Union[Literal['auto'], OpenAIToolChoice, None] = None
+    tool_choice: Union[Literal['auto', 'none'], OpenAIToolChoice, None] = None
 
 
 class OpenAIChatParametersDict(RemoteModelParametersDict, total=False):
@@ -52,6 +54,8 @@ class OpenAIChatParametersDict(RemoteModelParametersDict, total=False):
     presence_penalty: Optional[float]
     frequency_penalty: Optional[float]
     logit_bias: Optional[Dict[int, int]]
+    logprobs: Optional[bool]
+    top_logprobs: Optional[int]
     user: Optional[str]
     response_format: Optional[OpenAIResponseFormat]
     seed: Optional[int]

@@ -225,7 +225,7 @@ class WenxinChat(RemoteChatCompletionModel, ToolCallMixin):
         )
 
     @override
-    def _process_stream_line(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
+    def _process_stream_response(self, line: str, stream_manager: StreamManager) -> ChatCompletionStreamOutput | None:
         try:
             data = json.loads(line)
         except json.JSONDecodeError:
