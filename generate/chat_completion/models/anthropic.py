@@ -159,7 +159,7 @@ class AnthropicChat(RemoteChatCompletionModel, SupportToolCall):
 
     def __init__(
         self,
-        model: str = 'claude-2.1',
+        model: str = 'claude-3-haiku-20240307',
         parameters: AnthropicChatParameters | None = None,
         settings: AnthropicSettings | None = None,
         http_client: HttpClient | None = None,
