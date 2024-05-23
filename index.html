@@ -1,0 +1,1029 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.24">
+    
+    
+      
+        <title>Generate</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.6543a935.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#generate" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="Generate" class="md-header__button md-logo" aria-label="Generate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Generate
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Generate
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="Generate" class="md-nav__button md-logo" aria-label="Generate" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Generate
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Generate
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Generate
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      对话模型
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="对话模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      查看模型列表
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置模型 API
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      文本生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      多模态文本生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      多种调用方式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      派生功能
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="派生功能">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      结构体生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      速率限制
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      对话历史保持
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      工具调用
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      图像生成模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      语音生成模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      UI
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      简介
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      安装
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      对话模型
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="对话模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      查看模型列表
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      配置模型 API
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      文本生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      多模态文本生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      多种调用方式
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      派生功能
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="派生功能">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      结构体生成
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      速率限制
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      对话历史保持
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      工具调用
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      图像生成模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      语音生成模型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      UI
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="generate">Generate</h1>
+<blockquote>
+<p>A Python Package to Access World-Class Generative Models.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">MinimaxChat</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">OpenAIChat</span><span class="p">()</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;Hello，World!&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">MinimaxChat</span><span class="p">()</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;Hello，World!&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="_1">简介</h2>
+<p><a target="_blank" href="https://colab.research.google.com/github/wangyuxinwhy/generate/blob/main/examples/tutorial.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a></p>
+<p>Generate 允许用户通过统一的 api 访问多平台的生成式模型，当前支持：</p>
+<table>
+<thead>
+<tr>
+<th>平台 🤖</th>
+<th>同步 🔄</th>
+<th>异步 ⏳</th>
+<th>流式 🌊</th>
+<th>Vision 👀</th>
+<th>Tools 🛠️</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Azure</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Anthropic</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>文心 Wenxin</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>百炼 Bailian</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>灵积 DashScope</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>百川智能 Baichuan</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Minimax</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>混元 Hunyuan</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>智谱 Zhipu</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>月之暗面 Moonshot</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>DeepSeek</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>零一万物 Yi</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table>
+<h2 id="features">Features</h2>
+<ul>
+<li><strong>多模态</strong>，支持文本生成，多模态文本生成，结构体生成，图像生成，语音生成...</li>
+<li><strong>跨平台</strong>，支持 OpenAI，Azure，Minimax，智谱，月之暗面，文心一言 在内的国内外 10+ 平台</li>
+<li><strong>One API</strong>，统一了不同平台的消息格式，推理参数，接口封装，返回解析，让用户无需关心不同平台的差异</li>
+<li><strong>异步，流式和并发</strong>，提供流式调用，非流式调用，同步调用，异步调用，异步批量并发调用，适配不同的应用场景</li>
+<li><strong>自带电池</strong>，提供 chainlit UI，输入检查，参数检查，计费，速率控制，<em>Agent</em>, <em>Tool call</em> 等</li>
+<li><strong>轻量</strong>，最小化依赖，不同平台的请求和鉴权逻辑均为原生内置功能</li>
+<li><strong>高质量代码</strong>，100% typehints，pylance strict, ruff lint &amp; format,  test coverage &gt; 85% ...</li>
+</ul>
+<h2 id="_2">安装</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>generate-core
+</code></pre></div>
+<h2 id="_3">对话模型</h2>
+<h3 id="_4">查看模型列表</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">generate.chat_completion</span> <span class="kn">import</span> <span class="n">ChatModelRegistry</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">model_cls</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">model_cls</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ChatModelRegistry</span><span class="o">.</span><span class="n">values</span><span class="p">()]))</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">AzureChat</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">AnthropicChat</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">OpenAIChat</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">MinimaxProChat</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">MinimaxChat</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">ZhipuChat</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">ZhipuCharacterChat</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">WenxinChat</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">HunyuanChat</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="n">BaichuanChat</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="n">BailianChat</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="n">DashScopeChat</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">DashScopeMultiModalChat</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="n">MoonshotChat</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="n">DeepSeekChat</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="n">YiChat</span>
+</code></pre></div>
+<h3 id="api">配置模型 API</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">WenxinChat</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># 获取如何配置文心一言，其他模型同理</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">WenxinChat</span><span class="o">.</span><span class="n">how_to_settings</span><span class="p">())</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">WenxinChat</span> <span class="n">Settings</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1"># Platform</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">Qianfan</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1"># Required Environment Variables</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="p">[</span><span class="s1">&#39;QIANFAN_API_KEY&#39;</span><span class="p">,</span> <span class="s1">&#39;QIANFAN_SECRET_KEY&#39;</span><span class="p">]</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="c1"># Optional Environment Variables</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">[</span><span class="s1">&#39;QIANFAN_PLATFORM_URL&#39;</span><span class="p">,</span> <span class="s1">&#39;QIANFAN_COMLPETION_API_BASE&#39;</span><span class="p">,</span> <span class="s1">&#39;QIANFAN_IMAGE_GENERATION_API_BASE&#39;</span><span class="p">,</span> <span class="s1">&#39;QIANFAN_ACCESS_TOKEN_API&#39;</span><span class="p">]</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="n">You</span> <span class="n">can</span> <span class="n">get</span> <span class="n">more</span> <span class="n">information</span> <span class="kn">from</span> <span class="nn">this</span> <span class="n">link</span><span class="p">:</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">cloud</span><span class="o">.</span><span class="n">baidu</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">WENXINWORKSHOP</span><span class="o">/</span><span class="n">s</span><span class="o">/</span><span class="n">Dlkm79mnx</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="n">tips</span><span class="p">:</span> <span class="n">You</span> <span class="n">can</span> <span class="n">also</span> <span class="nb">set</span> <span class="n">these</span> <span class="n">variables</span> <span class="ow">in</span> <span class="n">the</span> <span class="o">.</span><span class="n">env</span> <span class="n">file</span><span class="p">,</span> <span class="ow">and</span> <span class="n">generate</span> <span class="n">will</span> <span class="n">automatically</span> <span class="n">load</span> <span class="n">them</span><span class="o">.</span>
+</code></pre></div>
+<h3 id="_5">文本生成</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;你好，GPT！&#39;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">2023</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">ChatCompletionOutput</span><span class="p">(</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="n">model_info</span><span class="o">=</span><span class="n">ModelInfo</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;chat_completion&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;openai&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gpt-3.5-turbo-0613&#39;</span><span class="p">),</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">0.000343</span><span class="p">,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;usage&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;prompt_tokens&#39;</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span> <span class="s1">&#39;completion_tokens&#39;</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span> <span class="s1">&#39;total_tokens&#39;</span><span class="p">:</span> <span class="mi">31</span><span class="p">}},</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">message</span><span class="o">=</span><span class="n">AssistantMessage</span><span class="p">(</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="n">role</span><span class="o">=</span><span class="s1">&#39;assistant&#39;</span><span class="p">,</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="n">content</span><span class="o">=</span><span class="s1">&#39;你好！有什么我可以帮助你的吗？&#39;</span><span class="p">,</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        <span class="n">function_call</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>        <span class="n">tool_calls</span><span class="o">=</span><span class="kc">None</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="p">),</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="n">finish_reason</span><span class="o">=</span><span class="s1">&#39;stop&#39;</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="_6">多模态文本生成</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s1">&#39;gpt-4-vision-preview&#39;</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">user_message</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;user&#39;</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="p">{</span><span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;这个图片是哪里？&#39;</span><span class="p">},</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="p">{</span><span class="s1">&#39;image_url&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;url&#39;</span><span class="p">:</span> <span class="s1">&#39;https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg&#39;</span><span class="p">}},</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="p">],</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">}</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">user_message</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="n">ChatCompletionOutput</span><span class="p">(</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>    <span class="n">model_info</span><span class="o">=</span><span class="n">ModelInfo</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;chat_completion&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;openai&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gpt-4-1106-vision-preview&#39;</span><span class="p">),</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">0.10339000000000001</span><span class="p">,</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;usage&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;prompt_tokens&#39;</span><span class="p">:</span> <span class="mi">1120</span><span class="p">,</span> <span class="s1">&#39;completion_tokens&#39;</span><span class="p">:</span> <span class="mi">119</span><span class="p">,</span> <span class="s1">&#39;total_tokens&#39;</span><span class="p">:</span> <span class="mi">1239</span><span class="p">}},</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    <span class="n">message</span><span class="o">=</span><span class="n">AssistantMessage</span><span class="p">(</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>        <span class="n">role</span><span class="o">=</span><span class="s1">&#39;assistant&#39;</span><span class="p">,</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        <span class="n">content</span><span class="o">=</span><span class="s1">&#39;这张图片显示的是一名女士和一只狗在沙滩上。他们似乎在享受日落时分的宁静时刻&#39;</span><span class="p">,</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        <span class="n">function_call</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        <span class="n">tool_calls</span><span class="o">=</span><span class="kc">None</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    <span class="p">),</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    <span class="n">finish_reason</span><span class="o">=</span><span class="s1">&#39;stop&#39;</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="_7">多种调用方式</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="k">for</span> <span class="n">stream_output</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">stream_generate</span><span class="p">(</span><span class="s1">&#39;介绍一下唐朝&#39;</span><span class="p">):</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">stream_output</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">delta</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># 同步调用，model.generate</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># 异步调用，model.async_generate</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="c1"># 流式调用，model.stream_generate</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># 异步流式调用，model.async_stream_generate</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="c1"># 批量调研，model.batch_generate</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="c1"># 异步批量调用，model.async_batch_generate</span>
+</code></pre></div>
+<h3 id="_8">派生功能</h3>
+<h4 id="_9">结构体生成</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">class</span> <span class="nc">Country</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">capital</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span><span class="o">.</span><span class="n">structure</span><span class="p">(</span><span class="n">output_structure_type</span><span class="o">=</span><span class="n">Country</span><span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;Paris is the capital of France and also the largest city in the country.&#39;</span><span class="p">)</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">StructureModelOutput</span><span class="p">(</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">model_info</span><span class="o">=</span><span class="n">ModelInfo</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;chat_completion&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;openai&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;gpt-3.5-turbo-0613&#39;</span><span class="p">),</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">0.000693</span><span class="p">,</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;usage&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;prompt_tokens&#39;</span><span class="p">:</span> <span class="mi">75</span><span class="p">,</span> <span class="s1">&#39;completion_tokens&#39;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="s1">&#39;total_tokens&#39;</span><span class="p">:</span> <span class="mi">87</span><span class="p">}},</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">structure</span><span class="o">=</span><span class="n">Country</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;France&#39;</span><span class="p">,</span> <span class="n">capital</span><span class="o">=</span><span class="s1">&#39;Paris&#39;</span><span class="p">)</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="p">)</span>
+</code></pre></div>
+<h4 id="_10">速率限制</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span> <span class="nn">time</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># 限制速率，每 10 秒最多 4 次请求</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">limit_model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">max_generates_per_time_window</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">num_seconds_in_time_window</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">limit_model</span><span class="o">.</span><span class="n">batch_generate</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;1 + </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1"> = ?&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]):</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">reply</span><span class="p">)</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;elapsed time: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start_time</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> seconds&#39;</span><span class="p">)</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="mi">1</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="n">elapsed</span> <span class="n">time</span><span class="p">:</span> <span class="mf">0.70</span> <span class="n">seconds</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="mi">2</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="n">elapsed</span> <span class="n">time</span><span class="p">:</span> <span class="mf">1.34</span> <span class="n">seconds</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="mi">3</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="n">elapsed</span> <span class="n">time</span><span class="p">:</span> <span class="mf">11.47</span> <span class="n">seconds</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="mi">4</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="n">elapsed</span> <span class="n">time</span><span class="p">:</span> <span class="mf">12.15</span> <span class="n">seconds</span>
+</code></pre></div>
+<h4 id="_11">对话历史保持</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">session_model</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span><span class="o">.</span><span class="n">session</span><span class="p">()</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">session_model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;i am bob&#39;</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">session_model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;What is my name?&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reply</span><span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">Your</span> <span class="n">name</span> <span class="ow">is</span> <span class="n">Bob</span><span class="o">.</span>
+</code></pre></div>
+<h4 id="_12">工具调用</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIChat</span><span class="p">,</span> <span class="n">tool</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nd">@tool</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">def</span> <span class="nf">get_weather</span><span class="p">(</span><span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s1">, 27°C, Sunny&#39;</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">OpenAIChat</span><span class="p">()</span><span class="o">.</span><span class="n">agent</span><span class="p">(</span><span class="n">tools</span><span class="o">=</span><span class="n">get_weather</span><span class="p">)</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;what is the weather in Beijing?&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reply</span><span class="p">)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">The</span> <span class="n">weather</span> <span class="ow">in</span> <span class="n">Beijing</span> <span class="ow">is</span> <span class="n">currently</span> <span class="mi">27</span><span class="err">°</span><span class="n">C</span> <span class="ow">and</span> <span class="n">sunny</span><span class="o">.</span>
+</code></pre></div>
+<h2 id="_13">图像生成模型</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">OpenAIImageGeneration</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">OpenAIImageGeneration</span><span class="p">()</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;black hole&#39;</span><span class="p">)</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="n">ImageGenerationOutput</span><span class="p">(</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">model_info</span><span class="o">=</span><span class="n">ModelInfo</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;image_generation&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;openai&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dall-e-3&#39;</span><span class="p">),</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">0.56</span><span class="p">,</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>    <span class="n">extra</span><span class="o">=</span><span class="p">{},</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    <span class="n">images</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>        <span class="n">GeneratedImage</span><span class="p">(</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>            <span class="n">url</span><span class="o">=</span><span class="s1">&#39;https://oaidalleapiprodscus.blob.core.windows.net/...&#39;</span><span class="p">,</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>            <span class="n">prompt</span><span class="o">=</span><span class="s1">&#39;Visualize an astronomical illustration featuring a black hole at its core. The black hole </span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="n">should</span> <span class="n">be</span> <span class="n">portrayed</span> <span class="k">with</span> <span class="n">strong</span> <span class="n">gravitational</span> <span class="n">lensing</span> <span class="n">effect</span> <span class="n">that</span> <span class="n">distorts</span> <span class="n">the</span> <span class="n">light</span> <span class="n">around</span> <span class="n">it</span><span class="o">.</span> <span class="n">Include</span> <span class="n">a</span> 
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="n">surrounding</span> <span class="n">accretion</span> <span class="n">disk</span><span class="p">,</span> <span class="n">glowing</span> <span class="n">brightly</span> <span class="k">with</span> <span class="n">blue</span> <span class="ow">and</span> <span class="n">white</span> <span class="n">hues</span><span class="p">,</span> <span class="n">streaked</span> <span class="k">with</span> <span class="n">shades</span> <span class="n">of</span> <span class="n">red</span> <span class="ow">and</span> <span class="n">orange</span><span class="p">,</span> 
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="n">indicating</span> <span class="n">heat</span> <span class="ow">and</span> <span class="n">intense</span> <span class="n">energy</span><span class="o">.</span> <span class="n">The</span> <span class="n">cosmos</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">background</span> <span class="n">should</span> <span class="n">be</span> <span class="n">filled</span> <span class="k">with</span> <span class="n">distant</span> <span class="n">stars</span><span class="p">,</span> <span class="n">galaxies</span><span class="p">,</span> <span class="ow">and</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="n">nebulas</span><span class="p">,</span> <span class="n">illuminating</span> <span class="n">the</span> <span class="n">vast</span><span class="p">,</span> <span class="n">infinite</span> <span class="n">space</span> <span class="k">with</span> <span class="n">specks</span> <span class="n">of</span> <span class="n">light</span><span class="o">.</span><span class="s1">&#39;,</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>            <span class="n">image_format</span><span class="o">=</span><span class="s1">&#39;png&#39;</span><span class="p">,</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>            <span class="n">content</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;&lt;image bytes&gt;&#39;</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>        <span class="p">)</span>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>    <span class="p">]</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="_14">语音生成模型</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span> <span class="nn">generate</span> <span class="kn">import</span> <span class="n">MinimaxSpeech</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">MinimaxSpeech</span><span class="p">()</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">model</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="s1">&#39;你好，世界！&#39;</span><span class="p">)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># ----- Output -----</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">TextToSpeechOutput</span><span class="p">(</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">model_info</span><span class="o">=</span><span class="n">ModelInfo</span><span class="p">(</span><span class="n">task</span><span class="o">=</span><span class="s1">&#39;text_to_speech&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;minimax&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;speech-01&#39;</span><span class="p">),</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>    <span class="n">extra</span><span class="o">=</span><span class="p">{},</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    <span class="n">audio</span><span class="o">=</span><span class="sa">b</span><span class="s1">&#39;&lt;audio bytes&gt;&#39;</span><span class="p">,</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    <span class="n">audio_format</span><span class="o">=</span><span class="s1">&#39;mp3&#39;</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="ui">UI</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>-m<span class="w"> </span>generate.ui
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># help</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1"># python -m generate.ui --help</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="assets/javascripts/bundle.081f42fc.min.js"></script>
+      
+    
+  </body>
+</html>
