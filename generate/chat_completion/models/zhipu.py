@@ -7,7 +7,6 @@ from pydantic import field_validator
 from typing_extensions import NotRequired, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
-from generate.chat_completion.cost_caculator import CostCalculator, GeneralCostCalculator
 from generate.chat_completion.message import (
     AssistantMessage,
     FunctionCall,
@@ -24,9 +23,10 @@ from generate.chat_completion.message import (
 )
 from generate.chat_completion.message.converter import MessageConverter
 from generate.chat_completion.message.core import FunctionMessage
+from generate.chat_completion.message.exception import MessageTypeError
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, FinishReason, Usage
 from generate.chat_completion.stream_manager import StreamManager
-from generate.chat_completion.tool import Tool, ToolCallMixin
+from generate.chat_completion.tool import SupportToolCall, Tool
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -128,6 +128,8 @@ class ZhipuMessage(TypedDict):
 
 
 class ZhipuMessageConverter(MessageConverter):
+    allowed_message_types = [SystemMessage, UserMessage, AssistantMessage, ToolMessage, UserMultiPartMessage]
+
     def convert_system_message(self, message: SystemMessage) -> Dict[str, Any]:
         return {
             'role': 'system',
@@ -176,7 +178,7 @@ class ZhipuMessageConverter(MessageConverter):
         }
 
     def convert_function_message(self, message: FunctionMessage) -> Dict[str, Any]:
-        raise NotImplementedError('Zhipu does not support function messages')
+        raise MessageTypeError(message, allowed_message_type=self.allowed_message_types)
 
     def convert_user_multi_part_message(self, message: UserMultiPartMessage) -> Dict[str, Any]:
         content = []
@@ -209,13 +211,12 @@ class ZhipuMessageConverter(MessageConverter):
         return {'role': 'user', 'content': content}
 
 
-class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
+class ZhipuChat(RemoteChatCompletionModel, SupportToolCall):
     model_type: ClassVar[str] = 'zhipu'
     available_models: ClassVar[List[str]] = ['glm-4', 'glm-3-turbo', 'glm-4v']
 
     parameters: ZhipuChatParameters
     settings: ZhipuSettings
-    message_converter: ZhipuMessageConverter
 
     def __init__(
         self,
@@ -224,20 +225,17 @@ class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
         settings: ZhipuSettings | None = None,
         http_client: HttpClient | None = None,
         message_converter: ZhipuMessageConverter | None = None,
-        cost_calculator: CostCalculator | None = None,
     ) -> None:
         parameters = parameters or ZhipuChatParameters()
         settings = settings or ZhipuSettings()  # type: ignore
         http_client = http_client or HttpClient()
         message_converter = message_converter or ZhipuMessageConverter()
-        cost_calculator = cost_calculator or GeneralCostCalculator(ZhipuModelPrice)
         super().__init__(
             model=model,
             parameters=parameters,
             settings=settings,
             http_client=http_client,
             message_converter=message_converter,
-            cost_calculator=cost_calculator,
         )
 
     @override
@@ -285,7 +283,7 @@ class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
     def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
         return ChatCompletionOutput(
             model_info=self.model_info,
-            message=self._parse_assistant_message(response),
+            message=self._parse_assistant_message(response['choices'][0]['message']),
             usage=self._parse_usage(response),
             extra=self._parse_extra(response),
             finish_reason=self._parse_finish_reason(response),
@@ -319,12 +317,12 @@ class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
         else:
             self.parameters.tools.extend(new_tools)
 
-    def _parse_assistant_message(self, response: dict[str, Any]) -> AssistantMessage:
-        if 'tool_calls' in response:
-            dict_format_tool_calls = response['tool_calls']
+    def _parse_assistant_message(self, message: dict[str, Any]) -> AssistantMessage:
+        if 'tool_calls' in message:
+            dict_format_tool_calls = message['tool_calls']
             dict_format_tool_calls.sort(key=lambda x: x['index'])
             tool_calls = []
-            for tool_call_dict in response['tool_calls']:
+            for tool_call_dict in message['tool_calls']:
                 if tool_call_dict['type'] != 'function':
                     raise ValueError(f'invalid tool type: {tool_call_dict["type"]}, should be function')
                 tool_calls.append(
@@ -339,12 +337,12 @@ class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
                 )
             return AssistantMessage(
                 role='assistant',
-                content=response.get('content') or '',
+                content=message.get('content') or '',
                 tool_calls=tool_calls,
             )
         return AssistantMessage(
             role='assistant',
-            content=response['content'],
+            content=message['content'],
         )
 
     def _parse_usage(self, response: dict[str, Any]) -> Usage:
@@ -352,8 +350,7 @@ class ZhipuChat(RemoteChatCompletionModel, ToolCallMixin):
         if usage is not None:
             input_tokens = usage['prompt_tokens']
             output_tokens = usage['completion_tokens']
-            cost = self.cost(input_tokens, output_tokens)
-            return Usage(input_tokens=input_tokens, output_tokens=output_tokens, cost=cost)
+            return Usage(input_tokens=input_tokens, output_tokens=output_tokens)
         return Usage()
 
     def _parse_finish_reason(self, response: dict[str, Any]) -> FinishReason | None:

@@ -3,13 +3,12 @@ from __future__ import annotations
 import base64
 import json
 import uuid
-from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Optional
+from typing import Any, AsyncIterator, ClassVar, Dict, Iterator, List, Literal, Optional
 
 from pydantic import Field, PositiveInt
-from typing_extensions import Annotated, TypedDict, Unpack, override
+from typing_extensions import Annotated, NotRequired, TypedDict, Unpack, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
-from generate.chat_completion.cost_caculator import CostCalculator, GeneralCostCalculator
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.message.converter import MessageConverter
 from generate.chat_completion.message.core import (
@@ -29,26 +28,23 @@ from generate.chat_completion.message.core import (
 from generate.chat_completion.message.exception import MessageTypeError
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, FinishReason, Usage
 from generate.chat_completion.stream_manager import StreamManager
-from generate.chat_completion.tool import Tool, ToolCallMixin
+from generate.chat_completion.tool import SupportToolCall, Tool
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import AnthropicSettings
-from generate.types import ModelPrice, OrIterable, Probability, Temperature
+from generate.types import OrIterable, Probability, Temperature
 from generate.utils import ensure_iterable
-
-AnthropicModelPrice: ModelPrice = {
-    'claude-instant': (0.8, 2.4),
-    'claude-2': (8, 24),
-    'claude-3-haiku': (0.25, 1.25),
-    'claude-3-sonnet': (3, 15),
-    'claude-3-opus': (15, 75),
-}
 
 
 class AnthropicTool(TypedDict):
     name: str
     description: Optional[str]
     input_schema: Dict[str, Any]
+
+
+class AnthropicToolChoice(TypedDict):
+    type: Literal['auto', 'any', 'tool']
+    name: NotRequired[str]
 
 
 class AnthropicChatParameters(ModelParameters):
@@ -60,7 +56,7 @@ class AnthropicChatParameters(ModelParameters):
     top_p: Optional[Probability] = None
     top_k: Optional[PositiveInt] = None
     tools: Optional[List[AnthropicTool]] = None
-    tool_choice: Optional[str] = None
+    tool_choice: Optional[AnthropicToolChoice] = None
 
 
 class AnthropicParametersDict(RemoteModelParametersDict, total=False):
@@ -72,10 +68,12 @@ class AnthropicParametersDict(RemoteModelParametersDict, total=False):
     top_p: Optional[Probability]
     top_k: Optional[PositiveInt]
     tools: Optional[List[AnthropicTool]]
-    tool_choice: Optional[str]
+    tool_choice: Optional[AnthropicToolChoice]
 
 
 class AnthropicMessageConverter(MessageConverter):
+    allowed_message_types = [UserMessage, AssistantMessage, UserMultiPartMessage, ToolMessage]
+
     def __init__(self, http_client: HttpClient) -> None:
         super().__init__()
         self.http_client = http_client
@@ -123,10 +121,10 @@ class AnthropicMessageConverter(MessageConverter):
         return message_dict
 
     def convert_system_message(self, message: SystemMessage) -> Dict[str, Any]:
-        raise MessageTypeError(message, (UserMessage, AssistantMessage, UserMultiPartMessage))
+        raise MessageTypeError(message, self.allowed_message_types)
 
     def convert_function_message(self, message: FunctionMessage) -> Dict[str, Any]:
-        raise MessageTypeError(message, (UserMessage, AssistantMessage, UserMultiPartMessage))
+        raise MessageTypeError(message, self.allowed_message_types)
 
     def convert_tool_message(self, message: ToolMessage) -> Dict[str, Any]:
         tool_result: dict = {
@@ -142,18 +140,10 @@ class AnthropicMessageConverter(MessageConverter):
             'content': [tool_result],
         }
 
-    def convert_messages(self, messages: Messages, tool_choice: str | None = None) -> List[Dict[str, Any]]:
-        messages_dict = super().convert_messages(messages)
-        if tool_choice and self.handle_tool_choice:
-            for message_dict in messages_dict[::-1]:
-                if message_dict['role'] == 'user':
-                    message_dict['content'] += f'\nUse the {tool_choice} tool in your response.'
-                    break
-        return messages_dict
 
-
-class AnthropicChat(RemoteChatCompletionModel, ToolCallMixin):
+class AnthropicChat(RemoteChatCompletionModel, SupportToolCall):
     model_type: ClassVar[str] = 'anthropic'
+    tools_beta_version: ClassVar[str] = 'tools-2024-05-16'
     available_models: ClassVar[List[str]] = [
         'claude-2.1',
         'claude-2.0',
@@ -174,20 +164,17 @@ class AnthropicChat(RemoteChatCompletionModel, ToolCallMixin):
         settings: AnthropicSettings | None = None,
         http_client: HttpClient | None = None,
         message_converter: AnthropicMessageConverter | None = None,
-        cost_calculator: CostCalculator | None = None,
     ) -> None:
         parameters = parameters or AnthropicChatParameters()
         settings = settings or AnthropicSettings()  # type: ignore
         http_client = http_client or HttpClient()
         message_converter = message_converter or AnthropicMessageConverter(http_client)
-        cost_calculator = cost_calculator or GeneralCostCalculator(AnthropicModelPrice, exchange_rate=7.3)
         super().__init__(
             model=model,
             parameters=parameters,
             settings=settings,
             http_client=http_client,
             message_converter=message_converter,
-            cost_calculator=cost_calculator,
         )
 
     @override
@@ -219,14 +206,14 @@ class AnthropicChat(RemoteChatCompletionModel, ToolCallMixin):
         if isinstance(messages[0], SystemMessage):
             parameters.system = messages[0].content
             messages = messages[1:]
-        anthropic_messages = self.message_converter.convert_messages(messages, parameters.tool_choice)
+        anthropic_messages = self.message_converter.convert_messages(messages)
         headers = {
             'Content-Type': 'application/json',
             'anthropic-version': self.settings.api_version,
             'x-api-key': self.settings.api_key.get_secret_value(),
         }
         if tool_use := bool(parameters.tools):
-            headers['anthropic-beta'] = 'tools-2024-04-04'
+            headers['anthropic-beta'] = self.tools_beta_version
 
         json_dict = parameters.custom_model_dump()
         json_dict['model'] = self.model
@@ -268,8 +255,6 @@ class AnthropicChat(RemoteChatCompletionModel, ToolCallMixin):
                 stream_manager.delta = ''
                 stream_manager.finish_reason = self._parse_finish_reason(delta_dict)
                 stream_manager.usage.output_tokens = response['usage']['output_tokens']
-                if stream_manager.usage.input_tokens is not None:
-                    stream_manager.usage.cost = self.cost(stream_manager.usage.input_tokens, stream_manager.usage.output_tokens)
                 return stream_manager.build_stream_output()
 
             stream_manager.delta = response['delta']['text']
@@ -311,8 +296,7 @@ class AnthropicChat(RemoteChatCompletionModel, ToolCallMixin):
 
         input_tokens = response['usage']['input_tokens']
         output_tokens = response['usage']['output_tokens']
-        cost = self.cost(input_tokens, output_tokens)
-        return Usage(input_tokens=input_tokens, output_tokens=output_tokens, cost=cost)
+        return Usage(input_tokens=input_tokens, output_tokens=output_tokens)
 
     def _parse_finish_reason(self, response: dict[str, Any]) -> FinishReason | None:
         finish_reason_mapping = {

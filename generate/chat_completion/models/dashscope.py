@@ -13,9 +13,9 @@ from generate.chat_completion.message import (
 from generate.chat_completion.message.converter import SimpleMessageConverter
 from generate.chat_completion.message.core import FunctionCall, FunctionMessage, Messages, ToolCall, ToolMessage
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, FinishReason, Usage
-from generate.chat_completion.models.openai_like import OpenAITool, convert_to_openai_tool
+from generate.chat_completion.models.openai_like import OpenAITool
 from generate.chat_completion.stream_manager import StreamManager
-from generate.chat_completion.tool import Tool, ToolCallMixin
+from generate.chat_completion.tool import SupportToolCall, Tool
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -86,7 +86,34 @@ class DashScopeMessageConverter(SimpleMessageConverter):
         return base_dict
 
 
-class DashScopeChat(RemoteChatCompletionModel, ToolCallMixin):
+class DashScopeToolCallMixin(SupportToolCall):
+    parameters: DashScopeChatParameters
+
+    @override
+    def process_messages_for_tool_call(self, messages: Messages) -> None:
+        tool_call_id_to_function_name = {}
+        new_messages = []
+        for message in messages:
+            if isinstance(message, AssistantMessage) and message.tool_calls:
+                for tool_call in message.tool_calls:
+                    tool_call_id_to_function_name[tool_call.id] = tool_call.function.name
+            if isinstance(message, ToolMessage):
+                message = FunctionMessage(
+                    name=tool_call_id_to_function_name[message.tool_call_id], content=message.content or ''
+                )
+            new_messages.append(message)
+        messages[:] = new_messages
+
+    @override
+    def add_tools(self, tools: OrIterable[Tool]) -> None:
+        new_tools = [OpenAITool(type='function', function=tool.json_schema) for tool in ensure_iterable(tools)]
+        if self.parameters.tools is None:
+            self.parameters.tools = new_tools
+        else:
+            self.parameters.tools.extend(new_tools)
+
+
+class DashScopeChat(RemoteChatCompletionModel, DashScopeToolCallMixin):
     model_type: ClassVar[str] = 'dashscope'
     available_models: ClassVar[List[str]] = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-longcontext']
 
@@ -107,7 +134,11 @@ class DashScopeChat(RemoteChatCompletionModel, ToolCallMixin):
         http_client = http_client or HttpClient()
         message_converter = message_converter or DashScopeMessageConverter()
         super().__init__(
-            model=model, parameters=parameters, settings=settings, http_client=http_client, message_converter=message_converter
+            model=model,
+            parameters=parameters,
+            settings=settings,
+            http_client=http_client,
+            message_converter=message_converter,
         )
 
     @override
@@ -152,6 +183,7 @@ class DashScopeChat(RemoteChatCompletionModel, ToolCallMixin):
             'model': self.model,
             'parameters': parameters.custom_model_dump(),
         }
+        params['parameters']['result_format'] = 'message'
         return {
             'url': self.settings.api_base + '/services/aigc/text-generation/generation',
             'headers': headers,
@@ -160,74 +192,47 @@ class DashScopeChat(RemoteChatCompletionModel, ToolCallMixin):
 
     @override
     def _process_reponse(self, response: ResponseValue) -> ChatCompletionOutput:
+        choice = response['output']['choices'][0]
+        message = choice['message']
         return ChatCompletionOutput(
             model_info=self.model_info,
-            message=self._parse_assistant_message(response),
+            message=self._parse_assistant_message(message),
             usage=self._parse_usage(response),
             extra=self._parse_extra(response),
-            finish_reason=self._parse_finish_reason(response['choices'][0]),
+            finish_reason=self._parse_finish_reason(choice),
         )
 
     @override
     def _process_stream_response(
         self, response: dict[str, Any], stream_manager: StreamManager
     ) -> ChatCompletionStreamOutput | None:
-        finish_reason = self._parse_finish_reason(response['output'])
-        reply = response['output']['text']
-        stream_manager.usage = self._parse_usage(response)
+        choice = response['output']['choices'][0]
+        delta_dict = choice['message']
+        self._update_delta(delta_dict, stream_manager=stream_manager)
         stream_manager.extra = self._parse_extra(response)
-        if finish_reason != 'null':
-            stream_manager.finish_reason = finish_reason
-            stream_manager.delta = ''
-            return stream_manager.build_stream_output()
-        stream_manager.delta = reply[len(stream_manager.content) :]
+        stream_manager.usage = self._parse_usage(response)
+        if choice['finish_reason'] != 'null':
+            stream_manager.finish_reason = self._parse_finish_reason(choice)
         return stream_manager.build_stream_output()
 
-    @override
-    def cost(self, input_tokens: int, output_tokens: int) -> Optional[float]:
-        total_tokens = input_tokens + output_tokens
-        model_price = {
-            'qwen-turbo': 8,
-            'qwen-plus': 20,
-            'qwen-max': 120,
-        }
-        for model_name, price in model_price.items():
-            if model_name in self.model:
-                return total_tokens * price / 1_000_000
-        return None
-
-    @override
-    def adapt_tool_calls(self, messages: Messages) -> None:
-        tool_call_id_to_function_name = {}
-        new_messages = []
-        for message in messages:
-            if isinstance(message, AssistantMessage) and message.tool_calls:
-                for tool_call in message.tool_calls:
-                    tool_call_id_to_function_name[tool_call.id] = tool_call.function.name
-            if isinstance(message, ToolMessage):
-                message = FunctionMessage(
-                    name=tool_call_id_to_function_name[message.tool_call_id], content=message.content or ''
-                )
-            new_messages.append(message)
-        messages[:] = new_messages
-
-    @override
-    def add_tools(self, tools: OrIterable[Tool]) -> None:
-        new_tools = [convert_to_openai_tool(tool) for tool in ensure_iterable(tools)]
-        if self.parameters.tools is None:
-            self.parameters.tools = new_tools
-        else:
-            self.parameters.tools.extend(new_tools)
+        # reply = response['output']['text']
+        # stream_manager.usage = self._parse_usage(response)
+        # stream_manager.extra = self._parse_extra(response)
+        # if choice['finish_reason'] != 'null':
+        #     stream_manager.finish_reason = self._parse_finish_reason(choice)
+        #     stream_manager.delta = ''
+        #     return stream_manager.build_stream_output()
+        # stream_manager.delta = reply[len(stream_manager.content) :]
+        # return stream_manager.build_stream_output()
 
     def _parse_usage(self, response: dict[str, Any]) -> Usage:
         if usage := response.get('usage'):
             input_tokens = usage.get('input_tokens')
             output_tokens = usage.get('output_tokens')
-            return Usage(input_tokens=input_tokens, output_tokens=output_tokens, cost=self.cost(input_tokens, output_tokens))
+            return Usage(input_tokens=input_tokens, output_tokens=output_tokens)
         return Usage()
 
-    def _parse_assistant_message(self, response: dict[str, Any]) -> AssistantMessage:
-        message = response['choices'][0]['message']
+    def _parse_assistant_message(self, message: dict[str, Any]) -> AssistantMessage:
         if tool_calls_dict := message.get('tool_calls'):
             tool_calls = [
                 ToolCall(
@@ -255,3 +260,19 @@ class DashScopeChat(RemoteChatCompletionModel, ToolCallMixin):
                 return FinishReason(finish_reason)
         except (KeyError, IndexError, ValueError):
             return None
+
+    def _update_delta(self, delta_dict: dict[str, Any], stream_manager: StreamManager) -> None:
+        delta_content: str = delta_dict.get('content') or ''
+        stream_manager.delta = delta_content[len(stream_manager.content) :]
+
+        if delta_dict.get('tool_calls'):
+            index = delta_dict['tool_calls'][0]['index']
+            if index >= len(stream_manager.tool_calls or []):
+                new_tool_calls_message = self._parse_assistant_message(delta_dict).tool_calls
+                assert new_tool_calls_message is not None
+                if stream_manager.tool_calls is None:
+                    stream_manager.tool_calls = []
+                stream_manager.tool_calls.append(new_tool_calls_message[0])
+            else:
+                assert stream_manager.tool_calls is not None
+                stream_manager.tool_calls[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']

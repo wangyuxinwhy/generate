@@ -6,6 +6,7 @@ from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Unpack, override
 
 from generate.chat_completion.message import Prompt
+from generate.chat_completion.message.converter import MessageConverter
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
@@ -13,11 +14,9 @@ from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import StepFunSettings
 from generate.types import Probability
 
-Temperature = Annotated[float, Field(ge=0, le=2)]
-
 
 class StepFunChatParameters(ModelParameters):
-    temperature: Optional[Temperature] = None
+    temperature: Optional[Annotated[float, Field(ge=0, le=2)]] = None
     top_p: Optional[Probability] = None
     max_tokens: Optional[PositiveInt] = None
     presence_penalty: Optional[Annotated[float, Field(ge=-2, le=2)]] = None
@@ -25,9 +24,9 @@ class StepFunChatParameters(ModelParameters):
 
 
 class StepFunParametersDict(RemoteModelParametersDict, total=False):
-    temperature: Optional[Temperature]
-    top_p: Optional[Probability]
-    max_tokens: Optional[PositiveInt]
+    temperature: Optional[float]
+    top_p: Optional[float]
+    max_tokens: Optional[int]
     presence_penalty: Optional[float]
     frequency_penalty: Optional[float]
 
@@ -45,12 +44,18 @@ class StepFunChat(OpenAILikeChat):
         parameters: StepFunChatParameters | None = None,
         settings: StepFunSettings | None = None,
         http_client: HttpClient | None = None,
+        message_converter: MessageConverter | None = None,
     ) -> None:
         parameters = parameters or StepFunChatParameters()
         settings = settings or StepFunSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        model = model
-        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(
+            model=model,
+            parameters=parameters,
+            settings=settings,
+            message_converter=message_converter,
+            http_client=http_client,
+        )
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[StepFunParametersDict]) -> ChatCompletionOutput:

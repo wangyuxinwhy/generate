@@ -6,9 +6,13 @@ from typing_extensions import Unpack, override
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.message.core import Messages
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.chat_completion.models.openai import OpenAIChatParameters, OpenAIChatParametersDict
-from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAIMessageConverter
+from generate.chat_completion.model_output import ChatCompletionStreamOutput
+from generate.chat_completion.models.openai_like import (
+    OpenAIChatParameters,
+    OpenAIChatParametersDict,
+    OpenAILikeChat,
+    OpenAIMessageConverter,
+)
 from generate.chat_completion.stream_manager import StreamManager
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.platforms.azure import AzureSettings
@@ -39,14 +43,6 @@ class AzureChat(OpenAILikeChat):
         super().__init__(
             model=model, parameters=parameters, settings=settings, http_client=http_client, message_converter=message_converter
         )
-
-    @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
-        return super().generate(prompt, **kwargs)
-
-    @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
-        return await super().async_generate(prompt, **kwargs)
 
     @override
     def stream_generate(

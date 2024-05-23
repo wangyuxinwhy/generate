@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Protocol, Type
 
 from generate.chat_completion.message.core import (
     AssistantMessage,
     FunctionMessage,
+    Message,
     Messages,
     SystemMessage,
     ToolMessage,
     UserMessage,
     UserMultiPartMessage,
 )
+from generate.chat_completion.message.exception import MessageTypeError
 
 
 class MessageConverter(Protocol):
+    allowed_message_types: list[Type[Message]]
+
     def convert_user_message(self, message: UserMessage) -> dict[str, Any]:
         ...
 
@@ -56,6 +60,8 @@ class MessageConverter(Protocol):
 
 
 class SimpleMessageConverter(MessageConverter):
+    allowed_message_types = [UserMessage, AssistantMessage, SystemMessage]
+
     def convert_system_message(self, message: SystemMessage) -> dict[str, Any]:
         return {
             'role': 'system',
@@ -75,10 +81,10 @@ class SimpleMessageConverter(MessageConverter):
         }
 
     def convert_function_message(self, message: FunctionMessage) -> dict[str, Any]:
-        raise NotImplementedError('FunctionMessage is not supported by this converter')
+        raise MessageTypeError(message, allowed_message_type=list(self.allowed_message_types))
 
     def convert_tool_message(self, message: ToolMessage) -> dict[str, Any]:
-        raise NotImplementedError('ToolMessage is not supported by this converter')
+        raise MessageTypeError(message, allowed_message_type=list(self.allowed_message_types))
 
     def convert_user_multi_part_message(self, message: UserMultiPartMessage) -> dict[str, Any]:
-        raise NotImplementedError('UserMultiPartMessage is not supported by this converter')
+        raise MessageTypeError(message, allowed_message_type=list(self.allowed_message_types))

@@ -21,7 +21,6 @@ class FinishReason(str, Enum):
 class Usage(BaseModel):
     input_tokens: Optional[int] = None
     output_tokens: Optional[int] = None
-    cost: Optional[float] = None
 
 
 class ChatCompletionOutput(ModelOutput):

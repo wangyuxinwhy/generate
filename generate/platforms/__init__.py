@@ -5,7 +5,6 @@ from generate.platforms.baidu import BaiduCreationSettings, QianfanSettings
 from generate.platforms.base import PlatformSettings
 from generate.platforms.dashscope import DashScopeSettings
 from generate.platforms.deepseek import DeepSeekSettings
-from generate.platforms.hunyuan import HunyuanSettings
 from generate.platforms.minimax import MinimaxSettings
 from generate.platforms.moonshot import MoonshotSettings
 from generate.platforms.openai import OpenAISettings
@@ -23,7 +22,6 @@ __all__ = [
     'ZhipuSettings',
     'OpenAISettings',
     'QianfanSettings',
-    'HunyuanSettings',
     'DashScopeSettings',
     'MoonshotSettings',
     'DeepSeekSettings',

@@ -17,7 +17,7 @@ from generate.chat_completion.message.core import (
 )
 from generate.chat_completion.message.utils import ensure_messages
 from generate.chat_completion.model_output import ChatCompletionOutput
-from generate.chat_completion.tool import Tool, ToolCallMixin, ToolDict
+from generate.chat_completion.tool import SupportToolCall, Tool, ToolDict
 from generate.types import OrIterable
 
 AgentMessage = Union[AssistantMessage, FunctionMessage, ToolMessage]
@@ -47,7 +47,7 @@ class Agent(ChatCompletionModel):
             self.tools = ToolDict.from_iterable(tools)
 
         if self.tools:
-            if isinstance(model, ToolCallMixin):
+            if isinstance(model, SupportToolCall):
                 model.add_tools(self.tools.values())
             else:
                 raise ValueError('Model does not support tools')

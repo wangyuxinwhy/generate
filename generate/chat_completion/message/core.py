@@ -61,7 +61,7 @@ class UserMultiPartMessage(Message):
 
 class FunctionMessage(Message):
     role: Literal['function'] = 'function'
-    name: str
+    name: str  # type: ignore
     content: str
 
 
@@ -93,10 +93,6 @@ class AssistantMessage(Message):
     @property
     def is_over(self) -> bool:
         return self.function_call is None and self.tool_calls is None
-
-    def model_post_init(self, __context: Any) -> None:
-        if not self.content and self.function_call is None and self.tool_calls is None:
-            raise ValueError('AssistantMessage must have content, function_call, or tool_calls')
 
 
 UnionUserMessage = Union[UserMessage, UserMultiPartMessage]

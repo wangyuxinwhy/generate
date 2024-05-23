@@ -13,14 +13,12 @@ from generate.chat_completion.models.openai_like import (
     OpenAIResponseFormat,
     OpenAITool,
     OpenAIToolChoice,
-    convert_to_openai_tool,
+    SupportOpenAIToolCall,
 )
-from generate.chat_completion.tool import Tool, ToolCallMixin
 from generate.http import HttpClient, HttpxPostKwargs
 from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import OpenRouterSettings
-from generate.types import OrIterable, Probability, Temperature
-from generate.utils import ensure_iterable
+from generate.types import Probability, Temperature
 
 
 class ProviderParameters(BaseModel):
@@ -70,7 +68,7 @@ class OpenRouterParametersDict(RemoteModelParametersDict, total=False):
     provider: ProviderParameters
 
 
-class OpenRouterChat(OpenAILikeChat, ToolCallMixin):
+class OpenRouterChat(OpenAILikeChat, SupportOpenAIToolCall):
     model_type: ClassVar[str] = 'openrouter'
     available_models: ClassVar[List[str]] = ['auto']
 
@@ -102,23 +100,23 @@ class OpenRouterChat(OpenAILikeChat, ToolCallMixin):
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[OpenRouterParametersDict]) -> ChatCompletionOutput:
-        return super().generate(prompt, **kwargs)
+        return super().generate(prompt, **kwargs)  # type: ignore
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenRouterParametersDict]) -> ChatCompletionOutput:
-        return await super().async_generate(prompt, **kwargs)
+        return await super().async_generate(prompt, **kwargs)  # type: ignore
 
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenRouterParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
-        yield from super().stream_generate(prompt, **kwargs)
+        yield from super().stream_generate(prompt, **kwargs)  # type: ignore
 
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[OpenRouterParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):  # type: ignore
             yield stream_output
 
     @override
@@ -132,11 +130,3 @@ class OpenRouterChat(OpenAILikeChat, ToolCallMixin):
             request_parameters['json']['models'] = self.models
             request_parameters['json'].pop('model')
         return request_parameters
-
-    @override
-    def add_tools(self, tools: OrIterable[Tool]) -> None:
-        new_tools = [convert_to_openai_tool(tool) for tool in ensure_iterable(tools)]
-        if self.parameters.tools is None:
-            self.parameters.tools = new_tools
-        else:
-            self.parameters.tools.extend(new_tools)

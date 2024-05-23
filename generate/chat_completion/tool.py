@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections import UserDict
-from typing import Any, Callable, Generic, MutableMapping, TypeVar
+from typing import Any, Callable, Generic, MutableMapping, Protocol, TypeVar, runtime_checkable
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
@@ -106,14 +106,15 @@ class ToolDict(UserDict, MutableMapping[str, Tool]):
         return cls({tool.name: tool for tool in ensure_iterable(tools)})
 
 
-class ToolCallMixin:
+@runtime_checkable
+class SupportToolCall(Protocol):
     def add_tools(self, tools: OrIterable[Tool]) -> None:
-        raise NotImplementedError
+        ...
 
     def generate_tool_call_id(self, function_call: FunctionCall) -> str:
         return f'tool_{uuid.uuid4().hex}'
 
-    def adapt_tool_calls(self, messages: Messages) -> None:
+    def process_messages_for_tool_call(self, messages: Messages) -> None:
         for index in range(len(messages)):
             current_message = messages[index]
             if isinstance(current_message, AssistantMessage) and current_message.function_call is not None:
