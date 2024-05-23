@@ -46,7 +46,6 @@ class ModelOutput(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     model_info: ModelInfo
-    cost: Optional[float] = None
     extra: Dict[str, Any] = {}
 
 

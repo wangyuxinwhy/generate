@@ -20,7 +20,7 @@ class MoonshotChatParameters(ModelParameters):
     max_tokens: Optional[PositiveInt] = None
 
 
-class MoonshotParametersDict(RemoteModelParametersDict, total=False):
+class MoonshotChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Temperature
     top_p: Probability
     max_tokens: PositiveInt
@@ -47,20 +47,22 @@ class MoonshotChat(OpenAILikeChat):
         super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotChatParametersDict]) -> ChatCompletionOutput:
         return super().generate(prompt, **kwargs)
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotChatParametersDict]) -> ChatCompletionOutput:
         return await super().async_generate(prompt, **kwargs)
 
     @override
-    def stream_generate(self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(
+        self, prompt: Prompt, **kwargs: Unpack[MoonshotChatParametersDict]
+    ) -> Iterator[ChatCompletionStreamOutput]:
         yield from super().stream_generate(prompt, **kwargs)
 
     @override
     async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[MoonshotParametersDict]
+        self, prompt: Prompt, **kwargs: Unpack[MoonshotChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
         async for stream_output in super().async_stream_generate(prompt, **kwargs):
             yield stream_output

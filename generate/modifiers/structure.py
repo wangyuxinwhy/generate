@@ -5,7 +5,7 @@ import re
 from copy import deepcopy
 from typing import Any, ClassVar, Dict, Generic, Iterable, List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from typing_extensions import Self, TypedDict, Unpack
 
 from generate.chat_completion import ChatCompletionModel
@@ -19,18 +19,16 @@ from generate.chat_completion.message import (
 )
 from generate.model import GenerateModel, ModelOutput, RemoteModelParametersDict
 
-field_info_title = 'Output JSON strictly based the format and pydantic field information below:\n'
-json_schema_title = 'Output JSON strictly based the OpenAI JSON Schema:\n'
 system_template = """\
 # Instruction
 {instruction}
-# Output Format
-{output_format_description}
+# JSON Schema
+{json_schema}
 """
 
 
 I = TypeVar('I', BaseModel, str, Dict[str, Any])  # noqa: E741
-O = TypeVar('O', bound=BaseModel)  # noqa: E741
+O = TypeVar('O')  # noqa: E741
 M = TypeVar('M', bound=ChatCompletionModel)
 
 
@@ -125,15 +123,22 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
     def __init__(
         self,
         model: M,
-        output_structure_type: Type[O],
+        output_structure_type: Type[O] | TypeAdapter[O],
         instruction: str | None = None,
         examples: Optional[Iterable[Example[O]]] = None,
         system_template: str = system_template,
-        output_exclude_none: bool = True,
+        output_exclude_none: bool = False,
         max_num_reask: int = 2,
     ) -> None:
         self.model = model
-        self.instruction = instruction or f'Extract {output_structure_type.__name__}'
+
+        if isinstance(output_structure_type, TypeAdapter):
+            default_instruction = 'Extract Information'
+        else:
+            default_instruction = f'Extract {output_structure_type.__name__}'
+        default_instruction = 'According to the JSON Schema below, parse the input text.'
+        self.instruction = instruction or default_instruction
+
         self.output_structure_type = output_structure_type
         self.examples = examples or []
         self.system_template = system_template
@@ -141,6 +146,10 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         self.output_exclude_none = output_exclude_none
 
         self.model_type = self.model.model_type  # type: ignore
+
+    @property
+    def is_typeadapter(self) -> bool:
+        return isinstance(self.output_structure_type, TypeAdapter)
 
     @property
     def name(self) -> str:
@@ -156,51 +165,47 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         messages.append(self.system_message)
         for example in self.examples:
             messages.extend(ensure_messages(example.prompt))
-            messages.append(AssistantMessage(content=example.output.model_dump_json(exclude_none=self.output_exclude_none)))
+            messages.append(AssistantMessage(content=self.model_dump_json(example.output)))
         return messages
-
-    @property
-    def _output_format_description(self) -> str:
-        json_schema = self.output_structure_type.model_json_schema()
-        have_ref = '$defs' in json_schema
-        if have_ref:
-            text = json_schema_title
-            json_schema = json.dumps(json_schema, indent=2)
-            text += json_schema
-            return text
-        text = field_info_title
-        fields_info = str(self.output_structure_type.model_fields)
-        fields_info = fields_info.replace("'", '"')
-        text += fields_info
-        return text
 
     @property
     def system_message(self) -> SystemMessage:
         system_content = self.system_template.format(
-            instruction=self.instruction, output_format_description=self._output_format_description
+            instruction=self.instruction,
+            json_schema=json.dumps(self.model_json_schema(), indent=2, ensure_ascii=False),
         )
         return SystemMessage(content=system_content)
+
+    def model_dump_json(self, item: O) -> str:
+        if self.is_typeadapter:
+            assert isinstance(self.output_structure_type, TypeAdapter)
+            return self.output_structure_type.dump_json(item, exclude_none=self.output_exclude_none).decode('utf-8')
+        assert isinstance(item, BaseModel)
+        return item.model_dump_json(exclude_none=self.output_exclude_none)
+
+    def model_json_schema(self) -> dict[str, Any]:
+        if self.is_typeadapter:
+            assert isinstance(self.output_structure_type, TypeAdapter)
+            return self.output_structure_type.json_schema()
+        return self.output_structure_type.model_json_schema()  # type: ignore
+
+    def model_validate_json(self, json_string: str) -> O:
+        if self.is_typeadapter:
+            assert isinstance(self.output_structure_type, TypeAdapter)
+            return self.output_structure_type.validate_json(json_string)
+        return self.output_structure_type.model_validate_json(json_string)  # type: ignore
 
     def generate(self, prompt: Prompt, **kwargs: Unpack[RemoteModelParametersDict]) -> StructureModelOutput[O]:
         messages = deepcopy(self.messages)
         messages.extend(ensure_messages(prompt))
         num_reask = 0
-        cost = None
         while num_reask <= self.max_num_reask:
             model_output = self.model.generate(messages, **kwargs)
             messages.append(model_output.message)
-            if model_output.cost is not None:
-                if cost is None:
-                    cost = model_output.cost
-                else:
-                    cost += model_output.cost
-
             try:
                 json_string = ensure_valid_json(model_output.reply)
-                structure = self.output_structure_type.model_validate_json(json_string)
-                return StructureModelOutput(
-                    model_info=model_output.model_info, structure=structure, cost=cost, extra=model_output.extra
-                )
+                structure = self.model_validate_json(json_string)
+                return StructureModelOutput(model_info=model_output.model_info, structure=structure, extra=model_output.extra)
             except Exception as e:
                 num_reask += 1
                 messages.append(
@@ -213,22 +218,13 @@ class StructureGenerateModel(GenerateModel[str, StructureModelOutput[O]], Generi
         messages = deepcopy(self.messages)
         messages.extend(ensure_messages(prompt))
         num_reask = 0
-        cost = None
         while num_reask <= self.max_num_reask:
             model_output = await self.model.async_generate(messages, **kwargs)
             messages.append(model_output.message)
-            if model_output.cost is not None:
-                if cost is None:
-                    cost = model_output.cost
-                else:
-                    cost += model_output.cost
-
             try:
                 json_string = ensure_valid_json(model_output.reply)
-                structure = self.output_structure_type.model_validate_json(json_string)
-                return StructureModelOutput(
-                    model_info=model_output.model_info, structure=structure, cost=cost, extra=model_output.extra
-                )
+                structure = self.model_validate_json(json_string)
+                return StructureModelOutput(model_info=model_output.model_info, structure=structure, extra=model_output.extra)
             except Exception as e:
                 num_reask += 1
                 messages.append(

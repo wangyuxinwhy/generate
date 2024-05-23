@@ -6,6 +6,7 @@ from pydantic import Field, PositiveInt
 from typing_extensions import Annotated, Unpack, override
 
 from generate.chat_completion.message import Prompt
+from generate.chat_completion.message.converter import MessageConverter
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
 from generate.chat_completion.models.openai_like import OpenAILikeChat
 from generate.http import HttpClient
@@ -16,11 +17,13 @@ from generate.platforms import YiSettings
 class YiChatParameters(ModelParameters):
     temperature: Optional[Annotated[float, Field(ge=0, lt=2)]] = None
     max_tokens: Optional[PositiveInt] = None
+    top_p: Optional[Annotated[float, Field(ge=0, lt=1)]] = None
 
 
 class YiParametersDict(RemoteModelParametersDict, total=False):
-    temperature: Optional[Annotated[float, Field(ge=0, lt=2)]]
-    max_tokens: Optional[PositiveInt]
+    temperature: Optional[float]
+    max_tokens: Optional[int]
+    top_p: Optional[float]
 
 
 class YiChat(OpenAILikeChat):
@@ -36,12 +39,17 @@ class YiChat(OpenAILikeChat):
         parameters: YiChatParameters | None = None,
         settings: YiSettings | None = None,
         http_client: HttpClient | None = None,
+        message_converter: MessageConverter | None = None,
     ) -> None:
         parameters = parameters or YiChatParameters()
         settings = settings or YiSettings()  # type: ignore
-        http_client = http_client or HttpClient()
-        model = model
-        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(
+            model=model,
+            parameters=parameters,
+            settings=settings,
+            message_converter=message_converter,
+            http_client=http_client,
+        )
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[YiParametersDict]) -> ChatCompletionOutput:

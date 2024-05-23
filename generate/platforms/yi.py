@@ -9,4 +9,4 @@ class YiSettings(OpenAILikeSettings):
 
     api_key: SecretStr
     api_base: str = 'https://api.lingyiwanwu.com/v1'
-    platform_url: str = 'https://01ai.feishu.cn/docx/Q8Pcdn76uoHBc8xAvKCcPSd0nkc'
+    platform_url: str = 'https://platform.lingyiwanwu.com/docs'

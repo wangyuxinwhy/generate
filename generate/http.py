@@ -27,8 +27,8 @@ class RetryStrategy(BaseModel):
 
 class HttpGetKwargs(TypedDict, total=False):
     url: Required[str]
-    params: QueryParams
-    headers: Headers
+    params: Optional[QueryParams]
+    headers: Optional[Headers]
     timeout: Optional[int]
 
 
@@ -190,28 +190,35 @@ class HttpClient:
     def _post(self, request_parameters: HttpxPostKwargs) -> Response:
         logger.debug(f'POST {request_parameters}')
         http_response = self.client.post(**request_parameters)  # type: ignore
-        http_response.raise_for_status()
+        self.raise_for_status(http_response)
         logger.debug(f'Response {http_response}')
         return http_response
 
     async def _async_post(self, request_parameters: HttpxPostKwargs) -> Response:
         logger.debug(f'POST {request_parameters}')
         http_response = await self.async_client.post(**request_parameters)  # type: ignore
-        http_response.raise_for_status()
+        self.raise_for_status(http_response)
         logger.debug(f'Response {http_response}')
         return http_response
 
     def _get(self, request_parameters: HttpGetKwargs) -> Response:
         logger.debug(f'GET {request_parameters}')
         http_response = self.client.get(**request_parameters)
-        http_response.raise_for_status()
+        self.raise_for_status(http_response)
         return http_response
 
     async def _async_get(self, request_parameters: HttpGetKwargs) -> Response:
         logger.debug(f'GET {request_parameters}')
         http_response = await self.async_client.get(**request_parameters)
-        http_response.raise_for_status()
+        self.raise_for_status(http_response)
         return http_response
+
+    @staticmethod
+    def raise_for_status(response: Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise UnexpectedResponseError(response.json()) from e
 
     def _stream_post(self, request_parameters: HttpxPostKwargs) -> Generator[str, None, None]:
         logger.debug(f'POST {request_parameters}')
