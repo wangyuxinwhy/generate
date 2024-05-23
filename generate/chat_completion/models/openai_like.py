@@ -4,7 +4,7 @@ import base64
 from typing import Any, AsyncIterator, Dict, Iterator, List, Literal, Optional, Union, cast
 
 from pydantic import Field, PositiveInt
-from typing_extensions import Annotated, NotRequired, TypedDict, Unpack, override
+from typing_extensions import Annotated, NotRequired, TypedDict, override
 
 from generate.chat_completion.base import RemoteChatCompletionModel
 from generate.chat_completion.message import (
@@ -234,23 +234,19 @@ class OpenAILikeChat(RemoteChatCompletionModel):
         )
 
     @override
-    def generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+    def generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
         return super().generate(prompt, **kwargs)
 
     @override
-    async def async_generate(self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]) -> ChatCompletionOutput:
+    async def async_generate(self, prompt: Prompt, **kwargs: Any) -> ChatCompletionOutput:
         return await super().async_generate(prompt, **kwargs)
 
     @override
-    def stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> Iterator[ChatCompletionStreamOutput]:
+    def stream_generate(self, prompt: Prompt, **kwargs: Any) -> Iterator[ChatCompletionStreamOutput]:
         yield from super().stream_generate(prompt, **kwargs)
 
     @override
-    async def async_stream_generate(
-        self, prompt: Prompt, **kwargs: Unpack[OpenAIChatParametersDict]
-    ) -> AsyncIterator[ChatCompletionStreamOutput]:
+    async def async_stream_generate(self, prompt: Prompt, **kwargs: Any) -> AsyncIterator[ChatCompletionStreamOutput]:
         async for stream_output in super().async_stream_generate(prompt, **kwargs):
             yield stream_output
 
@@ -260,18 +256,18 @@ class OpenAILikeChat(RemoteChatCompletionModel):
         headers = {
             'Authorization': f'Bearer {self.settings.api_key.get_secret_value()}',
         }
-        params = {
+        json_data = {
             'model': self.model,
             'messages': self.message_converter.convert_messages(messages),
             **parameters.custom_model_dump(),
         }
         if stream:
-            params['stream'] = True
+            json_data['stream'] = True
 
         return {
             'url': f'{self.settings.api_base}/chat/completions',
             'headers': headers,
-            'json': params,
+            'json': json_data,
         }
 
     @override
@@ -357,16 +353,14 @@ class OpenAILikeChat(RemoteChatCompletionModel):
         stream_manager.delta = delta_content
 
         if delta_dict.get('tool_calls'):
-            index = delta_dict['tool_calls'][0]['index']
+            tool_calls = delta_dict['tool_calls'][0]
+            index = tool_calls['index']
             if index >= len(stream_manager.tool_calls or []):
                 new_tool_calls_message = self._parse_assistant_message(delta_dict).tool_calls
-                assert new_tool_calls_message is not None
-                if stream_manager.tool_calls is None:
-                    stream_manager.tool_calls = []
-                stream_manager.tool_calls.append(new_tool_calls_message[0])
+                if new_tool_calls_message:
+                    stream_manager.tool_calls.append(new_tool_calls_message[0])
             else:
-                assert stream_manager.tool_calls is not None
-                stream_manager.tool_calls[index].function.arguments += delta_dict['tool_calls'][0]['function']['arguments']
+                stream_manager.tool_calls[index].function.arguments += tool_calls['function']['arguments']
 
         if delta_dict.get('function_call'):
             if stream_manager.function_call is None:

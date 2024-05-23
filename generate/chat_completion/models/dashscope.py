@@ -215,16 +215,6 @@ class DashScopeChat(RemoteChatCompletionModel, DashScopeToolCallMixin):
             stream_manager.finish_reason = self._parse_finish_reason(choice)
         return stream_manager.build_stream_output()
 
-        # reply = response['output']['text']
-        # stream_manager.usage = self._parse_usage(response)
-        # stream_manager.extra = self._parse_extra(response)
-        # if choice['finish_reason'] != 'null':
-        #     stream_manager.finish_reason = self._parse_finish_reason(choice)
-        #     stream_manager.delta = ''
-        #     return stream_manager.build_stream_output()
-        # stream_manager.delta = reply[len(stream_manager.content) :]
-        # return stream_manager.build_stream_output()
-
     def _parse_usage(self, response: dict[str, Any]) -> Usage:
         if usage := response.get('usage'):
             input_tokens = usage.get('input_tokens')

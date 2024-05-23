@@ -13,6 +13,7 @@ from generate.chat_completion.message.converter import MessageConverter
 from generate.chat_completion.message.core import Messages
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, FinishReason, Usage
 from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAITool
+from generate.chat_completion.tool import SupportToolCall
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -45,7 +46,7 @@ class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
     tools: Optional[List[OpenAITool]]
 
 
-class MinimaxChat(OpenAILikeChat):
+class MinimaxChat(OpenAILikeChat, SupportToolCall):
     model_type: ClassVar[str] = 'minimax'
     available_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat', 'abab6.5-chat']
     CHAT_COMPLETION_ENDPOINT: ClassVar[str] = '/text/chatcompletion_v2'

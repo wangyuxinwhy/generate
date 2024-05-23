@@ -14,7 +14,7 @@ class StreamManager(BaseModel):
     history_streams: List[Stream] = []
     finish_reason: Optional[FinishReason] = None
     function_call: Optional[FunctionCall] = None
-    tool_calls: Optional[List[ToolCall]] = None
+    tool_calls: List[ToolCall] = []
     close: bool = False
     extra: Dict[str, Any] = {}
 
@@ -60,7 +60,7 @@ class StreamManager(BaseModel):
                 message=AssistantMessage(
                     content=self.content,
                     function_call=self.function_call,
-                    tool_calls=self.tool_calls,
+                    tool_calls=self.tool_calls or None,
                 ),
                 stream=stream,
             )
