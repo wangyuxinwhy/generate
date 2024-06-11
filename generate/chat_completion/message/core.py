@@ -41,13 +41,16 @@ class ImageUrlPart(BaseModel):
 
 class ImagePart(BaseModel):
     image: bytes
-    image_format: Optional[str] = None
+    image_format: str
 
     @classmethod
-    def from_url_or_path(cls, url_or_path: str | Path) -> Self:
+    def from_url_or_path(cls, url_or_path: str | Path, image_format: str | None = None) -> Self:
         image_data = fetch_data(str(url_or_path))
-        mimetype = mimetypes.guess_type(url=str(url_or_path))[0]
-        image_format = mimetype.split('/')[1] if mimetype is not None else None
+        if image_format is None:
+            mimetype = mimetypes.guess_type(url=str(url_or_path))[0]
+            image_format = mimetype.split('/')[1] if mimetype is not None else None
+            if image_format is None:
+                raise ValueError(f'Cannot determine image format for {url_or_path}')
         return cls(image=image_data, image_format=image_format)
 
 
@@ -58,7 +61,7 @@ class UserMultiPartMessage(Message):
 
 class FunctionMessage(Message):
     role: Literal['function'] = 'function'
-    name: str
+    name: str  # type: ignore
     content: str
 
 
@@ -66,6 +69,7 @@ class ToolMessage(Message):
     role: Literal['tool'] = 'tool'
     tool_call_id: str
     content: Optional[str] = None
+    is_error: bool = False
 
 
 class FunctionCall(BaseModel):

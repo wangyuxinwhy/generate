@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import uuid
 from collections import UserDict
-from typing import Any, Callable, Generic, MutableMapping, TypeVar
+from typing import Any, Callable, Generic, MutableMapping, Protocol, TypeVar, runtime_checkable
 
 from docstring_parser import parse
 from pydantic import TypeAdapter, validate_call
 from typing_extensions import NotRequired, ParamSpec, Self, TypedDict
 
+from generate.chat_completion.message.core import (
+    AssistantMessage,
+    FunctionCall,
+    FunctionMessage,
+    Messages,
+    ToolCall,
+    ToolMessage,
+)
 from generate.types import JsonSchema, OrIterable
 from generate.utils import ensure_iterable
 
@@ -97,6 +106,23 @@ class ToolDict(UserDict, MutableMapping[str, Tool]):
         return cls({tool.name: tool for tool in ensure_iterable(tools)})
 
 
-class ToolCallMixin:
+@runtime_checkable
+class SupportToolCall(Protocol):
     def add_tools(self, tools: OrIterable[Tool]) -> None:
-        raise NotImplementedError
+        ...
+
+    def generate_tool_call_id(self, function_call: FunctionCall) -> str:
+        return f'tool_{uuid.uuid4().hex}'
+
+    def process_messages_for_tool_call(self, messages: Messages) -> None:
+        for index in range(len(messages)):
+            current_message = messages[index]
+            if isinstance(current_message, AssistantMessage) and current_message.function_call is not None:
+                tool_call_id = self.generate_tool_call_id(current_message.function_call)
+                messages[index].tool_calls = [ToolCall(id=tool_call_id, function=current_message.function_call)]
+                messages[index].function_call = None
+                next_message = messages[index + 1] if index + 1 < len(messages) else None
+                if next_message is not None and isinstance(next_message, FunctionMessage):
+                    messages[index + 1] = ToolMessage(
+                        tool_call_id=tool_call_id, name=next_message.name, content=next_message.content
+                    )

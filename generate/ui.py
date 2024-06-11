@@ -5,7 +5,6 @@ from typing import Any, List, Optional, Type, cast
 from pydantic import BaseModel
 
 from generate.chat_completion.base import RemoteChatCompletionModel
-from generate.chat_completion.models.dashscope_multimodal import DashScopeMultiModalChat
 from generate.model import ModelInfo
 
 try:
@@ -133,15 +132,10 @@ async def main(message: cl.Message) -> None:
                 if element.path is not None:
                     with open(element.path, 'rb') as image_file:
                         image_content = image_file.read()
-                    if isinstance(state.chat_model, DashScopeMultiModalChat):
-                        url = state.chat_model.upload_image(image_content, image_format)
-                        image_url = ImageUrl(url=url)
-                        image_part = ImageUrlPart(image_url=image_url)
-                    else:
-                        image_part = ImagePart(
-                            image=image_content,
-                            image_format=image_format,
-                        )
+                    image_part = ImagePart(
+                        image=image_content,
+                        image_format=image_format,
+                    )
                     image_parts.append(image_part)
                 elif element.url is not None:
                     image_url = ImageUrl(url=element.url)

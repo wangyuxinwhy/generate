@@ -9,9 +9,11 @@ from typing_extensions import Unpack, override
 from generate.chat_completion.message import (
     Prompt,
 )
-from generate.chat_completion.message.core import AssistantMessage, FunctionMessage, Messages, ToolCall, ToolMessage
-from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAIMessage, OpenAITool
+from generate.chat_completion.message.converter import MessageConverter
+from generate.chat_completion.message.core import Messages
+from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput, FinishReason, Usage
+from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAITool
+from generate.chat_completion.tool import SupportToolCall
 from generate.http import (
     HttpClient,
     HttpxPostKwargs,
@@ -44,9 +46,9 @@ class MinimaxChatParametersDict(RemoteModelParametersDict, total=False):
     tools: Optional[List[OpenAITool]]
 
 
-class MinimaxChat(OpenAILikeChat):
+class MinimaxChat(OpenAILikeChat, SupportToolCall):
     model_type: ClassVar[str] = 'minimax'
-    available_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat']
+    available_models: ClassVar[List[str]] = ['abab5.5-chat', 'abab5.5s-chat', 'abab6-chat', 'abab6.5-chat']
     CHAT_COMPLETION_ENDPOINT: ClassVar[str] = '/text/chatcompletion_v2'
 
     parameters: MinimaxChatParameters
@@ -58,15 +60,22 @@ class MinimaxChat(OpenAILikeChat):
         parameters: MinimaxChatParameters | None = None,
         settings: MinimaxSettings | None = None,
         http_client: HttpClient | None = None,
+        message_converter: MessageConverter | None = None,
     ) -> None:
         parameters = parameters or MinimaxChatParameters()
         settings = settings or MinimaxSettings()  # type: ignore
         http_client = http_client or HttpClient()
-        super().__init__(model=model, parameters=parameters, settings=settings, http_client=http_client)
+        super().__init__(
+            model=model,
+            parameters=parameters,
+            settings=settings,
+            http_client=http_client,
+            message_converter=message_converter,
+        )
 
     @override
-    def _get_request_parameters(self, prompt: Prompt, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
-        http_kwargs = super()._get_request_parameters(prompt, stream, **kwargs)
+    def _get_request_parameters(self, messages: Messages, stream: bool = False, **kwargs: Any) -> HttpxPostKwargs:
+        http_kwargs = super()._get_request_parameters(messages, stream, **kwargs)
         http_kwargs['url'] = self.settings.api_base + self.CHAT_COMPLETION_ENDPOINT
         if 'tools' in http_kwargs['json']:
             # Serialize jsonschema dict to JSON string for Minimax compatibility
@@ -78,55 +87,35 @@ class MinimaxChat(OpenAILikeChat):
         return http_kwargs
 
     @override
-    def _determine_finish_reason(self, response: Dict[str, Any]) -> str | None:
+    def _parse_finish_reason(self, response: Dict[str, Any]) -> FinishReason | None:
         choice = response['choices'][0]
         if 'finish_reason' in choice and 'delta' not in choice:
-            return choice['finish_reason']
+            return FinishReason(choice['finish_reason'])
         return None
 
     @override
-    def _convert_to_openai_messages(self, messages: Messages) -> List[OpenAIMessage]:
-        converted_messages = []
-        temp_tool_call_id = self.generate_tool_call_id()
-        for message in messages:
-            # Convert FunctionMessage to ToolMessage with self-generated tool_call_id
-            if isinstance(message, AssistantMessage):
-                if message.function_call is not None:
-                    tool_call = ToolCall(
-                        id=temp_tool_call_id,
-                        function=message.function_call,
-                    )
-                    message.tool_calls = [tool_call]
-                    message.function_call = None
-            elif isinstance(message, FunctionMessage):
-                tool_message = ToolMessage(
-                    name=message.name,
-                    content=message.content,
-                    tool_call_id=temp_tool_call_id,
-                )
-                temp_tool_call_id = self.generate_tool_call_id()
-                converted_messages.append(tool_message)
-                continue
-            converted_messages.append(message.model_copy(deep=True))
-        return super()._convert_to_openai_messages(converted_messages)
+    def _parse_usage(self, response: dict[str, Any]) -> Usage:
+        if usage := response.get('usage'):
+            return Usage(input_tokens=0, output_tokens=usage['total_tokens'])
+        return Usage()
 
     @override
     def generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
-        return super().generate(prompt, **kwargs)
+        return super().generate(prompt, **kwargs)  # type: ignore
 
     @override
     async def async_generate(self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]) -> ChatCompletionOutput:
-        return await super().async_generate(prompt, **kwargs)
+        return await super().async_generate(prompt, **kwargs)  # type: ignore
 
     @override
     def stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> Iterator[ChatCompletionStreamOutput]:
-        yield from super().stream_generate(prompt, **kwargs)
+        yield from super().stream_generate(prompt, **kwargs)  # type: ignore
 
     @override
     async def async_stream_generate(
         self, prompt: Prompt, **kwargs: Unpack[MinimaxChatParametersDict]
     ) -> AsyncIterator[ChatCompletionStreamOutput]:
-        async for stream_output in super().async_stream_generate(prompt, **kwargs):
+        async for stream_output in super().async_stream_generate(prompt, **kwargs):  # type: ignore
             yield stream_output
