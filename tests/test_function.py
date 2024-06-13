@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from generate import OpenAIChat, tool
+from generate import OpenAIChat, tool, MoonshotChat
 from generate.chat_completion.tool import get_json_schema
 
 
