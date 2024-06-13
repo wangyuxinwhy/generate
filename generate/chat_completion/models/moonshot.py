@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import AsyncIterator, ClassVar, Iterator, List, Optional
-
+from typing import AsyncIterator, ClassVar, Iterator, List, Optional, Union, Literal
 from pydantic import PositiveInt
 from typing_extensions import Unpack, override
 
 from generate.chat_completion.message import Prompt
 from generate.chat_completion.model_output import ChatCompletionOutput, ChatCompletionStreamOutput
-from generate.chat_completion.models.openai_like import OpenAILikeChat
+from generate.chat_completion.models.openai_like import OpenAILikeChat, OpenAIToolChoice, OpenAITool, SupportOpenAIToolCall
 from generate.http import HttpClient
 from generate.model import ModelParameters, RemoteModelParametersDict
 from generate.platforms import MoonshotSettings
@@ -18,15 +17,18 @@ class MoonshotChatParameters(ModelParameters):
     temperature: Optional[Temperature] = None
     top_p: Optional[Probability] = None
     max_tokens: Optional[PositiveInt] = None
-
+    tools: Optional[List[OpenAITool]] = None
+    tool_choice: Union[Literal['auto', 'none'], OpenAIToolChoice, None] = None
 
 class MoonshotChatParametersDict(RemoteModelParametersDict, total=False):
     temperature: Temperature
     top_p: Probability
     max_tokens: PositiveInt
+    tools: Optional[List[OpenAITool]]
+    tool_choice: Union[Literal['auto'], OpenAIToolChoice, None]
 
 
-class MoonshotChat(OpenAILikeChat):
+class MoonshotChat(OpenAILikeChat, SupportOpenAIToolCall):
     model_type: ClassVar[str] = 'moonshot'
     available_models: ClassVar[List[str]] = ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
 
